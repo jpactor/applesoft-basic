@@ -353,9 +353,9 @@ public readonly struct BasicValue
             return "0";
         }
 
-        if (AreDoublesEqual(numericValue, Math.Floor(numericValue)) && Math.Abs(numericValue) < 1e10)
+        if (Math.Abs(numericValue - Math.Floor(numericValue)) < Epsilon && Math.Abs(numericValue) < 1e10)
         {
-            return ((long)numericValue).ToString();
+            return ((long)Math.Floor(numericValue)).ToString();
         }
 
         // Use E notation for very large/small numbers
