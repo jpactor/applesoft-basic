@@ -27,6 +27,28 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{5FF2
 		samples\memory.bas = samples\memory.bas
 		samples\primes.bas = samples\primes.bas
 		samples\sleep.bas = samples\sleep.bas
+		samples\speaker.bas = samples\speaker.bas
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "wiki", "wiki", "{CDA85A69-C0C7-49B5-88CB-1CB9FA3CBDC1}"
+	ProjectSection(SolutionItems) = preProject
+		wiki\6502-Emulation.md = wiki\6502-Emulation.md
+		wiki\API-Reference.md = wiki\API-Reference.md
+		wiki\Architecture-Overview.md = wiki\Architecture-Overview.md
+		wiki\Built-in-Functions.md = wiki\Built-in-Functions.md
+		wiki\Code-Style.md = wiki\Code-Style.md
+		wiki\Custom-Extensions.md = wiki\Custom-Extensions.md
+		wiki\Development-Setup.md = wiki\Development-Setup.md
+		wiki\Home.md = wiki\Home.md
+		wiki\Installation.md = wiki\Installation.md
+		wiki\Language-Reference.md = wiki\Language-Reference.md
+		wiki\Memory-Map.md = wiki\Memory-Map.md
+		wiki\Quick-Start.md = wiki\Quick-Start.md
+		wiki\README.md = wiki\README.md
+		wiki\Sample-Programs.md = wiki\Sample-Programs.md
+		wiki\Testing-Guide.md = wiki\Testing-Guide.md
+		wiki\_Footer.md = wiki\_Footer.md
+		wiki\_Sidebar.md = wiki\_Sidebar.md
 	EndProjectSection
 EndProject
 Global
