@@ -83,13 +83,6 @@ public class ForLoopState
     /// </remarks>
     public bool IsComplete(double currentValue)
     {
-        if (StepValue >= 0)
-        {
-            return currentValue > EndValue;
-        }
-        else
-        {
-            return currentValue < EndValue;
-        }
+        return StepValue >= 0 ? currentValue > EndValue : currentValue < EndValue;
     }
 }
