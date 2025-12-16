@@ -100,14 +100,25 @@ DEF FN name(parameter) = expression
 ```basic
 10 DEF FN SQUARE(X) = X * X
 20 DEF FN DOUBLE(N) = N * 2
-30 DEF FN AVG(A,B) = (A + B) / 2
+30 DEF FN TRIPLE(X) = X * 3
 40 PRINT FN SQUARE(5)
-50 PRINT FN AVG(10, 20)
+50 PRINT FN DOUBLE(10)
+```
+
+**Important Limitation:**
+- **Only ONE parameter is allowed** in Applesoft BASIC
+- For functions needing multiple values, use global variables
+
+**Example with Multiple Values:**
+```basic
+10 DEF FN DIST(X) = SQR(X*X + Y*Y)
+20 X1 = 3: Y = 4
+30 D = FN DIST(X1)
+40 PRINT "DISTANCE:"; D
 ```
 
 **Notes:**
 - Function names start with `FN`
-- Can have multiple parameters
 - Returns single value
 - Function body is a single expression
 

@@ -53,9 +53,11 @@ ATN(expression)
 
 **Returns:** Value in radians between -π/2 and π/2
 
-**Note:** To get arctangent of Y/X accounting for quadrant, use:
+**Note:** To get arctangent of Y/X accounting for quadrant, use a workaround with global variable:
 ```basic
-10 DEF FN ATAN2(Y,X) = ATN(Y/X) + (X<0) * 3.14159
+10 DEF FN ATAN2(X) = ATN(Y/X) + (X<0) * 3.14159
+20 Y = 1: X1 = 1
+30 PRINT FN ATAN2(X1)    : REM Uses global Y
 ```
 
 ---
@@ -546,24 +548,40 @@ POS(dummy)
 
 ---
 
-### SCRN - Read Screen Character
+### SCRN - Read Screen Color
 
-Returns the color or character at screen coordinates.
+Returns the color value of a pixel at screen coordinates in graphics modes.
 
 **Syntax:**
 ```basic
 SCRN(x, y)
 ```
 
-**Example:**
+**Examples:**
 ```basic
-10 HOME
-20 PRINT "X"
-30 C = SCRN(0, 0)
-40 PRINT "COLOR:"; C
+10 GR
+20 COLOR= 5
+30 PLOT 10, 10
+40 C = SCRN(10, 10)
+50 PRINT "COLOR:"; C     : REM 5
+
+60 HGR
+70 HCOLOR= 3
+80 HPLOT 100, 50
+90 C = SCRN(100, 50)
+100 PRINT "COLOR:"; C
 ```
 
-**Note:** In text mode, returns character code
+**Parameters:**
+- **x, y**: Screen coordinates
+  - GR mode: x=0-39, y=0-39 (or 0-47)
+  - HGR/HGR2 mode: x=0-279, y=0-191
+
+**Returns:**
+- GR mode: Color value 0-15
+- HGR/HGR2 mode: Color value at pixel position
+
+**Important:** SCRN only works in graphics modes (GR, HGR, HGR2). It does not return meaningful values in TEXT mode
 
 ---
 
@@ -644,6 +662,12 @@ You can create your own functions with `DEF FN`.
 DEF FN name(parameter) = expression
 ```
 
+### Important Limitation
+
+**Applesoft BASIC only supports ONE parameter in DEF FN.**
+
+To work with multiple values, use global variables.
+
 ### Examples
 
 #### Single Parameter Function
@@ -654,20 +678,12 @@ DEF FN name(parameter) = expression
 30 PRINT FN SQUARE(10)       : REM 100
 ```
 
-#### Multiple Parameters
-
-```basic
-10 DEF FN MAX(A,B) = (A > B) * A + (A <= B) * B
-20 PRINT FN MAX(10, 20)      : REM 20
-30 PRINT FN MAX(50, 30)      : REM 50
-```
-
 #### Using Built-in Functions
 
 ```basic
-10 DEF FN DISTANCE(X1,Y1,X2,Y2) = SQR((X2-X1)^2 + (Y2-Y1)^2)
-20 D = FN DISTANCE(0, 0, 3, 4)
-30 PRINT D                   : REM 5
+10 DEF FN CUBE(X) = X * X * X
+20 PRINT FN CUBE(3)          : REM 27
+30 PRINT FN CUBE(5)          : REM 125
 ```
 
 #### String Functions
@@ -680,14 +696,19 @@ DEF FN name(parameter) = expression
 50 PRINT FN LAST$(A$)        : REM "O"
 ```
 
-### Common User-Defined Functions
+#### Working with Multiple Values
 
-#### Min/Max
+Use global variables for functions that need multiple inputs:
 
 ```basic
-10 DEF FN MIN(A,B) = (A < B) * A + (A >= B) * B
-20 DEF FN MAX(A,B) = (A > B) * A + (A <= B) * B
+10 REM DISTANCE FUNCTION USING GLOBALS
+20 DEF FN DIST(X) = SQR(X*X + Y*Y)
+30 X1 = 3: Y = 4
+40 D = FN DIST(X1)
+50 PRINT "DISTANCE:"; D      : REM 5
 ```
+
+### Common User-Defined Functions
 
 #### Rounding
 
@@ -697,10 +718,12 @@ DEF FN name(parameter) = expression
 30 PRINT FN ROUND(3.6)       : REM 4
 ```
 
-#### Clamping
+#### Absolute Value Alternative
 
 ```basic
-10 DEF FN CLAMP(X,MIN,MAX) = FN MIN(FN MAX(X,MIN),MAX)
+10 DEF FN MYABS(X) = X * SGN(X) * SGN(X)
+20 PRINT FN MYABS(-5)        : REM 5
+30 PRINT FN MYABS(3)         : REM 3
 ```
 
 #### Degrees/Radians
@@ -752,7 +775,7 @@ DEF FN name(parameter) = expression
 | `PEEK(a)` | Read memory byte | `PEEK(768)` |
 | `FRE(0)` | Free memory | `FRE(0)` |
 | `POS(0)` | Cursor column | `POS(0)` |
-| `SCRN(x,y)` | Read screen | `SCRN(0,0)` |
+| `SCRN(x,y)` | Read screen color (graphics modes) | `SCRN(10,10)` |
 | `PDL(n)` | Paddle position | `PDL(0)` |
 | `TAB(n)` | Tab to column | `TAB(10)` |
 | `SPC(n)` | Output n spaces | `SPC(5)` |
