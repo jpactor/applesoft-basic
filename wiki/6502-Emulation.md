@@ -228,7 +228,7 @@ The 6502 supports multiple addressing modes:
 
 ### Apple II Memory Map
 
-See [Memory Map](Memory-Map.md) for detailed layout.
+See [Memory Map](Memory-Map) for detailed layout.
 
 **Key Regions:**
 
@@ -475,9 +475,9 @@ To add new features:
 
 ## Related Topics
 
-- **[Memory Map](Memory-Map.md)** - Detailed memory layout
-- **[Architecture Overview](Architecture-Overview.md)** - System design
-- **[Language Reference](Language-Reference.md)** - PEEK/POKE/CALL commands
+- **[Memory Map](Memory-Map)** - Detailed memory layout
+- **[Architecture Overview](Architecture-Overview)** - System design
+- **[Language Reference](Language-Reference)** - PEEK/POKE/CALL commands
 
 ## External Resources
 

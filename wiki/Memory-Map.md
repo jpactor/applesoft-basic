@@ -444,9 +444,9 @@ Decimal   Hex
 
 ## Related Topics
 
-- **[6502 Emulation](6502-Emulation.md)** - CPU and memory details
-- **[Language Reference](Language-Reference.md)** - PEEK, POKE, CALL commands
-- **[Sample Programs](Sample-Programs.md)** - memory.bas example
+- **[6502 Emulation](6502-Emulation)** - CPU and memory details
+- **[Language Reference](Language-Reference)** - PEEK, POKE, CALL commands
+- **[Sample Programs](Sample-Programs)** - memory.bas example
 
 ## External Resources
 

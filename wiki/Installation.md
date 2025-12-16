@@ -184,9 +184,9 @@ dotnet restore ApplesoftBasic.sln
 
 Now that you have the interpreter installed:
 
-1. **[Quick Start](Quick-Start.md)** - Learn how to run BASIC programs
-2. **[Language Reference](Language-Reference.md)** - Explore Applesoft BASIC commands
-3. **[Sample Programs](Sample-Programs.md)** - Try the included examples
+1. **[Quick Start](Quick-Start)** - Learn how to run BASIC programs
+2. **[Language Reference](Language-Reference)** - Explore Applesoft BASIC commands
+3. **[Sample Programs](Sample-Programs)** - Try the included examples
 
 ## Uninstalling
 

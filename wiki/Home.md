@@ -21,34 +21,34 @@ Applesoft BASIC was the dialect of the BASIC programming language supplied with 
 
 New to this project? Start here:
 
-1. **[Installation](Installation.md)** - Get the prerequisites and build the project
-2. **[Quick Start](Quick-Start.md)** - Run your first BASIC program
-3. **[Language Reference](Language-Reference.md)** - Learn the Applesoft BASIC commands
-4. **[Sample Programs](Sample-Programs.md)** - Explore example programs
+1. **[Installation](Installation)** - Get the prerequisites and build the project
+2. **[Quick Start](Quick-Start)** - Run your first BASIC program
+3. **[Language Reference](Language-Reference)** - Learn the Applesoft BASIC commands
+4. **[Sample Programs](Sample-Programs)** - Explore example programs
 
 ## User Guide
 
-- **[Language Reference](Language-Reference.md)** - Complete reference for all commands
-- **[Built-in Functions](Built-in-Functions.md)** - Math, string, and utility functions
-- **[Custom Extensions](Custom-Extensions.md)** - Modern additions like the SLEEP command
-- **[Sample Programs](Sample-Programs.md)** - Guided walkthroughs
+- **[Language Reference](Language-Reference)** - Complete reference for all commands
+- **[Built-in Functions](Built-in-Functions)** - Math, string, and utility functions
+- **[Custom Extensions](Custom-Extensions)** - Modern additions like the SLEEP command
+- **[Sample Programs](Sample-Programs)** - Guided walkthroughs
 
 ## Technical Documentation
 
 For developers and those interested in the internals:
 
-- **[Architecture Overview](Architecture-Overview.md)** - Project structure and components
-- **[6502 Emulation](6502-Emulation.md)** - CPU emulation details
-- **[Memory Map](Memory-Map.md)** - Detailed memory layout ($0000-$FFFF)
-- **[API Reference](API-Reference.md)** - Integrating the interpreter library
+- **[Architecture Overview](Architecture-Overview)** - Project structure and components
+- **[6502 Emulation](6502-Emulation)** - CPU emulation details
+- **[Memory Map](Memory-Map)** - Detailed memory layout ($0000-$FFFF)
+- **[API Reference](API-Reference)** - Integrating the interpreter library
 
 ## Contributing
 
 Want to contribute? We'd love your help!
 
-- **[Development Setup](Development-Setup.md)** - Set up your environment
-- **[Testing Guide](Testing-Guide.md)** - Running and writing tests
-- **[Code Style](Code-Style.md)** - Coding standards and guidelines
+- **[Development Setup](Development-Setup)** - Set up your environment
+- **[Testing Guide](Testing-Guide)** - Running and writing tests
+- **[Code Style](Code-Style)** - Coding standards and guidelines
 
 ## Resources
 

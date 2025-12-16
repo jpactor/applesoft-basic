@@ -209,7 +209,7 @@ Output: PrintStatement(StringLiteral("HELLO"))
 - Speaker emulation
 - Sound generation
 
-See [6502 Emulation](6502-Emulation.md) for details.
+See [6502 Emulation](6502-Emulation) for details.
 
 ---
 
@@ -603,11 +603,11 @@ public void Print_OutputsToConsole()
 
 ## Related Topics
 
-- **[6502 Emulation](6502-Emulation.md)** - CPU and memory details
-- **[Memory Map](Memory-Map.md)** - Apple II memory layout
-- **[API Reference](API-Reference.md)** - Library integration
-- **[Development Setup](Development-Setup.md)** - Contributing
-- **[Testing Guide](Testing-Guide.md)** - Writing tests
+- **[6502 Emulation](6502-Emulation)** - CPU and memory details
+- **[Memory Map](Memory-Map)** - Apple II memory layout
+- **[API Reference](API-Reference)** - Library integration
+- **[Development Setup](Development-Setup)** - Contributing
+- **[Testing Guide](Testing-Guide)** - Writing tests
 
 ## Further Reading
 

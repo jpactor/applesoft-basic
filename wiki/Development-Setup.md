@@ -225,8 +225,8 @@ git checkout -b feature/your-feature-name
 
 ### Making Changes
 
-1. **Write code** following [Code Style](Code-Style.md)
-2. **Add/update tests** - See [Testing Guide](Testing-Guide.md)
+1. **Write code** following [Code Style](Code-Style)
+2. **Add/update tests** - See [Testing Guide](Testing-Guide)
 3. **Build** to check for errors:
    ```bash
    dotnet build ApplesoftBasic.sln
@@ -434,8 +434,8 @@ git rebase main
 
 - [CONTRIBUTING.md](https://github.com/jpactor/applesoft-basic/blob/main/CONTRIBUTING.md) - Contribution guidelines
 - [SETUP_GUIDE.md](https://github.com/jpactor/applesoft-basic/blob/main/SETUP_GUIDE.md) - Repository setup
-- [Testing Guide](Testing-Guide.md) - Writing tests
-- [Code Style](Code-Style.md) - Coding standards
+- [Testing Guide](Testing-Guide) - Writing tests
+- [Code Style](Code-Style) - Coding standards
 
 ### External Resources
 
@@ -453,8 +453,8 @@ git rebase main
 ## Next Steps
 
 1. ✅ Complete this setup guide
-2. 📖 Read [Code Style](Code-Style.md)
-3. 🧪 Review [Testing Guide](Testing-Guide.md)
+2. 📖 Read [Code Style](Code-Style)
+3. 🧪 Review [Testing Guide](Testing-Guide)
 4. 💡 Pick an issue to work on
 5. 🚀 Submit your first PR!
 

@@ -567,9 +567,9 @@ The interpreter requires:
 
 ## Related Topics
 
-- **[Architecture Overview](Architecture-Overview.md)** - Internal design
-- **[Development Setup](Development-Setup.md)** - Contributing
-- **[Language Reference](Language-Reference.md)** - BASIC commands
+- **[Architecture Overview](Architecture-Overview)** - Internal design
+- **[Development Setup](Development-Setup)** - Contributing
+- **[Language Reference](Language-Reference)** - BASIC commands
 
 ## Support
 

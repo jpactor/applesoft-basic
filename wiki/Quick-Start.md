@@ -4,7 +4,7 @@ Get started with the Applesoft BASIC Interpreter in just a few minutes!
 
 ## Prerequisites
 
-Make sure you've completed the [Installation](Installation.md) steps first.
+Make sure you've completed the [Installation](Installation) steps first.
 
 ## Running Your First Program
 
@@ -343,14 +343,14 @@ PRINT "HELLO"
 
 Now that you know the basics:
 
-1. **[Language Reference](Language-Reference.md)** - Learn all available commands
-2. **[Built-in Functions](Built-in-Functions.md)** - Explore functions like SIN, COS, LEN
-3. **[Sample Programs](Sample-Programs.md)** - Study more complex examples
-4. **[Custom Extensions](Custom-Extensions.md)** - Learn about SLEEP and other modern additions
+1. **[Language Reference](Language-Reference)** - Learn all available commands
+2. **[Built-in Functions](Built-in-Functions)** - Explore functions like SIN, COS, LEN
+3. **[Sample Programs](Sample-Programs)** - Study more complex examples
+4. **[Custom Extensions](Custom-Extensions)** - Learn about SLEEP and other modern additions
 
 ## Getting Help
 
-- **[Language Reference](Language-Reference.md)** - Complete command documentation
+- **[Language Reference](Language-Reference)** - Complete command documentation
 - **[GitHub Issues](https://github.com/jpactor/applesoft-basic/issues)** - Report bugs or ask questions
 - **[Contributing Guide](https://github.com/jpactor/applesoft-basic/blob/main/CONTRIBUTING.md)** - Learn how to contribute
 

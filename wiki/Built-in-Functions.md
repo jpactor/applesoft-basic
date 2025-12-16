@@ -761,6 +761,6 @@ DEF FN name(parameter) = expression
 
 ## Next Topics
 
-- **[Language Reference](Language-Reference.md)** - Commands and syntax
-- **[Custom Extensions](Custom-Extensions.md)** - SLEEP and other additions
-- **[Sample Programs](Sample-Programs.md)** - See functions in action
+- **[Language Reference](Language-Reference)** - Commands and syntax
+- **[Custom Extensions](Custom-Extensions)** - SLEEP and other additions
+- **[Sample Programs](Sample-Programs)** - See functions in action

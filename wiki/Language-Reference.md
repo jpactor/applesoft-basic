@@ -973,7 +973,7 @@ Use parentheses to override precedence:
 
 ## Next Topics
 
-- **[Built-in Functions](Built-in-Functions.md)** - Math, string, and utility functions
-- **[Custom Extensions](Custom-Extensions.md)** - SLEEP and other modern additions
-- **[Sample Programs](Sample-Programs.md)** - Complete example programs
-- **[Memory Map](Memory-Map.md)** - Detailed memory layout
+- **[Built-in Functions](Built-in-Functions)** - Math, string, and utility functions
+- **[Custom Extensions](Custom-Extensions)** - SLEEP and other modern additions
+- **[Sample Programs](Sample-Programs)** - Complete example programs
+- **[Memory Map](Memory-Map)** - Detailed memory layout

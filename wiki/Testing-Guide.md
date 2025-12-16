@@ -578,9 +578,9 @@ Tests that sometimes pass, sometimes fail:
 
 ## Related Topics
 
-- **[Development Setup](Development-Setup.md)** - Environment setup
-- **[Code Style](Code-Style.md)** - Coding standards
-- **[Architecture Overview](Architecture-Overview.md)** - System design
+- **[Development Setup](Development-Setup)** - Environment setup
+- **[Code Style](Code-Style)** - Coding standards
+- **[Architecture Overview](Architecture-Overview)** - System design
 - **[Contributing](https://github.com/jpactor/applesoft-basic/blob/main/CONTRIBUTING.md)** - Contribution guidelines
 
 ## External Resources

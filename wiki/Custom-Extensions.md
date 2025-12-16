@@ -270,10 +270,10 @@ This would allow testing programs for strict Applesoft BASIC compatibility.
 
 ## Related Topics
 
-- **[Language Reference](Language-Reference.md)** - Standard Applesoft BASIC commands
-- **[Architecture Overview](Architecture-Overview.md)** - How extensions are implemented
-- **[Development Setup](Development-Setup.md)** - Contributing extensions
-- **[Sample Programs](Sample-Programs.md)** - See extensions in use
+- **[Language Reference](Language-Reference)** - Standard Applesoft BASIC commands
+- **[Architecture Overview](Architecture-Overview)** - How extensions are implemented
+- **[Development Setup](Development-Setup)** - Contributing extensions
+- **[Sample Programs](Sample-Programs)** - See extensions in use
 
 ## Summary
 

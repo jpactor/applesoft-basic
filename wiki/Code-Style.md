@@ -557,6 +557,6 @@ Before submitting PR, verify:
 
 ## Related Topics
 
-- **[Development Setup](Development-Setup.md)** - Environment configuration
-- **[Testing Guide](Testing-Guide.md)** - Writing tests
+- **[Development Setup](Development-Setup)** - Environment configuration
+- **[Testing Guide](Testing-Guide)** - Writing tests
 - **[Contributing](https://github.com/jpactor/applesoft-basic/blob/main/CONTRIBUTING.md)** - Contribution process
