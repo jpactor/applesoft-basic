@@ -348,7 +348,8 @@ public readonly struct BasicValue
         }
 
         // Format number like Applesoft
-        if (IsZero(numericValue))
+        // Only display "0" for exact zero, to match Applesoft BASIC's formatting behavior.
+        if (numericValue == 0.0)
         {
             return "0";
         }
