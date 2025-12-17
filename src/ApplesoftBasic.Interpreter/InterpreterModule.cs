@@ -11,10 +11,12 @@ using IO;
 using Lexer;
 using Parser;
 using Runtime;
+using System.Diagnostics.CodeAnalysis;
 
 /// <summary>
 /// Autofac module for registering interpreter services.
 /// </summary>
+[ExcludeFromCodeCoverage]
 public class InterpreterModule : Module
 {
     /// <summary>

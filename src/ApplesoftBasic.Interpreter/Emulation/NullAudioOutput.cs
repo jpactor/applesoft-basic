@@ -4,6 +4,8 @@
 
 namespace ApplesoftBasic.Interpreter.Emulation;
 
+using System.Diagnostics.CodeAnalysis;
+
 /// <summary>
 /// Represents a null implementation of the <see cref="IAudioOutput"/> interface,
 /// intended for scenarios where audio output is unavailable or not required.
@@ -13,6 +15,7 @@ namespace ApplesoftBasic.Interpreter.Emulation;
 /// It is used as a fallback to ensure that audio-related operations can be
 /// safely invoked without producing any sound or consuming resources.
 /// </remarks>
+[ExcludeFromCodeCoverage]
 internal class NullAudioOutput : IAudioOutput
 {
     /// <summary>

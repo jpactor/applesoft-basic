@@ -5,6 +5,7 @@
 namespace ApplesoftBasic.Interpreter.Emulation;
 
 using Microsoft.Extensions.Logging;
+using System.Diagnostics.CodeAnalysis;
 
 /// <summary>
 /// Provides an emulation layer for ProDOS, the operating system used on Apple II computers.
@@ -15,6 +16,7 @@ using Microsoft.Extensions.Logging;
 /// It integrates with the <see cref="IMemory"/> interface to manage memory operations
 /// and uses logging to provide debug information about the emulation process.
 /// </remarks>
+[ExcludeFromCodeCoverage]
 public class ProDosEmulator
 {
     // ProDOS system locations

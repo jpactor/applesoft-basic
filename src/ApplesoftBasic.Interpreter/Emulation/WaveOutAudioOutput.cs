@@ -4,9 +4,12 @@
 
 namespace ApplesoftBasic.Interpreter.Emulation;
 
+using System.Diagnostics.CodeAnalysis;
+
 /// <summary>
 /// Windows/Cross-platform audio output using raw wave API.
 /// </summary>
+[ExcludeFromCodeCoverage]
 internal class WaveOutAudioOutput : IAudioOutput
 {
     private readonly int sampleRate;

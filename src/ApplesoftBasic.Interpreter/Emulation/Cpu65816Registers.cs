@@ -4,9 +4,12 @@
 
 namespace ApplesoftBasic.Interpreter.Emulation;
 
+using System.Diagnostics.CodeAnalysis;
+
 /// <summary>
 /// Extended registers for 65816 mode.
 /// </summary>
+[ExcludeFromCodeCoverage]
 public class Cpu65816Registers : Cpu6502Registers
 {
     /// <summary>16-bit Accumulator (65816 mode).</summary>
