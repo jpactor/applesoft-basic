@@ -65,6 +65,17 @@ public readonly struct MBF : IEquatable<MBF>
     /// </summary>
     public const int ByteSize = 5;
 
+    /// <summary>
+    /// The number of bits in the mantissa (32 bits = 4 bytes).
+    /// </summary>
+    private const int MantissaBits = 32;
+
+    /// <summary>
+    /// The conversion factor for normalizing the mantissa (2^32).
+    /// Used to convert between normalized double mantissa and 32-bit integer representation.
+    /// </summary>
+    private const double MantissaScale = 4294967296.0; // 2^32 = 0x100000000
+
     private readonly byte exponent;
     private readonly byte mantissa1; // MSB contains sign bit
     private readonly byte mantissa2;
@@ -241,8 +252,9 @@ public readonly struct MBF : IEquatable<MBF>
         // IEEE double: 1.f * 2^exp, where exp = floor(log2(value))
         int exp = (int)Math.Floor(Math.Log2(absValue));
 
-        // MBF exponent is biased by 128, and the mantissa is stored as 1.xxxx * 2^(exp)
-        // So MBF exponent byte = exp + 128 + 1 (the +1 is because MBF stores 0.1xxxx * 2^exp+1)
+        // MBF exponent is biased by 128, and the mantissa is stored as 0.1xxxx (normalized).
+        // The +1 offset converts from IEEE-style 1.xxxx to MBF-style 0.1xxxx representation.
+        // In MBF, a value like 1.0 has exponent 129 (128 bias + 1) because it's stored as 0.5 * 2^1.
         int biasedExp = exp + ExponentBias + 1;
 
         // Check for overflow (exponent > 255) or underflow (exponent < 1)
@@ -262,9 +274,9 @@ public readonly struct MBF : IEquatable<MBF>
         double mantissa = absValue / Math.Pow(2, exp + 1);
 
         // Convert mantissa to 32-bit integer (4 bytes)
-        // Multiply by 2^32 to get the 32-bit mantissa value
+        // Multiply by 2^32 (MantissaScale) to get the 32-bit mantissa value
         // The implicit leading 1 is replaced by the sign bit
-        uint mantissaBits = (uint)(mantissa * 0x100000000);
+        uint mantissaBits = (uint)(mantissa * MantissaScale);
 
         // Extract mantissa bytes (MSB first)
         byte m1 = (byte)((mantissaBits >> 24) & 0xFF);
@@ -343,7 +355,8 @@ public readonly struct MBF : IEquatable<MBF>
                           | mantissa4;
 
         // Convert to normalized double mantissa (0.5 <= mantissa < 1.0)
-        double mantissa = mantissaBits / (double)0x100000000;
+        // Divide by 2^32 (MantissaScale) to convert from 32-bit integer to fractional
+        double mantissa = mantissaBits / MantissaScale;
 
         // Calculate final value: mantissa * 2^(exp+1)
         double result = mantissa * Math.Pow(2, exp + 1);

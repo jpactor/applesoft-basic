@@ -329,6 +329,57 @@ public void WriteRange(ushort address, byte[] data)
 - Toggles on read/write
 - Generates system beep (platform-dependent)
 
+### MBF Struct (Microsoft Binary Format)
+
+**Location**: `src/ApplesoftBasic.Interpreter/Emulation/MBF.cs`
+
+**Purpose**: Represents the 5-byte floating-point format used by Applesoft BASIC.
+
+**Format** (5 bytes total):
+- **Byte 0**: Exponent (biased by 128)
+- **Bytes 1-4**: Mantissa (normalized with implicit leading 1)
+- **Sign**: Stored in MSB of byte 1
+
+**Key Features**:
+- Implicit conversion to/from `double` and `float`
+- Explicit methods: `FromDouble()`, `ToDouble()`, `FromBytes()`, `ToBytes()`
+- Proper handling of special values (overflow, underflow, zero)
+- Infinity and NaN throw `OverflowException` (not supported by MBF)
+
+**Example Usage**:
+```csharp
+// Create MBF from double (implicit conversion)
+MBF value = 3.14159;
+
+// Convert back to double (implicit conversion)
+double result = value;
+
+// Explicit methods
+MBF pi = MBF.FromDouble(Math.PI);
+byte[] bytes = pi.ToBytes();
+```
+
+### FacConverter Class
+
+**Location**: `src/ApplesoftBasic.Interpreter/Emulation/FacConverter.cs`
+
+**Purpose**: Provides conversion between .NET floating-point types and FAC (Floating-point ACcumulator) memory format.
+
+**Methods**:
+- **Legacy (IEEE 754)**: `DoubleToFacBytes()`, `FacBytesToDouble()`, `WriteToMemory()`, `ReadFromMemory()`
+- **MBF (Authentic)**: `DoubleToMbf()`, `MbfToDouble()`, `WriteMbfToMemory()`, `ReadMbfFromMemory()`
+
+**Example Usage**:
+```csharp
+// Using MBF methods for authentic Apple II format
+MBF pi = FacConverter.DoubleToMbf(3.14159);
+FacConverter.WriteMbfToMemory(memory, FAC1, pi);
+
+// Read back
+MBF result = FacConverter.ReadMbfFromMemory(memory, FAC1);
+double value = FacConverter.MbfToDouble(result);
+```
+
 ---
 
 ## Usage in BASIC
