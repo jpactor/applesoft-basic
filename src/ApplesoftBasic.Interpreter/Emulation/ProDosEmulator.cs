@@ -4,6 +4,8 @@
 
 namespace ApplesoftBasic.Interpreter.Emulation;
 
+using System.Diagnostics.CodeAnalysis;
+
 using Microsoft.Extensions.Logging;
 
 /// <summary>
@@ -15,6 +17,7 @@ using Microsoft.Extensions.Logging;
 /// It integrates with the <see cref="IMemory"/> interface to manage memory operations
 /// and uses logging to provide debug information about the emulation process.
 /// </remarks>
+[ExcludeFromCodeCoverage]
 public class ProDosEmulator
 {
     // ProDOS system locations

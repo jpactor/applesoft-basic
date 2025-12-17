@@ -77,6 +77,9 @@ dotnet build ApplesoftBasic.sln
 
 # Run tests
 dotnet test ApplesoftBasic.sln
+
+# Run tests with statement coverage
+dotnet test ApplesoftBasic.sln --collect "XPlat Code Coverage"
 ```
 
 ### Running a BASIC Program

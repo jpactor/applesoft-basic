@@ -197,6 +197,48 @@ public class BasicStringTests
 
     #endregion
 
+    #region Range and Equality Tests
+
+    /// <summary>
+    /// Range slicing returns expected substring.
+    /// </summary>
+    [Test]
+    public void RangeIndexer_ReturnsSubstring()
+    {
+        BasicString value = "HELLO";
+        BasicString sub = value[1..4];
+
+        Assert.That(sub.ToString(), Is.EqualTo("ELL"));
+    }
+
+    /// <summary>
+    /// Equality operators compare bytes.
+    /// </summary>
+    [Test]
+    public void Equality_ComparesCorrectly()
+    {
+        BasicString a = "ABC";
+        BasicString b = "ABC";
+        BasicString c = "ABD";
+
+        Assert.That(a == b, Is.True);
+        Assert.That(a != c, Is.True);
+    }
+
+    /// <summary>
+    /// Implicit conversions round trip.
+    /// </summary>
+    [Test]
+    public void ImplicitConversion_RoundTrips()
+    {
+        BasicString value = "DATA";
+        string s = value;
+
+        Assert.That(s, Is.EqualTo("DATA"));
+    }
+
+    #endregion
+
     #region Substring Tests
 
     /// <summary>

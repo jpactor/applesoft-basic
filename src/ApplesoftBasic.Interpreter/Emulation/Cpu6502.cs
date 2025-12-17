@@ -4,11 +4,14 @@
 
 namespace ApplesoftBasic.Interpreter.Emulation;
 
+using System.Diagnostics.CodeAnalysis;
+
 using Microsoft.Extensions.Logging;
 
 /// <summary>
 /// 6502 CPU emulator.
 /// </summary>
+[ExcludeFromCodeCoverage]
 public class Cpu6502 : ICpu
 {
     private readonly ILogger<Cpu6502> logger;

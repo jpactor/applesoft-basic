@@ -4,11 +4,14 @@
 
 namespace ApplesoftBasic.Interpreter.IO;
 
+using System.Diagnostics.CodeAnalysis;
+
 using Emulation;
 
 /// <summary>
 /// Console-based I/O implementation.
 /// </summary>
+[ExcludeFromCodeCoverage]
 public class ConsoleBasicIO : IBasicIO
 {
     // Bell character (CHR$(7))

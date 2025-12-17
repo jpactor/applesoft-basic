@@ -30,6 +30,9 @@ public class InterpreterTests
     private BasicInterpreter interpreter = null!;
     private Mock<IBasicIO> mockIo = null!;
     private List<string> output = null!;
+    private int cursorCol;
+    private int cursorRow;
+    private TextMode textMode;
 
     /// <summary>
     /// Sets up the necessary dependencies and initializes the <see cref="BasicInterpreter"/> instance
@@ -65,10 +68,24 @@ public class InterpreterTests
         var appleSystem = new AppleSystem(memory, cpu, speaker, systemLogger.Object);
 
         output = [];
+        cursorCol = 0;
+        cursorRow = 0;
+        textMode = TextMode.Normal;
         mockIo = new();
         mockIo.Setup(io => io.Write(It.IsAny<string>())).Callback<string>(s => output.Add(s));
         mockIo.Setup(io => io.WriteLine(It.IsAny<string>())).Callback<string>(s => output.Add(s + "\n"));
-        mockIo.Setup(io => io.GetCursorColumn()).Returns(0);
+        mockIo.Setup(io => io.GetCursorColumn()).Returns(() => cursorCol);
+        mockIo.Setup(io => io.GetCursorRow()).Returns(() => cursorRow);
+        mockIo.Setup(io => io.SetCursorPosition(It.IsAny<int>(), It.IsAny<int>()))
+            .Callback<int, int>((c, r) =>
+            {
+                cursorCol = c;
+                cursorRow = r;
+            });
+        mockIo.Setup(io => io.SetTextMode(It.IsAny<TextMode>())).Callback<TextMode>(mode => textMode = mode);
+        mockIo.Setup(io => io.ReadChar()).Returns('Z');
+        mockIo.Setup(io => io.ReadLine(It.IsAny<string>())).Returns(string.Empty);
+        mockIo.Setup(io => io.ClearScreen()).Callback(() => output.Add("[CLEAR]\n"));
 
         interpreter = new(
             parser,
@@ -887,5 +904,206 @@ public class InterpreterTests
         interpreter.Run("10 POKE 1013, 96\n20 POKE 10, 96\n30 &\n40 X = USR(100)\n50 PRINT \"BOTH\"");
 
         Assert.That(string.Join(string.Empty, output), Does.Contain("BOTH"));
+    }
+
+    /// <summary>
+    /// STOP emits break message.
+    /// </summary>
+    [Test]
+    public void Run_Stop_PrintsBreakMessage()
+    {
+        interpreter.Run("10 STOP");
+
+        Assert.That(string.Join(string.Empty, output), Does.Contain("BREAK IN 10"));
+    }
+
+    /// <summary>
+    /// Syntax errors print message.
+    /// </summary>
+    [Test]
+    public void Run_SyntaxError_PrintsErrorMessage()
+    {
+        interpreter.Run("10 PRINT +");
+
+        Assert.That(string.Join(string.Empty, output), Does.Contain("?SYNTAX ERROR"));
+    }
+
+    /// <summary>
+    /// CLEAR resets data and RESTORE reloads.
+    /// </summary>
+    [Test]
+    public void Run_ClearRestoreAndData_ReadsAgain()
+    {
+        interpreter.Run("10 DATA 1,2\n20 READ A,B\n30 CLEAR\n40 RESTORE\n50 READ A,B\n60 PRINT A;B");
+
+        Assert.That(string.Join(string.Empty, output), Does.Contain(" 1 2"));
+    }
+
+    /// <summary>
+    /// HTAB/VTAB update cursor positions.
+    /// </summary>
+    [Test]
+    public void Run_HtabAndVtab_UpdateCursor()
+    {
+        List<(int Col, int Row)> positions = [];
+        mockIo.Setup(io => io.SetCursorPosition(It.IsAny<int>(), It.IsAny<int>()))
+            .Callback<int, int>((c, r) =>
+            {
+                positions.Add((c, r));
+                cursorCol = c;
+                cursorRow = r;
+            });
+
+        interpreter.Run("10 HTAB 5: VTAB 4");
+
+        Assert.That(positions, Is.EqualTo(new List<(int, int)> { (5, 1), (6, 4) }));
+    }
+
+    /// <summary>
+    /// Text mode statements switch mode.
+    /// </summary>
+    [Test]
+    public void Run_TextModes_SwitchesModes()
+    {
+        interpreter.Run("10 INVERSE\n20 FLASH\n30 NORMAL");
+
+        Assert.That(textMode, Is.EqualTo(TextMode.Normal));
+    }
+
+    /// <summary>
+    /// ON GOTO jumps to correct line.
+    /// </summary>
+    [Test]
+    public void Run_OnGoto_JumpsToCorrectLine()
+    {
+        interpreter.Run("10 ON 1 GOTO 40,50\n20 PRINT \"MISS\"\n40 PRINT \"HIT\"\n50 END");
+
+        Assert.That(string.Join(string.Empty, output), Does.Contain("HIT").And.Not.Contain("MISS"));
+    }
+
+    /// <summary>
+    /// ON GOSUB returns to caller.
+    /// </summary>
+    [Test]
+    public void Run_OnGosub_ReturnsToCaller()
+    {
+        interpreter.Run("10 ON 2 GOSUB 30,60\n20 PRINT \"AFTER\"\n30 PRINT \"ONE\": RETURN\n60 PRINT \"TWO\": RETURN");
+
+        string combined = string.Join(string.Empty, output);
+        Assert.That(combined, Does.Contain("TWO"));
+        Assert.That(combined, Does.Contain("AFTER"));
+    }
+
+    /// <summary>
+    /// GET plus TAB/SPC formatting works.
+    /// </summary>
+    [Test]
+    public void Run_GetAndPrint_UsesTabAndSpc()
+    {
+        interpreter.Run("10 GET A$\n20 PRINT A$;TAB(3);\"X\";SPC(2);\"Y\"");
+
+        string combined = string.Join(string.Empty, output);
+        Assert.That(combined, Does.Contain("Z"));
+        Assert.That(combined, Does.Contain("X"));
+        Assert.That(combined, Does.Contain("Y"));
+    }
+
+    /// <summary>
+    /// HIMEM/LOMEM/POKE/PEEK operate on memory.
+    /// </summary>
+    [Test]
+    public void Run_MemoryStatements_UpdateMemory()
+    {
+        interpreter.Run("10 HIMEM: 50000\n20 LOMEM: 2048\n30 POKE 4660,255\n40 PRINT PEEK(4660)");
+
+        ushort himem = interpreter.AppleSystem.Memory.ReadWord(0x73);
+        ushort lomem = interpreter.AppleSystem.Memory.ReadWord(0x69);
+        Assert.That(himem, Is.EqualTo(50000));
+        Assert.That(lomem, Is.EqualTo(2048));
+        Assert.That(string.Join(string.Empty, output), Does.Contain(" 255"));
+    }
+
+    /// <summary>
+    /// Graphics stubs do not throw.
+    /// </summary>
+    [Test]
+    public void Run_GraphicsStatements_DoNotThrow()
+    {
+        Assert.DoesNotThrow(() => interpreter.Run(
+            "10 TEXT: GR: HGR: HGR2\n" +
+            "20 COLOR= 3: HCOLOR= 2\n" +
+            "30 PLOT 1,2: HPLOT 1,2 TO 3,4\n" +
+            "40 DRAW 5: XDRAW 6\n" +
+            "50 HOME"));
+    }
+
+    /// <summary>
+    /// INPUT retries on invalid and stores values.
+    /// </summary>
+    [Test]
+    public void Run_Input_RetriesOnInvalidAndStoresValues()
+    {
+        mockIo.SetupSequence(io => io.ReadLine(It.IsAny<string>()))
+            .Returns("abc")
+            .Returns("123,HELLO");
+
+        interpreter.Run("10 INPUT A,B$\n20 PRINT A;B$");
+
+        string combined = string.Join(string.Empty, output);
+        Assert.That(combined, Does.Contain("??REDO FROM START"));
+        Assert.That(combined, Does.Contain(" 123HELLO"));
+    }
+
+    /// <summary>
+    /// PRINT with comma uses tab zones.
+    /// </summary>
+    [Test]
+    public void Run_PrintWithComma_UsesTabZones()
+    {
+        interpreter.Run("10 PRINT 1,2");
+
+        Assert.That(string.Join(string.Empty, output), Does.Contain(" 1").And.Contain(" 2"));
+    }
+
+    /// <summary>
+    /// NEXT without FOR shows error.
+    /// </summary>
+    [Test]
+    public void Run_NextWithoutFor_ShowsError()
+    {
+        interpreter.Run("10 NEXT I");
+
+        Assert.That(string.Join(string.Empty, output), Does.Contain("NEXT WITHOUT FOR"));
+    }
+
+    /// <summary>
+    /// SLEEP statement does not throw.
+    /// </summary>
+    [Test]
+    public void Run_Sleep_DoesNotThrow()
+    {
+        Assert.DoesNotThrow(() => interpreter.Run("10 SLEEP 0"));
+    }
+
+    /// <summary>
+    /// REM statement is ignored.
+    /// </summary>
+    [Test]
+    public void Run_RemStatement_IsIgnored()
+    {
+        interpreter.Run("10 REM COMMENT\n20 PRINT \"OK\"");
+
+        Assert.That(string.Join(string.Empty, output), Does.Contain("OK"));
+    }
+
+    /// <summary>
+    /// CALL invokes AppleSystem.
+    /// </summary>
+    [Test]
+    public void Run_Call_InvokesAppleSystem()
+    {
+        interpreter.Run("10 CALL 1234\n20 PRINT \"AFTER\"");
+
+        Assert.That(string.Join(string.Empty, output), Does.Contain("AFTER"));
     }
 }
