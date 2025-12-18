@@ -73,13 +73,13 @@ git clone https://github.com/jpactor/applesoft-basic.git
 cd applesoft-basic
 
 # Build the solution
-dotnet build ApplesoftBasic.sln
+dotnet build ApplesoftBasic.slnx
 
 # Run tests
-dotnet test ApplesoftBasic.sln
+dotnet test ApplesoftBasic.slnx
 
 # Run tests with statement coverage
-dotnet test ApplesoftBasic.sln --collect "XPlat Code Coverage"
+dotnet test ApplesoftBasic.slnx --collect "XPlat Code Coverage"
 ```
 
 ### Running a BASIC Program
@@ -168,7 +168,7 @@ applesoft-basic/
 ??? tests/
 ?   ??? ApplesoftBasic.Tests/          # Unit tests
 ??? samples/                           # Sample BASIC programs
-??? ApplesoftBasic.sln                 # Solution file
+??? ApplesoftBasic.slnx                # Solution file
 ```
 
 ### Technologies Used

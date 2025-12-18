@@ -145,13 +145,13 @@ Due to system limitations, the following tasks require manual action by the repo
 
 ### Build Verification
 ```bash
-dotnet build ApplesoftBasic.sln --configuration Release
+dotnet build ApplesoftBasic.slnx --configuration Release
 Result: ✅ Success (2 warnings about Console.Beep, not critical)
 ```
 
 ### Test Verification
 ```bash
-dotnet test ApplesoftBasic.sln --configuration Release
+dotnet test ApplesoftBasic.slnx --configuration Release
 Result: ✅ All 103 tests pass
 ```
 

@@ -59,13 +59,13 @@ upstream  https://github.com/jpactor/applesoft-basic.git (push)
 ### 3. Restore Dependencies
 
 ```bash
-dotnet restore ApplesoftBasic.sln
+dotnet restore ApplesoftBasic.slnx
 ```
 
 ### 4. Build the Solution
 
 ```bash
-dotnet build ApplesoftBasic.sln
+dotnet build ApplesoftBasic.slnx
 ```
 
 **Expected:**
@@ -78,7 +78,7 @@ Build succeeded.
 ### 5. Run Tests
 
 ```bash
-dotnet test ApplesoftBasic.sln --verbosity normal
+dotnet test ApplesoftBasic.slnx --verbosity normal
 ```
 
 **Expected:**
@@ -100,7 +100,7 @@ Should execute the demo program successfully.
 
 #### Setup
 
-1. Open `ApplesoftBasic.sln`
+1. Open `ApplesoftBasic.slnx`
 2. Visual Studio will restore NuGet packages automatically
 3. Build: **Ctrl+Shift+B**
 4. Run tests: **Test → Run All Tests**
@@ -158,14 +158,14 @@ Project includes `.editorconfig` - Visual Studio will automatically apply settin
       "label": "build",
       "command": "dotnet",
       "type": "process",
-      "args": ["build", "ApplesoftBasic.sln"],
+      "args": ["build", "ApplesoftBasic.slnx"],
       "problemMatcher": "$msCompile"
     },
     {
       "label": "test",
       "command": "dotnet",
       "type": "process",
-      "args": ["test", "ApplesoftBasic.sln"],
+      "args": ["test", "ApplesoftBasic.slnx"],
       "problemMatcher": "$msCompile"
     }
   ]
@@ -176,7 +176,7 @@ Project includes `.editorconfig` - Visual Studio will automatically apply settin
 
 #### Setup
 
-1. Open `ApplesoftBasic.sln`
+1. Open `ApplesoftBasic.slnx`
 2. Rider will restore packages automatically
 3. Build: **Ctrl+F9** (Windows/Linux) or **Cmd+F9** (Mac)
 4. Run tests: **Alt+Shift+T** or use Test Explorer
@@ -207,7 +207,7 @@ applesoft-basic/
 ├── samples/              # Sample BASIC programs
 ├── .editorconfig         # Code style configuration
 ├── StyleCop.json         # StyleCop rules
-└── ApplesoftBasic.sln    # Solution file
+└── ApplesoftBasic.slnx    # Solution file
 ```
 
 ## Development Workflow
@@ -229,11 +229,11 @@ git checkout -b feature/your-feature-name
 2. **Add/update tests** - See [Testing Guide](Testing-Guide)
 3. **Build** to check for errors:
    ```bash
-   dotnet build ApplesoftBasic.sln
+   dotnet build ApplesoftBasic.slnx
    ```
 4. **Run tests** to verify:
    ```bash
-   dotnet test ApplesoftBasic.sln
+   dotnet test ApplesoftBasic.slnx
    ```
 
 ### Committing Changes
@@ -264,14 +264,14 @@ git push origin feature/your-feature-name
 
 ```bash
 # Debug build
-dotnet build ApplesoftBasic.sln
+dotnet build ApplesoftBasic.slnx
 
 # Release build
-dotnet build ApplesoftBasic.sln --configuration Release
+dotnet build ApplesoftBasic.slnx --configuration Release
 
 # Clean build
-dotnet clean ApplesoftBasic.sln
-dotnet build ApplesoftBasic.sln
+dotnet clean ApplesoftBasic.slnx
+dotnet build ApplesoftBasic.slnx
 
 # Build specific project
 dotnet build src/ApplesoftBasic.Interpreter/ApplesoftBasic.Interpreter.csproj
@@ -281,10 +281,10 @@ dotnet build src/ApplesoftBasic.Interpreter/ApplesoftBasic.Interpreter.csproj
 
 ```bash
 # Run all tests
-dotnet test ApplesoftBasic.sln
+dotnet test ApplesoftBasic.slnx
 
 # Run with detailed output
-dotnet test ApplesoftBasic.sln --verbosity detailed
+dotnet test ApplesoftBasic.slnx --verbosity detailed
 
 # Run specific test class
 dotnet test --filter FullyQualifiedName~BasicInterpreterTests
@@ -293,7 +293,7 @@ dotnet test --filter FullyQualifiedName~BasicInterpreterTests
 dotnet test --filter Name=Print_OutputsText
 
 # Run tests with coverage (if dotnet-coverage installed)
-dotnet test ApplesoftBasic.sln --collect:"XPlat Code Coverage"
+dotnet test ApplesoftBasic.slnx --collect:"XPlat Code Coverage"
 ```
 
 ### Running the Console App
@@ -312,10 +312,10 @@ dotnet run --project src/ApplesoftBasic.Console/ApplesoftBasic.Console.csproj --
 
 ```bash
 # Format code
-dotnet format ApplesoftBasic.sln
+dotnet format ApplesoftBasic.slnx
 
 # Check formatting without changes
-dotnet format ApplesoftBasic.sln --verify-no-changes
+dotnet format ApplesoftBasic.slnx --verify-no-changes
 ```
 
 ### Static Analysis
@@ -389,7 +389,7 @@ dotnet --version
 ```bash
 # Clear NuGet cache
 dotnet nuget locals all --clear
-dotnet restore ApplesoftBasic.sln
+dotnet restore ApplesoftBasic.slnx
 ```
 
 ### Test Failures
