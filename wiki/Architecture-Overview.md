@@ -29,7 +29,7 @@ applesoft-basic/
 ├── tests/
 │   └── ApplesoftBasic.Tests/          # Unit and integration tests
 ├── samples/                           # Sample BASIC programs
-├── ApplesoftBasic.sln                 # Visual Studio solution
+├── ApplesoftBasic.slnx                 # Visual Studio solution
 ├── README.md                          # Project overview
 ├── CONTRIBUTING.md                    # Contribution guidelines
 └── SETUP_GUIDE.md                     # Setup instructions

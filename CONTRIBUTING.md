@@ -67,17 +67,17 @@ This project is committed to providing a welcoming and inclusive environment for
 
 4. **Restore dependencies**:
    ```bash
-   dotnet restore ApplesoftBasic.sln
+   dotnet restore ApplesoftBasic.slnx
    ```
 
 5. **Build the solution**:
    ```bash
-   dotnet build ApplesoftBasic.sln
+   dotnet build ApplesoftBasic.slnx
    ```
 
 6. **Run tests**:
    ```bash
-   dotnet test ApplesoftBasic.sln
+   dotnet test ApplesoftBasic.slnx
    ```
 
 ## Development Workflow
@@ -106,10 +106,10 @@ git checkout -b fix/bug-description
 
 ```bash
 # Run all tests
-dotnet test ApplesoftBasic.sln --verbosity normal
+dotnet test ApplesoftBasic.slnx --verbosity normal
 
 # Build in Release mode
-dotnet build ApplesoftBasic.sln --configuration Release
+dotnet build ApplesoftBasic.slnx --configuration Release
 
 # Test manually with sample programs
 dotnet run --project src/ApplesoftBasic.Console/ApplesoftBasic.Console.csproj -- samples/demo.bas

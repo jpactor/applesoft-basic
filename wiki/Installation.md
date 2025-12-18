@@ -29,7 +29,7 @@ cd applesoft-basic
 ### 2. Restore Dependencies
 
 ```bash
-dotnet restore ApplesoftBasic.sln
+dotnet restore ApplesoftBasic.slnx
 ```
 
 This will download all required NuGet packages:
@@ -42,7 +42,7 @@ This will download all required NuGet packages:
 ### 3. Build the Solution
 
 ```bash
-dotnet build ApplesoftBasic.sln
+dotnet build ApplesoftBasic.slnx
 ```
 
 **Expected Output:**
@@ -59,7 +59,7 @@ Build succeeded.
 Verify the installation by running the test suite:
 
 ```bash
-dotnet test ApplesoftBasic.sln
+dotnet test ApplesoftBasic.slnx
 ```
 
 **Expected Output:**
@@ -72,7 +72,7 @@ Passed! - Failed:     0, Passed:   103, Skipped:     0, Total:   103
 For better performance, build the release version:
 
 ```bash
-dotnet build ApplesoftBasic.sln --configuration Release
+dotnet build ApplesoftBasic.slnx --configuration Release
 ```
 
 ## Verifying Installation
@@ -97,7 +97,7 @@ applesoft-basic/
 ├── tests/
 │   └── ApplesoftBasic.Tests/          # Unit tests
 ├── samples/                           # Sample BASIC programs
-├── ApplesoftBasic.sln                 # Solution file
+├── ApplesoftBasic.slnx                 # Solution file
 └── README.md
 ```
 
@@ -120,7 +120,7 @@ dotnet run --project src/ApplesoftBasic.Console/ApplesoftBasic.Console.csproj
 
 ### Visual Studio
 
-1. Open `ApplesoftBasic.sln` in Visual Studio 2022 or later
+1. Open `ApplesoftBasic.slnx` in Visual Studio 2022 or later
 2. Ensure .NET 10.0 SDK is installed
 3. Build the solution (Ctrl+Shift+B)
 4. Run tests from Test Explorer
@@ -134,7 +134,7 @@ dotnet run --project src/ApplesoftBasic.Console/ApplesoftBasic.Console.csproj
 
 ### JetBrains Rider
 
-1. Open `ApplesoftBasic.sln` in Rider
+1. Open `ApplesoftBasic.slnx` in Rider
 2. Rider will automatically restore dependencies
 3. Build and run using the UI or Ctrl+F9
 
@@ -168,7 +168,7 @@ dotnet run --project src/ApplesoftBasic.Console/ApplesoftBasic.Console.csproj
 dotnet nuget locals all --clear
 
 # Retry restore
-dotnet restore ApplesoftBasic.sln
+dotnet restore ApplesoftBasic.slnx
 ```
 
 ### Tests Fail

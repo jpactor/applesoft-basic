@@ -12,10 +12,10 @@ The project uses NUnit for unit testing and Moq for mocking. All tests are in th
 
 ```bash
 # Run all tests
-dotnet test ApplesoftBasic.sln
+dotnet test ApplesoftBasic.slnx
 
 # Run with verbose output
-dotnet test ApplesoftBasic.sln --verbosity detailed
+dotnet test ApplesoftBasic.slnx --verbosity detailed
 
 # Run specific test class
 dotnet test --filter FullyQualifiedName~BasicInterpreterTests
@@ -490,7 +490,7 @@ public void ExecuteProgram_Fibonacci_ProducesCorrectSequence()
 dotnet tool install -g dotnet-coverage
 
 # Run tests with coverage
-dotnet test ApplesoftBasic.sln --collect:"XPlat Code Coverage"
+dotnet test ApplesoftBasic.slnx --collect:"XPlat Code Coverage"
 
 # Coverage report will be in TestResults folder
 ```
