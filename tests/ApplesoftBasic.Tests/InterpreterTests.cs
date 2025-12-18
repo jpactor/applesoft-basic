@@ -89,9 +89,9 @@ public class InterpreterTests
 
         // Create context objects
         var runtime = new BasicRuntimeContext(variables, functions, data, loops, gosub);
-        var system = new SystemContext(appleSystem, mockIo.Object, interpreterLogger.Object);
+        var system = new SystemContext(appleSystem, mockIo.Object);
 
-        interpreter = new(parser, runtime, system);
+        interpreter = new(parser, runtime, system, interpreterLogger.Object);
     }
 
     /// <summary>

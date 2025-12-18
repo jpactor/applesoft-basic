@@ -6,11 +6,10 @@ namespace ApplesoftBasic.Interpreter.Runtime;
 
 using Emulation;
 using IO;
-using Microsoft.Extensions.Logging;
 
 /// <summary>
-/// Provides an interface for managing system-level services including hardware emulation,
-/// I/O operations, and logging.
+/// Provides an interface for managing system-level services including hardware emulation
+/// and I/O operations.
 /// </summary>
 /// <remarks>
 /// This context aggregates all hardware and system-level services, separating them from
@@ -34,12 +33,4 @@ public interface ISystemContext
     /// An instance of <see cref="IBasicIO"/> that manages input/output operations.
     /// </value>
     IBasicIO IO { get; }
-
-    /// <summary>
-    /// Gets the logger for diagnostic and debugging output.
-    /// </summary>
-    /// <value>
-    /// An instance of <see cref="ILogger"/> for logging interpreter operations and errors.
-    /// </value>
-    ILogger Logger { get; }
 }

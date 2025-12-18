@@ -25,6 +25,7 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
     private readonly IParser parser;
     private readonly IBasicRuntimeContext runtime;
     private readonly ISystemContext system;
+    private readonly ILogger<BasicInterpreter> logger;
     private readonly Dictionary<int, int> lineNumberIndex = [];
 
     private Random random;
@@ -40,14 +41,17 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
     /// <param name="parser">The parser for BASIC source code.</param>
     /// <param name="runtime">The BASIC runtime context containing language state managers.</param>
     /// <param name="system">The system context containing hardware and I/O services.</param>
+    /// <param name="logger">The logger for diagnostic and debugging output.</param>
     public BasicInterpreter(
         IParser parser,
         IBasicRuntimeContext runtime,
-        ISystemContext system)
+        ISystemContext system,
+        ILogger<BasicInterpreter> logger)
     {
         this.parser = parser;
         this.runtime = runtime;
         this.system = system;
+        this.logger = logger;
         random = new();
     }
 
@@ -57,7 +61,7 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
     /// <inheritdoc/>
     public void Run(string source)
     {
-        system.Logger.LogInformation("Starting BASIC program execution");
+        logger.LogInformation("Starting BASIC program execution");
 
         try
         {
@@ -85,7 +89,7 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
         }
         catch (ProgramEndException)
         {
-            system.Logger.LogInformation("Program ended normally");
+            logger.LogInformation("Program ended normally");
         }
         catch (ProgramStopException ex)
         {
@@ -96,13 +100,13 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
         {
             system.IO.WriteLine();
             system.IO.WriteLine(ex.Message);
-            system.Logger.LogError(ex, "Runtime error");
+            logger.LogError(ex, "Runtime error");
         }
         catch (ParseException ex)
         {
             system.IO.WriteLine();
             system.IO.WriteLine("?SYNTAX ERROR");
-            system.Logger.LogError(ex, "Parse error");
+            logger.LogError(ex, "Parse error");
         }
         finally
         {
@@ -526,21 +530,21 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
     /// <inheritdoc/>
     public BasicValue VisitTextStatement(TextStatement node)
     {
-        system.Logger.LogDebug("TEXT mode activated (stubbed)");
+        logger.LogDebug("TEXT mode activated (stubbed)");
         return BasicValue.Zero;
     }
 
     /// <inheritdoc/>
     public BasicValue VisitGrStatement(GrStatement node)
     {
-        system.Logger.LogDebug("GR mode activated (stubbed)");
+        logger.LogDebug("GR mode activated (stubbed)");
         return BasicValue.Zero;
     }
 
     /// <inheritdoc/>
     public BasicValue VisitHgrStatement(HgrStatement node)
     {
-        system.Logger.LogDebug("HGR{Mode} mode activated (stubbed)", node.IsHgr2 ? "2" : string.Empty);
+        logger.LogDebug("HGR{Mode} mode activated (stubbed)", node.IsHgr2 ? "2" : string.Empty);
         return BasicValue.Zero;
     }
 
@@ -548,7 +552,7 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
     public BasicValue VisitColorStatement(ColorStatement node)
     {
         int color = node.Color.Accept(this).AsInteger();
-        system.Logger.LogDebug("COLOR set to {Color} (stubbed)", color);
+        logger.LogDebug("COLOR set to {Color} (stubbed)", color);
         return BasicValue.Zero;
     }
 
@@ -556,7 +560,7 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
     public BasicValue VisitHcolorStatement(HcolorStatement node)
     {
         int color = node.Color.Accept(this).AsInteger();
-        system.Logger.LogDebug("HCOLOR set to {Color} (stubbed)", color);
+        logger.LogDebug("HCOLOR set to {Color} (stubbed)", color);
         return BasicValue.Zero;
     }
 
@@ -565,7 +569,7 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
     {
         int x = node.X.Accept(this).AsInteger();
         int y = node.Y.Accept(this).AsInteger();
-        system.Logger.LogDebug("PLOT {X},{Y} (stubbed)", x, y);
+        logger.LogDebug("PLOT {X},{Y} (stubbed)", x, y);
         return BasicValue.Zero;
     }
 
@@ -576,7 +580,7 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
         {
             int x = point.X.Accept(this).AsInteger();
             int y = point.Y.Accept(this).AsInteger();
-            system.Logger.LogDebug("HPLOT {X},{Y} (stubbed)", x, y);
+            logger.LogDebug("HPLOT {X},{Y} (stubbed)", x, y);
         }
 
         return BasicValue.Zero;
@@ -586,7 +590,7 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
     public BasicValue VisitDrawStatement(DrawStatement node)
     {
         int shape = node.ShapeNumber.Accept(this).AsInteger();
-        system.Logger.LogDebug("DRAW {Shape} (stubbed)", shape);
+        logger.LogDebug("DRAW {Shape} (stubbed)", shape);
         return BasicValue.Zero;
     }
 
@@ -594,7 +598,7 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
     public BasicValue VisitXdrawStatement(XdrawStatement node)
     {
         int shape = node.ShapeNumber.Accept(this).AsInteger();
-        system.Logger.LogDebug("XDRAW {Shape} (stubbed)", shape);
+        logger.LogDebug("XDRAW {Shape} (stubbed)", shape);
         return BasicValue.Zero;
     }
 
@@ -639,7 +643,7 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
     {
         // The ampersand operator performs a JSR to $03F5
         // This allows user-provided machine language routines to be called
-        system.Logger.LogDebug("Executing & operator (JSR to $03F5)");
+        logger.LogDebug("Executing & operator (JSR to $03F5)");
         AppleSystem.Call(Emulation.AppleSystem.MemoryLocations.AMPERV);
         return BasicValue.Zero;
     }
@@ -947,7 +951,7 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
 
         // Execute the machine language routine at $000A (USR vector)
         // The user should have placed a JMP instruction there pointing to their ML code
-        system.Logger.LogDebug("Executing USR function (JMP to $000A) with value {Value}", value);
+        logger.LogDebug("Executing USR function (JMP to $000A) with value {Value}", value);
         AppleSystem.Call(Emulation.AppleSystem.MemoryLocations.USRADR);
 
         // Read the result from FAC1 after the ML routine returns

@@ -62,8 +62,7 @@ public class InterpreterModule : Module
         // System Context (aggregates hardware/system services)
         builder.Register(ctx => new SystemContext(
                 ctx.Resolve<IAppleSystem>(),
-                ctx.Resolve<IBasicIO>(),
-                ctx.Resolve<ILogger<BasicInterpreter>>()))
+                ctx.Resolve<IBasicIO>()))
             .As<ISystemContext>()
             .InstancePerLifetimeScope();
 
