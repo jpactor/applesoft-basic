@@ -622,10 +622,7 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
     /// <inheritdoc/>
     public BasicValue VisitClearStatement(ClearStatement node)
     {
-        runtime.Variables.Clear();
-        runtime.Functions.Clear();
-        runtime.Loops.Clear();
-        runtime.Gosub.Clear();
+        runtime.Clear();
         return BasicValue.Zero;
     }
 

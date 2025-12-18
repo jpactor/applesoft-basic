@@ -56,11 +56,13 @@ public interface IBasicRuntimeContext
     IGosubManager Gosub { get; }
 
     /// <summary>
-    /// Clears all BASIC runtime state, resetting variables, functions, data, loops, and the GOSUB stack.
+    /// Clears BASIC runtime state, resetting variables, functions, loops, and the GOSUB stack.
     /// </summary>
     /// <remarks>
-    /// This method is typically called when starting a new program or executing a CLEAR statement.
-    /// It resets all runtime managers to their initial state without affecting system services.
+    /// This method is typically called when executing a CLEAR statement in BASIC code.
+    /// It resets variables, functions, loops, and the GOSUB stack to their initial state.
+    /// Note: This does NOT clear the DATA pointer - that is only reset when a new program runs.
+    /// System services are also unaffected by this method.
     /// </remarks>
     void Clear();
 }
