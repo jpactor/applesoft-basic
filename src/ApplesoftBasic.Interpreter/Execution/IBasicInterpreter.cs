@@ -4,6 +4,7 @@
 
 namespace ApplesoftBasic.Interpreter.Execution;
 
+using AST;
 using Emulation;
 
 /// <summary>
@@ -27,15 +28,25 @@ public interface IBasicInterpreter
     IAppleSystem AppleSystem { get; }
 
     /// <summary>
-    /// Executes the specified Applesoft BASIC program.
+    /// Parses BASIC source code into an AST program representation.
     /// </summary>
-    /// <param name="source">The source code of the Applesoft BASIC program to execute.</param>
+    /// <param name="source">The source code of the Applesoft BASIC program to parse.</param>
+    /// <returns>The parsed program as an Abstract Syntax Tree.</returns>
     /// <remarks>
-    /// This method parses the provided source code, initializes the runtime environment,
-    /// and begins execution of the program. If any runtime or parsing errors occur,
-    /// they are handled and logged appropriately.
+    /// This method only performs parsing and builds the line number index.
+    /// It does not execute the program or modify the runtime state.
     /// </remarks>
-    void Run(string source);
+    ProgramNode LoadFromSource(string source);
+
+    /// <summary>
+    /// Executes a parsed BASIC program.
+    /// </summary>
+    /// <param name="program">The parsed program to execute.</param>
+    /// <remarks>
+    /// This method initializes the runtime environment and begins execution of the program.
+    /// If any runtime errors occur, they are handled and logged appropriately.
+    /// </remarks>
+    void Run(ProgramNode program);
 
     /// <summary>
     /// Stops the execution of the currently running Applesoft BASIC program.
