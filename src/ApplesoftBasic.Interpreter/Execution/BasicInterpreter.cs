@@ -101,12 +101,6 @@ public class BasicInterpreter : IBasicInterpreter
             system.IO.WriteLine(ex.Message);
             logger.LogError(ex, "Runtime error");
         }
-        catch (ParseException ex)
-        {
-            system.IO.WriteLine();
-            system.IO.WriteLine("?SYNTAX ERROR");
-            logger.LogError(ex, "Parse error");
-        }
         finally
         {
             running = false;
@@ -171,7 +165,7 @@ public class BasicInterpreter : IBasicInterpreter
                 statement = context.GetCurrentStatement();
             }
 
-            if (statement == null || shouldStop)
+            if (statement == null)
             {
                 break;
             }
@@ -192,14 +186,10 @@ public class BasicInterpreter : IBasicInterpreter
             }
 
             // Advance to next statement
-            if (!context.AdvanceStatement())
+            if (!context.AdvanceStatement() && !context.AdvanceLine())
             {
-                // End of line, advance to next line
-                if (!context.AdvanceLine())
-                {
-                    // End of program
-                    break;
-                }
+                // End of program
+                break;
             }
         }
     }

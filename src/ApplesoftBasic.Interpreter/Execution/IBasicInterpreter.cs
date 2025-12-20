@@ -39,7 +39,8 @@ public interface IBasicInterpreter
     /// <remarks>
     /// This method only performs parsing and builds the line number index.
     /// It does not execute the program or modify the runtime state.
-    /// For convenience, use the <see cref="BasicInterpreter.RunFromSource"/> method to parse and execute in one call.
+    /// For convenience, concrete implementations may provide a method such as
+    /// <c>BasicInterpreter.RunFromSource</c> to parse and execute in one call.
     /// </remarks>
     ProgramNode LoadFromSource(string source);
 

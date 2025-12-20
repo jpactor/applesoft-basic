@@ -95,7 +95,7 @@ public class InterpreterTests
     }
 
     /// <summary>
-    /// Tests that the <see cref="BasicInterpreter.Run(string)"/> method correctly outputs a string
+    /// Tests that the <see cref="BasicInterpreter.RunFromSource"/> method correctly outputs a string
     /// when executing a BASIC program containing a <c>PRINT</c> statement with a string literal.
     /// </summary>
     /// <remarks>
@@ -119,7 +119,7 @@ public class InterpreterTests
     }
 
     /// <summary>
-    /// Tests whether the <see cref="BasicInterpreter.Run(string)"/> method correctly outputs a number
+    /// Tests whether the <see cref="BasicInterpreter.RunFromSource"/> method correctly outputs a number
     /// when executing a BASIC program containing a <c>PRINT</c> statement with a numeric literal.
     /// </summary>
     /// <remarks>
@@ -160,7 +160,7 @@ public class InterpreterTests
     }
 
     /// <summary>
-    /// Tests that the <see cref="BasicInterpreter.Run(string)"/> method correctly handles variable assignment
+    /// Tests that the <see cref="BasicInterpreter.RunFromSource"/> method correctly handles variable assignment
     /// and stores the assigned value in memory.
     /// </summary>
     /// <remarks>
@@ -184,7 +184,7 @@ public class InterpreterTests
     }
 
     /// <summary>
-    /// Verifies that the <see cref="BasicInterpreter.Run(string)"/> method correctly executes a FOR loop
+    /// Verifies that the <see cref="BasicInterpreter.RunFromSource"/> method correctly executes a FOR loop
     /// in an Applesoft BASIC program, iterating over the specified range and producing the expected output.
     /// </summary>
     /// <remarks>
@@ -246,7 +246,7 @@ public class InterpreterTests
     }
 
     /// <summary>
-    /// Verifies that the <see cref="BasicInterpreter.Run(string)"/> method correctly executes
+    /// Verifies that the <see cref="BasicInterpreter.RunFromSource"/> method correctly executes
     /// the "THEN" branch of an Applesoft BASIC "IF" statement when the condition evaluates to true.
     /// </summary>
     /// <remarks>
@@ -270,7 +270,7 @@ public class InterpreterTests
     }
 
     /// <summary>
-    /// Tests the behavior of the <see cref="BasicInterpreter.Run(string)"/> method
+    /// Tests the behavior of the <see cref="BasicInterpreter.RunFromSource"/> method
     /// when evaluating an <c>IF</c> statement with a false condition.
     /// </summary>
     /// <remarks>
@@ -299,7 +299,7 @@ public class InterpreterTests
     }
 
     /// <summary>
-    /// Verifies that the <see cref="BasicInterpreter.Run(string)"/> method correctly handles a GOTO statement
+    /// Verifies that the <see cref="BasicInterpreter.RunFromSource"/> method correctly handles a GOTO statement
     /// by jumping to the specified line number in the Applesoft BASIC program.
     /// </summary>
     /// <remarks>
@@ -326,7 +326,7 @@ public class InterpreterTests
     }
 
     /// <summary>
-    /// Verifies that the <see cref="BasicInterpreter.Run(string)"/> method correctly handles
+    /// Verifies that the <see cref="BasicInterpreter.RunFromSource"/> method correctly handles
     /// the execution of a program containing GOSUB and RETURN statements.
     /// </summary>
     /// <remarks>
@@ -358,7 +358,7 @@ public class InterpreterTests
     }
 
     /// <summary>
-    /// Tests the <see cref="BasicInterpreter.Run(string)"/> method to ensure that it correctly reads values
+    /// Tests the <see cref="BasicInterpreter.RunFromSource"/> method to ensure that it correctly reads values
     /// from a DATA statement and assigns them to variables.
     /// </summary>
     /// <remarks>
@@ -408,7 +408,7 @@ public class InterpreterTests
     }
 
     /// <summary>
-    /// Tests the functionality of the <see cref="BasicInterpreter.Run(string)"/> method
+    /// Tests the functionality of the <see cref="BasicInterpreter.RunFromSource"/> method
     /// when defining and using a user-defined function in Applesoft BASIC.
     /// </summary>
     /// <remarks>
@@ -456,7 +456,7 @@ public class InterpreterTests
     }
 
     /// <summary>
-    /// Verifies that the <see cref="BasicInterpreter.Run(string)"/> method correctly handles string concatenation
+    /// Verifies that the <see cref="BasicInterpreter.RunFromSource"/> method correctly handles string concatenation
     /// in Applesoft BASIC programs.
     /// </summary>
     /// <remarks>
