@@ -4,8 +4,6 @@
 
 namespace ApplesoftBasic.Interpreter.Execution;
 
-using System;
-
 using AST;
 using Emulation;
 using Microsoft.Extensions.Logging;
