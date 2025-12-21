@@ -43,4 +43,3 @@ public interface ICpuRegisters<TAccumulator, TIndex, TStack, TProgram>
     /// </summary>
     TProgram PC { get; set; }
 }
-

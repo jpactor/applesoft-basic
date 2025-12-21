@@ -60,4 +60,3 @@ public interface ICpuState<TRegisters, TAccumulator, TIndex, TStack, TProgram>
     /// </summary>
     TProgram PC { get; set; }
 }
-
