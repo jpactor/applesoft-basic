@@ -1,6 +1,6 @@
-# Contributing to BackPocketBASIC Interpreter
+# Contributing to BackPocketBASIC
 
-Thank you for your interest in contributing to the BackPocketBASIC Interpreter! This document provides guidelines and instructions for contributing.
+Thank you for your interest in contributing to BackPocketBASIC! This document provides guidelines and instructions for contributing.
 
 ## Table of Contents
 
@@ -56,8 +56,8 @@ This project is committed to providing a welcoming and inclusive environment for
 
 2. **Clone your fork**:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/applesoft-basic.git
-   cd applesoft-basic
+   git clone https://github.com/YOUR_USERNAME/back-pocket-basic.git
+   cd back-pocket-basic
    ```
 
 3. **Add upstream remote**:

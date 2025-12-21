@@ -23,7 +23,7 @@ The interpreter runs on any platform that supports .NET 10.0:
 
 ```bash
 git clone https://github.com/jpactor/applesoft-basic.git
-cd applesoft-basic
+cd back-pocket-basic
 ```
 
 ### 2. Restore Dependencies
@@ -90,7 +90,7 @@ You should see output from the demo program demonstrating various BASIC features
 After installation, your directory should look like this:
 
 ```
-applesoft-basic/
+back-pocket-basic/
 ├── src/
 │   ├── BadMango.Basic/    # Core interpreter library
 │   └── BadMango.Basic.Console/        # Console application
@@ -201,5 +201,5 @@ rm -rf applesoft-basic
 If you encounter issues:
 
 1. Check the [Troubleshooting](#troubleshooting) section above
-2. Review [closed issues](https://github.com/jpactor/applesoft-basic/issues?q=is%3Aissue+is%3Aclosed) on GitHub
-3. Open a [new issue](https://github.com/jpactor/applesoft-basic/issues/new) with details about your problem
+2. Review [closed issues](https://github.com/jpactor/back-pocket-basic/issues?q=is%3Aissue+is%3Aclosed) on GitHub
+3. Open a [new issue](https://github.com/jpactor/back-pocket-basic/issues/new) with details about your problem

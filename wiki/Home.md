@@ -1,4 +1,4 @@
-# Welcome to the Applesoft BASIC Interpreter Wiki
+# Welcome to the BackPocketBASIC Wiki
 
 A fully-featured Applesoft BASIC interpreter written in .NET, complete with 6502 CPU emulation and Apple II memory space emulation.
 
