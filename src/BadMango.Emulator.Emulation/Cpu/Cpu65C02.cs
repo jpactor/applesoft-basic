@@ -30,10 +30,10 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
     private const byte FlagN = 0x80; // Negative
 
     // Reset vector address
-    private const ushort ResetVector = 0xFFFC;
+    private const Word ResetVector = 0xFFFC;
 
     // Stack base address
-    private const ushort StackBase = 0x0100;
+    private const Word StackBase = 0x0100;
 
     private readonly IMemory memory;
     private readonly OpcodeTable<Cpu65C02, Cpu65C02State> opcodeTable;
@@ -43,7 +43,7 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
     private byte y;  // Y register
     private byte s;  // Stack pointer
     private byte p;  // Processor status
-    private ushort pc; // Program counter
+    private Word pc; // Program counter
     private ulong cycles; // Total cycles executed
     private bool halted;
 
@@ -108,7 +108,7 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
     /// <inheritdoc/>
     public void Execute(uint startAddress)
     {
-        pc = (ushort)startAddress;
+        pc = (Word)startAddress;
         halted = false;
 
         while (!halted)

@@ -49,7 +49,7 @@ public static class AddressingModes
     /// <returns>The address of the immediate operand (current PC value).</returns>
     public static Addr Immediate(IMemory memory, ref Cpu65C02State state)
     {
-        ushort address = state.PC;
+        Addr address = state.PC;
         state.PC++;
 
         // Immediate mode: no extra cycles beyond the read that will happen
@@ -109,7 +109,7 @@ public static class AddressingModes
     /// <returns>The 16-bit absolute address.</returns>
     public static Addr Absolute(IMemory memory, ref Cpu65C02State state)
     {
-        ushort address = memory.ReadWord(state.PC);
+        Addr address = memory.ReadWord(state.PC);
         state.PC += 2;
         state.Cycles += 2; // 2 cycles to fetch the 16-bit address
 
@@ -125,9 +125,9 @@ public static class AddressingModes
     /// <returns>The effective address with X offset.</returns>
     public static Addr AbsoluteX(IMemory memory, ref Cpu65C02State state)
     {
-        ushort baseAddr = memory.ReadWord(state.PC);
+        Addr baseAddr = memory.ReadWord(state.PC);
         state.PC += 2;
-        ushort effectiveAddr = (ushort)(baseAddr + state.X);
+        Addr effectiveAddr = baseAddr + state.X;
         state.Cycles += 2; // 2 cycles to fetch the 16-bit address
 
         // Add extra cycle if page boundary crossed
@@ -148,9 +148,9 @@ public static class AddressingModes
     /// <returns>The effective address with Y offset.</returns>
     public static Addr AbsoluteY(IMemory memory, ref Cpu65C02State state)
     {
-        ushort baseAddr = memory.ReadWord(state.PC);
+        Addr baseAddr = memory.ReadWord(state.PC);
         state.PC += 2;
-        ushort effectiveAddr = (ushort)(baseAddr + state.Y);
+        Addr effectiveAddr = baseAddr + state.Y;
         state.Cycles += 2; // 2 cycles to fetch the 16-bit address
 
         // Add extra cycle if page boundary crossed
@@ -172,7 +172,7 @@ public static class AddressingModes
     public static Addr IndirectX(IMemory memory, ref Cpu65C02State state)
     {
         byte zpAddr = (byte)(memory.Read(state.PC++) + state.X);
-        ushort address = memory.ReadWord(zpAddr);
+        Addr address = memory.ReadWord(zpAddr);
         state.Cycles += 4; // 1 (fetch ZP), 1 (index), 2 (read pointer from ZP)
 
         // The instruction will add 1 more cycle for the actual read
@@ -188,8 +188,8 @@ public static class AddressingModes
     public static Addr IndirectY(IMemory memory, ref Cpu65C02State state)
     {
         byte zpAddr = memory.Read(state.PC++);
-        ushort baseAddr = memory.ReadWord(zpAddr);
-        ushort effectiveAddr = (ushort)(baseAddr + state.Y);
+        Addr baseAddr = memory.ReadWord(zpAddr);
+        Addr effectiveAddr = baseAddr + state.Y;
         state.Cycles += 3; // 1 (fetch ZP), 2 (read pointer from ZP)
 
         // Add extra cycle if page boundary crossed
@@ -212,9 +212,9 @@ public static class AddressingModes
     /// <returns>The effective address with X offset.</returns>
     public static Addr AbsoluteXWrite(IMemory memory, ref Cpu65C02State state)
     {
-        ushort baseAddr = memory.ReadWord(state.PC);
+        Addr baseAddr = memory.ReadWord(state.PC);
         state.PC += 2;
-        ushort effectiveAddr = (ushort)(baseAddr + state.X);
+        Addr effectiveAddr = baseAddr + state.X;
         state.Cycles += 3; // 2 cycles to fetch address + 1 extra for write operations
 
         // The instruction will add 1 more cycle for the actual write
@@ -229,9 +229,9 @@ public static class AddressingModes
     /// <returns>The effective address with Y offset.</returns>
     public static Addr AbsoluteYWrite(IMemory memory, ref Cpu65C02State state)
     {
-        ushort baseAddr = memory.ReadWord(state.PC);
+        Addr baseAddr = memory.ReadWord(state.PC);
         state.PC += 2;
-        ushort effectiveAddr = (ushort)(baseAddr + state.Y);
+        Addr effectiveAddr = baseAddr + state.Y;
         state.Cycles += 3; // 2 cycles to fetch address + 1 extra for write operations
 
         // The instruction will add 1 more cycle for the actual write
@@ -247,8 +247,8 @@ public static class AddressingModes
     public static Addr IndirectYWrite(IMemory memory, ref Cpu65C02State state)
     {
         byte zpAddr = memory.Read(state.PC++);
-        ushort baseAddr = memory.ReadWord(zpAddr);
-        ushort effectiveAddr = (ushort)(baseAddr + state.Y);
+        Addr baseAddr = memory.ReadWord(zpAddr);
+        Addr effectiveAddr = baseAddr + state.Y;
         state.Cycles += 4; // 1 (fetch ZP), 2 (read pointer), 1 extra for write
 
         // The instruction will add 1 more cycle for the actual write

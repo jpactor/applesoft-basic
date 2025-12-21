@@ -2,6 +2,7 @@
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
+// ReSharper disable InconsistentNaming
 namespace BadMango.Emulator.Emulation.Cpu;
 
 using System.Runtime.CompilerServices;
@@ -25,7 +26,7 @@ public static class Instructions
     private const byte FlagB = 0x10; // Break flag
     private const byte FlagV = 0x40; // Overflow flag
     private const byte FlagN = 0x80; // Negative flag
-    private const ushort StackBase = 0x0100;
+    private const Word StackBase = 0x0100;
 
     /// <summary>
     /// LDA - Load Accumulator instruction.
@@ -141,14 +142,14 @@ public static class Instructions
 
             // BRK causes a software interrupt
             // Total 7 cycles: 1 (opcode fetch) + 1 (PC increment) + 2 (push PC) + 1 (push P) + 2 (read IRQ vector)
-            ushort pc = state.PC;
+            Word pc = state.PC;
             byte s = state.SP;
             byte p = state.P;
 
             pc++;
-            memory.Write((ushort)(StackBase + s--), (byte)(pc >> 8));
-            memory.Write((ushort)(StackBase + s--), (byte)(pc & 0xFF));
-            memory.Write((ushort)(StackBase + s--), (byte)(p | FlagB));
+            memory.Write((Word)(StackBase + s--), (byte)(pc >> 8));
+            memory.Write((Word)(StackBase + s--), (byte)(pc & 0xFF));
+            memory.Write((Word)(StackBase + s--), (byte)(p | FlagB));
             p |= FlagI;
             pc = memory.ReadWord(0xFFFE);
             state.Cycles += 6; // 6 cycles in handler + 1 from opcode fetch in Step()
