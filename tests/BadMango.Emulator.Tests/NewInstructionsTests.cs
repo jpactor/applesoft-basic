@@ -1058,5 +1058,3 @@ public class NewInstructionsTests
 
     #endregion
 }
-
-
