@@ -54,4 +54,16 @@ public class Cpu65816 : ICpu<Cpu65816Registers, Cpu65816State>
     {
         throw new NotImplementedException();
     }
+
+    /// <inheritdoc/>
+    public void SignalIRQ()
+    {
+        throw new NotImplementedException();
+    }
+
+    /// <inheritdoc/>
+    public void SignalNMI()
+    {
+        throw new NotImplementedException();
+    }
 }

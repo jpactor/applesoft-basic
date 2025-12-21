@@ -154,7 +154,7 @@ public static class Instructions
             state.PC = pc;
             state.SP = s;
             state.P = p;
-            state.Halted = true; // Halt on BRK
+            state.HaltReason = HaltState.Brk; // Use HaltReason instead of Halted
         };
     }
 
@@ -661,7 +661,7 @@ public static class Instructions
     /// <returns>An opcode handler that executes WAI.</returns>
     /// <remarks>
     /// Puts the processor into a low-power state until an interrupt occurs.
-    /// In this emulator, we halt execution until an interrupt would be processed.
+    /// The CPU will resume execution when IRQ (if I flag clear) or NMI is signaled.
     /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler<Cpu65C02, Cpu65C02State> WAI(AddressingMode<Cpu65C02State> addressingMode)
@@ -669,7 +669,7 @@ public static class Instructions
         return (cpu, memory, ref state) =>
         {
             addressingMode(memory, ref state);
-            state.Halted = true; // Halt until interrupt
+            state.HaltReason = HaltState.Wai; // Wait for interrupt
             state.Cycles += 2; // 3 cycles total (1 from fetch + 2 here)
         };
     }
@@ -680,8 +680,8 @@ public static class Instructions
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes STP.</returns>
     /// <remarks>
-    /// Stops the processor until a hardware reset occurs.
-    /// In this emulator, we halt execution permanently.
+    /// Stops the processor permanently until a hardware reset occurs.
+    /// This is the deepest halt state and cannot be resumed by interrupts.
     /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler<Cpu65C02, Cpu65C02State> STP(AddressingMode<Cpu65C02State> addressingMode)
@@ -689,7 +689,7 @@ public static class Instructions
         return (cpu, memory, ref state) =>
         {
             addressingMode(memory, ref state);
-            state.Halted = true; // Halt permanently
+            state.HaltReason = HaltState.Stp; // Permanent halt
             state.Cycles += 2; // 3 cycles total (1 from fetch + 2 here)
         };
     }
