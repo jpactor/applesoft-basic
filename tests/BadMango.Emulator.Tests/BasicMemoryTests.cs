@@ -22,12 +22,12 @@ public class BasicMemoryTests
         // Arrange & Act
         var mem64K = new BasicMemory(MemorySizes.Size64KB);
         var mem128K = new BasicMemory(MemorySizes.Size128KB);
-        var mem4K = new BasicMemory(MemorySizes.Size4KB);
+        var mem256K = new BasicMemory(MemorySizes.Size256KB);
 
         // Assert
-        Assert.That(mem64K.Size, Is.EqualTo(65536));
-        Assert.That(mem128K.Size, Is.EqualTo(131072));
-        Assert.That(mem4K.Size, Is.EqualTo(4096));
+        Assert.That(mem64K.Size, Is.EqualTo(65536u));
+        Assert.That(mem128K.Size, Is.EqualTo(131072u));
+        Assert.That(mem256K.Size, Is.EqualTo(262144u));
     }
 
     /// <summary>
@@ -41,7 +41,7 @@ public class BasicMemoryTests
 
         // Assert
         Assert.That(memory.Size, Is.EqualTo(MemorySizes.Size64KB));
-        Assert.That(memory.Size, Is.EqualTo(65536));
+        Assert.That(memory.Size, Is.EqualTo(65536u));
     }
 
     /// <summary>
@@ -51,7 +51,7 @@ public class BasicMemoryTests
     public void AsReadOnlyMemory_ReturnsSnapshot()
     {
         // Arrange
-        var memory = new BasicMemory(MemorySizes.Size4KB);
+        var memory = new BasicMemory(MemorySizes.Size64KB);
         memory.Write(0x100, 0x42);
         memory.Write(0x200, 0xFF);
 
@@ -59,7 +59,7 @@ public class BasicMemoryTests
         var snapshot = memory.AsReadOnlyMemory();
 
         // Assert
-        Assert.That(snapshot.Length, Is.EqualTo(4096));
+        Assert.That(snapshot.Length, Is.EqualTo(65536));
         Assert.That(snapshot.Span[0x100], Is.EqualTo(0x42));
         Assert.That(snapshot.Span[0x200], Is.EqualTo(0xFF));
     }
@@ -71,7 +71,7 @@ public class BasicMemoryTests
     public void AsMemory_ReturnsMutableSnapshot()
     {
         // Arrange
-        var memory = new BasicMemory(MemorySizes.Size4KB);
+        var memory = new BasicMemory(MemorySizes.Size64KB);
         memory.Write(0x100, 0x42);
 
         // Act
@@ -79,7 +79,7 @@ public class BasicMemoryTests
         snapshot.Span[0x200] = 0xAA;
 
         // Assert
-        Assert.That(snapshot.Length, Is.EqualTo(4096));
+        Assert.That(snapshot.Length, Is.EqualTo(65536));
         Assert.That(snapshot.Span[0x100], Is.EqualTo(0x42));
         Assert.That(snapshot.Span[0x200], Is.EqualTo(0xAA));
         Assert.That(memory.Read(0x200), Is.EqualTo(0xAA));
@@ -92,7 +92,7 @@ public class BasicMemoryTests
     public void AsReadOnlyMemory_ReflectsCurrentState()
     {
         // Arrange
-        var memory = new BasicMemory(MemorySizes.Size4KB);
+        var memory = new BasicMemory(MemorySizes.Size64KB);
         memory.Write(0x100, 0x42);
 
         var snapshot1 = memory.AsReadOnlyMemory();
@@ -112,18 +112,13 @@ public class BasicMemoryTests
     [Test]
     public void MemorySizes_ConstantsHaveExpectedValues()
     {
-        // Assert standard sizes
-        Assert.That(MemorySizes.Size4KB, Is.EqualTo(4096));
-        Assert.That(MemorySizes.Size8KB, Is.EqualTo(8192));
-        Assert.That(MemorySizes.Size16KB, Is.EqualTo(16384));
-        Assert.That(MemorySizes.Size32KB, Is.EqualTo(32768));
-        Assert.That(MemorySizes.Size48KB, Is.EqualTo(49152));
-        Assert.That(MemorySizes.Size64KB, Is.EqualTo(65536));
-        Assert.That(MemorySizes.Size128KB, Is.EqualTo(131072));
-        Assert.That(MemorySizes.Size256KB, Is.EqualTo(262144));
-        Assert.That(MemorySizes.Size512KB, Is.EqualTo(524288));
-        Assert.That(MemorySizes.Size1MB, Is.EqualTo(1048576));
-        Assert.That(MemorySizes.Size8MB, Is.EqualTo(8388608));
-        Assert.That(MemorySizes.Size16MB, Is.EqualTo(16777216));
+        // Assert standard sizes (64KB and above only)
+        Assert.That(MemorySizes.Size64KB, Is.EqualTo(65536u));
+        Assert.That(MemorySizes.Size128KB, Is.EqualTo(131072u));
+        Assert.That(MemorySizes.Size256KB, Is.EqualTo(262144u));
+        Assert.That(MemorySizes.Size512KB, Is.EqualTo(524288u));
+        Assert.That(MemorySizes.Size1MB, Is.EqualTo(1048576u));
+        Assert.That(MemorySizes.Size8MB, Is.EqualTo(8388608u));
+        Assert.That(MemorySizes.Size16MB, Is.EqualTo(16777216u));
     }
 }

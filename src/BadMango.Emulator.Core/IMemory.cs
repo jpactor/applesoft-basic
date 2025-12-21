@@ -16,7 +16,7 @@ public interface IMemory
     /// <summary>
     /// Gets the size of the emulated memory in bytes.
     /// </summary>
-    int Size { get; }
+    uint Size { get; }
 
     /// <summary>
     /// Reads a byte from the specified memory address.

@@ -28,16 +28,16 @@ public class BasicMemory : IMemory
     /// Consider using constants from <see cref="MemorySizes"/> for common memory sizes.
     /// For example: <c>new BasicMemory(MemorySizes.Size64KB)</c> or <c>new BasicMemory(MemorySizes.Size128KB)</c>.
     /// </remarks>
-    public BasicMemory(int size = MemorySizes.Size64KB)
+    public BasicMemory(uint size = MemorySizes.Size64KB)
     {
         memory = new byte[size];
     }
 
     /// <inheritdoc/>
-    public int Size
+    public uint Size
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => memory.Length;
+        get => (uint)memory.Length;
     }
 
     /// <inheritdoc/>
