@@ -74,22 +74,28 @@ public interface IMemory
     void Clear();
 
     /// <summary>
-    /// Gets a snapshot of the entire memory as a <see cref="ReadOnlyMemory{T}"/>.
+    /// Gets a read-only view of the entire memory as a <see cref="ReadOnlyMemory{T}"/>.
     /// </summary>
-    /// <returns>A read-only snapshot of the memory contents.</returns>
+    /// <returns>A read-only view over the current memory contents.</returns>
     /// <remarks>
-    /// This method provides a safe, read-only view of the memory that can be used
-    /// for debugging, serialization, or analysis without risking modifications.
+    /// This method returns a non-copying, read-only view of the underlying memory buffer
+    /// that can be used for debugging, serialization, or analysis without allowing direct
+    /// modification through the returned instance. Changes made to the underlying memory
+    /// (for example, via <see cref="Write(int, byte)"/> or <see cref="WriteWord(int, ushort)"/>)
+    /// will be reflected in any previously obtained <see cref="ReadOnlyMemory{T}"/> views.
     /// </remarks>
     ReadOnlyMemory<byte> AsReadOnlyMemory();
 
     /// <summary>
-    /// Gets a snapshot of the entire memory as a <see cref="Memory{T}"/>.
+    /// Gets a mutable view of the entire memory as a <see cref="Memory{T}"/>.
     /// </summary>
-    /// <returns>A mutable snapshot of the memory contents.</returns>
+    /// <returns>A mutable view over the current memory contents.</returns>
     /// <remarks>
-    /// This method provides direct access to the underlying memory buffer.
-    /// Use with caution as modifications will affect the emulated system's state.
+    /// This method provides direct access to the underlying memory buffer via a
+    /// <see cref="Memory{T}"/> view. The returned instance does not represent a copy; any
+    /// modifications performed through it, or through other write operations on this
+    /// <see cref="IMemory"/> instance, operate on the same underlying data and will affect
+    /// the emulated system's state. Use with caution.
     /// </remarks>
     Memory<byte> AsMemory();
 }

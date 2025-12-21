@@ -160,13 +160,14 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
     internal void BRK()
     {
         // BRK causes a software interrupt
+        // Total 7 cycles: 1 (opcode fetch) + 1 (PC increment) + 2 (push PC) + 1 (push P) + 2 (read IRQ vector)
         pc++;
         memory.Write((ushort)(StackBase + s--), (byte)(pc >> 8));
         memory.Write((ushort)(StackBase + s--), (byte)(pc & 0xFF));
         memory.Write((ushort)(StackBase + s--), (byte)(p | FlagB));
         p |= FlagI;
         pc = memory.ReadWord(0xFFFE);
-        cycles += 7;
+        cycles += 6; // 6 cycles in handler + 1 from opcode fetch in Step()
         halted = true; // For now, halt on BRK
     }
 
@@ -248,6 +249,26 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
     {
         a = ReadIndirectY();
         SetZN(a);
+    }
+
+    /// <summary>
+    /// LDX - Load X Register (Immediate addressing mode).
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal void LDX_Immediate()
+    {
+        x = FetchByte();
+        SetZN(x);
+    }
+
+    /// <summary>
+    /// LDY - Load Y Register (Immediate addressing mode).
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal void LDY_Immediate()
+    {
+        y = FetchByte();
+        SetZN(y);
     }
 
     /// <summary>
@@ -512,6 +533,7 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
         ushort address = memory.ReadWord(zpAddress);
         cycles += 2; // Read word from zero page
         ushort effectiveAddress = (ushort)(address + y);
+        cycles++; // Index addition
         memory.Write(effectiveAddress, value);
         cycles++; // Final write
     }

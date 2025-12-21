@@ -50,6 +50,12 @@ public static class Cpu65C02OpcodeTableBuilder
         handlers[0x81] = cpu => cpu.STA_IndirectX();
         handlers[0x91] = cpu => cpu.STA_IndirectY();
 
+        // LDX - Load X Register
+        handlers[0xA2] = cpu => cpu.LDX_Immediate();
+
+        // LDY - Load Y Register
+        handlers[0xA0] = cpu => cpu.LDY_Immediate();
+
         // NOP - No Operation
         handlers[0xEA] = cpu => cpu.NOP();
 

@@ -14,7 +14,7 @@ using BadMango.Emulator.Core;
 /// <remarks>
 /// Provides a basic 64KB memory space without special handling for I/O or ROM regions.
 /// This implementation is suitable for testing and simple emulation scenarios.
-/// Optimized with aggressive inlining for performance.
+/// Implements AsMemory() and AsReadOnlyMemory() with explicit aggressive inlining for performance.
 /// </remarks>
 public class BasicMemory : IMemory
 {

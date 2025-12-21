@@ -45,10 +45,10 @@ public class BasicMemoryTests
     }
 
     /// <summary>
-    /// Verifies that AsReadOnlyMemory returns a snapshot of the memory.
+    /// Verifies that AsReadOnlyMemory returns a view over the backing array.
     /// </summary>
     [Test]
-    public void AsReadOnlyMemory_ReturnsSnapshot()
+    public void AsReadOnlyMemory_ReturnsViewOverBackingArray()
     {
         // Arrange
         var memory = new BasicMemory(MemorySizes.Size64KB);
@@ -56,54 +56,54 @@ public class BasicMemoryTests
         memory.Write(0x200, 0xFF);
 
         // Act
-        var snapshot = memory.AsReadOnlyMemory();
+        var view = memory.AsReadOnlyMemory();
 
         // Assert
-        Assert.That(snapshot.Length, Is.EqualTo(65536));
-        Assert.That(snapshot.Span[0x100], Is.EqualTo(0x42));
-        Assert.That(snapshot.Span[0x200], Is.EqualTo(0xFF));
+        Assert.That(view.Length, Is.EqualTo(65536));
+        Assert.That(view.Span[0x100], Is.EqualTo(0x42));
+        Assert.That(view.Span[0x200], Is.EqualTo(0xFF));
     }
 
     /// <summary>
-    /// Verifies that AsMemory returns a mutable snapshot of the memory.
+    /// Verifies that AsMemory returns a mutable view over the backing array.
     /// </summary>
     [Test]
-    public void AsMemory_ReturnsMutableSnapshot()
+    public void AsMemory_ReturnsMutableView()
     {
         // Arrange
         var memory = new BasicMemory(MemorySizes.Size64KB);
         memory.Write(0x100, 0x42);
 
         // Act
-        var snapshot = memory.AsMemory();
-        snapshot.Span[0x200] = 0xAA;
+        var view = memory.AsMemory();
+        view.Span[0x200] = 0xAA;
 
         // Assert
-        Assert.That(snapshot.Length, Is.EqualTo(65536));
-        Assert.That(snapshot.Span[0x100], Is.EqualTo(0x42));
-        Assert.That(snapshot.Span[0x200], Is.EqualTo(0xAA));
+        Assert.That(view.Length, Is.EqualTo(65536));
+        Assert.That(view.Span[0x100], Is.EqualTo(0x42));
+        Assert.That(view.Span[0x200], Is.EqualTo(0xAA));
         Assert.That(memory.Read(0x200), Is.EqualTo(0xAA));
     }
 
     /// <summary>
-    /// Verifies that AsReadOnlyMemory snapshot reflects current memory state.
+    /// Verifies that AsReadOnlyMemory returns a view that reflects changes to the underlying memory.
     /// </summary>
     [Test]
-    public void AsReadOnlyMemory_ReflectsCurrentState()
+    public void AsReadOnlyMemory_ReflectsUnderlyingMemoryChanges()
     {
         // Arrange
         var memory = new BasicMemory(MemorySizes.Size64KB);
         memory.Write(0x100, 0x42);
 
-        var snapshot1 = memory.AsReadOnlyMemory();
+        var view1 = memory.AsReadOnlyMemory();
 
-        // Act - modify memory after snapshot
+        // Act - modify memory after obtaining view
         memory.Write(0x100, 0xFF);
-        var snapshot2 = memory.AsReadOnlyMemory();
+        var view2 = memory.AsReadOnlyMemory();
 
-        // Assert - snapshot reflects the backing array state
-        Assert.That(snapshot1.Span[0x100], Is.EqualTo(0xFF));
-        Assert.That(snapshot2.Span[0x100], Is.EqualTo(0xFF));
+        // Assert - both views reflect the current state of the backing array
+        Assert.That(view1.Span[0x100], Is.EqualTo(0xFF));
+        Assert.That(view2.Span[0x100], Is.EqualTo(0xFF));
     }
 
     /// <summary>
