@@ -726,6 +726,9 @@ public static class Instructions
         return (cpu, memory, ref state) =>
         {
             Addr targetAddr = addressingMode(memory, ref state);
+
+            // JSR pushes PC - 1 to the stack (6502 behavior)
+            // This is because RTS increments the pulled address before setting PC
             Word returnAddr = (Word)(state.PC - 1);
             memory.Write((Word)(StackBase + state.SP--), (byte)(returnAddr >> 8));
             memory.Write((Word)(StackBase + state.SP--), (byte)(returnAddr & 0xFF));
@@ -1310,7 +1313,8 @@ public static class Instructions
             SetZN(value, ref p);
             state.P = p;
 
-            state.Cycles++; // Extra cycle for read-modify-write
+            // Extra cycle for read-modify-write operations (6502 hardware behavior)
+            state.Cycles++;
         };
     }
 
@@ -1336,7 +1340,8 @@ public static class Instructions
             SetZN(value, ref p);
             state.P = p;
 
-            state.Cycles++; // Extra cycle for read-modify-write
+            // Extra cycle for read-modify-write operations (6502 hardware behavior)
+            state.Cycles++;
         };
     }
 
