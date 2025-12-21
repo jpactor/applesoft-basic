@@ -151,6 +151,187 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
         cycles = state.Cycles;
     }
 
+    // Instruction implementations
+
+    /// <summary>
+    /// BRK - Force Break instruction. Causes a software interrupt.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal void BRK()
+    {
+        // BRK causes a software interrupt
+        pc++;
+        memory.Write((ushort)(StackBase + s--), (byte)(pc >> 8));
+        memory.Write((ushort)(StackBase + s--), (byte)(pc & 0xFF));
+        memory.Write((ushort)(StackBase + s--), (byte)(p | FlagB));
+        p |= FlagI;
+        pc = memory.ReadWord(0xFFFE);
+        cycles += 7;
+        halted = true; // For now, halt on BRK
+    }
+
+    /// <summary>
+    /// LDA - Load Accumulator (Immediate addressing mode).
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal void LDA_Immediate()
+    {
+        a = FetchByte();
+        SetZN(a);
+    }
+
+    /// <summary>
+    /// LDA - Load Accumulator (Zero Page addressing mode).
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal void LDA_ZeroPage()
+    {
+        a = ReadZeroPage();
+        SetZN(a);
+    }
+
+    /// <summary>
+    /// LDA - Load Accumulator (Zero Page,X addressing mode).
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal void LDA_ZeroPageX()
+    {
+        a = ReadZeroPageX();
+        SetZN(a);
+    }
+
+    /// <summary>
+    /// LDA - Load Accumulator (Absolute addressing mode).
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal void LDA_Absolute()
+    {
+        a = ReadAbsolute();
+        SetZN(a);
+    }
+
+    /// <summary>
+    /// LDA - Load Accumulator (Absolute,X addressing mode).
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal void LDA_AbsoluteX()
+    {
+        a = ReadAbsoluteX();
+        SetZN(a);
+    }
+
+    /// <summary>
+    /// LDA - Load Accumulator (Absolute,Y addressing mode).
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal void LDA_AbsoluteY()
+    {
+        a = ReadAbsoluteY();
+        SetZN(a);
+    }
+
+    /// <summary>
+    /// LDA - Load Accumulator (Indexed Indirect addressing mode).
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal void LDA_IndirectX()
+    {
+        a = ReadIndirectX();
+        SetZN(a);
+    }
+
+    /// <summary>
+    /// LDA - Load Accumulator (Indirect Indexed addressing mode).
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal void LDA_IndirectY()
+    {
+        a = ReadIndirectY();
+        SetZN(a);
+    }
+
+    /// <summary>
+    /// STA - Store Accumulator (Zero Page addressing mode).
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal void STA_ZeroPage()
+    {
+        WriteZeroPage(a);
+    }
+
+    /// <summary>
+    /// STA - Store Accumulator (Zero Page,X addressing mode).
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal void STA_ZeroPageX()
+    {
+        WriteZeroPageX(a);
+    }
+
+    /// <summary>
+    /// STA - Store Accumulator (Absolute addressing mode).
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal void STA_Absolute()
+    {
+        WriteAbsolute(a);
+    }
+
+    /// <summary>
+    /// STA - Store Accumulator (Absolute,X addressing mode).
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal void STA_AbsoluteX()
+    {
+        WriteAbsoluteX(a);
+    }
+
+    /// <summary>
+    /// STA - Store Accumulator (Absolute,Y addressing mode).
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal void STA_AbsoluteY()
+    {
+        WriteAbsoluteY(a);
+    }
+
+    /// <summary>
+    /// STA - Store Accumulator (Indexed Indirect addressing mode).
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal void STA_IndirectX()
+    {
+        WriteIndirectX(a);
+    }
+
+    /// <summary>
+    /// STA - Store Accumulator (Indirect Indexed addressing mode).
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal void STA_IndirectY()
+    {
+        WriteIndirectY(a);
+    }
+
+    /// <summary>
+    /// NOP - No Operation instruction.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal void NOP()
+    {
+        cycles++; // Total 2 cycles (1 from FetchByte + 1 here)
+    }
+
+    /// <summary>
+    /// Handles illegal/undefined opcodes by halting execution.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal void IllegalOpcode()
+    {
+        // For illegal opcodes, just halt execution
+        halted = true;
+    }
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private byte FetchByte()
     {
@@ -333,186 +514,5 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
         ushort effectiveAddress = (ushort)(address + y);
         memory.Write(effectiveAddress, value);
         cycles++; // Final write
-    }
-
-    // Instruction implementations
-
-    /// <summary>
-    /// BRK - Force Break instruction. Causes a software interrupt.
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void BRK()
-    {
-        // BRK causes a software interrupt
-        pc++;
-        memory.Write((ushort)(StackBase + s--), (byte)(pc >> 8));
-        memory.Write((ushort)(StackBase + s--), (byte)(pc & 0xFF));
-        memory.Write((ushort)(StackBase + s--), (byte)(p | FlagB));
-        p |= FlagI;
-        pc = memory.ReadWord(0xFFFE);
-        cycles += 7;
-        halted = true; // For now, halt on BRK
-    }
-
-    /// <summary>
-    /// LDA - Load Accumulator (Immediate addressing mode).
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void LDA_Immediate()
-    {
-        a = FetchByte();
-        SetZN(a);
-    }
-
-    /// <summary>
-    /// LDA - Load Accumulator (Zero Page addressing mode).
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void LDA_ZeroPage()
-    {
-        a = ReadZeroPage();
-        SetZN(a);
-    }
-
-    /// <summary>
-    /// LDA - Load Accumulator (Zero Page,X addressing mode).
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void LDA_ZeroPageX()
-    {
-        a = ReadZeroPageX();
-        SetZN(a);
-    }
-
-    /// <summary>
-    /// LDA - Load Accumulator (Absolute addressing mode).
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void LDA_Absolute()
-    {
-        a = ReadAbsolute();
-        SetZN(a);
-    }
-
-    /// <summary>
-    /// LDA - Load Accumulator (Absolute,X addressing mode).
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void LDA_AbsoluteX()
-    {
-        a = ReadAbsoluteX();
-        SetZN(a);
-    }
-
-    /// <summary>
-    /// LDA - Load Accumulator (Absolute,Y addressing mode).
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void LDA_AbsoluteY()
-    {
-        a = ReadAbsoluteY();
-        SetZN(a);
-    }
-
-    /// <summary>
-    /// LDA - Load Accumulator (Indexed Indirect addressing mode).
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void LDA_IndirectX()
-    {
-        a = ReadIndirectX();
-        SetZN(a);
-    }
-
-    /// <summary>
-    /// LDA - Load Accumulator (Indirect Indexed addressing mode).
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void LDA_IndirectY()
-    {
-        a = ReadIndirectY();
-        SetZN(a);
-    }
-
-    /// <summary>
-    /// STA - Store Accumulator (Zero Page addressing mode).
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void STA_ZeroPage()
-    {
-        WriteZeroPage(a);
-    }
-
-    /// <summary>
-    /// STA - Store Accumulator (Zero Page,X addressing mode).
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void STA_ZeroPageX()
-    {
-        WriteZeroPageX(a);
-    }
-
-    /// <summary>
-    /// STA - Store Accumulator (Absolute addressing mode).
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void STA_Absolute()
-    {
-        WriteAbsolute(a);
-    }
-
-    /// <summary>
-    /// STA - Store Accumulator (Absolute,X addressing mode).
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void STA_AbsoluteX()
-    {
-        WriteAbsoluteX(a);
-    }
-
-    /// <summary>
-    /// STA - Store Accumulator (Absolute,Y addressing mode).
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void STA_AbsoluteY()
-    {
-        WriteAbsoluteY(a);
-    }
-
-    /// <summary>
-    /// STA - Store Accumulator (Indexed Indirect addressing mode).
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void STA_IndirectX()
-    {
-        WriteIndirectX(a);
-    }
-
-    /// <summary>
-    /// STA - Store Accumulator (Indirect Indexed addressing mode).
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void STA_IndirectY()
-    {
-        WriteIndirectY(a);
-    }
-
-    /// <summary>
-    /// NOP - No Operation instruction.
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void NOP()
-    {
-        cycles++; // Total 2 cycles (1 from FetchByte + 1 here)
-    }
-
-    /// <summary>
-    /// Handles illegal/undefined opcodes by halting execution.
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void IllegalOpcode()
-    {
-        // For illegal opcodes, just halt execution
-        halted = true;
     }
 }
