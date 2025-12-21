@@ -1,4 +1,4 @@
-// <copyright file="InstructionsNew.cs" company="Bad Mango Solutions">
+// <copyright file="Instructions.cs" company="Bad Mango Solutions">
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
@@ -20,6 +20,9 @@ public static class Instructions
 {
     private const byte FlagZ = 0x02;
     private const byte FlagN = 0x80;
+    private const byte FlagB = 0x10;
+    private const byte FlagI = 0x04;
+    private const ushort StackBase = 0x0100;
 
     /// <summary>
     /// LDA - Load Accumulator instruction.
@@ -106,6 +109,54 @@ public static class Instructions
         };
     }
 
+    /// <summary>
+    /// NOP - No Operation instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
+    /// <returns>An opcode handler that executes NOP.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler<Cpu65C02, Cpu65C02State> NOP(AddressingMode<Cpu65C02State> addressingMode)
+    {
+        return (cpu, memory, ref state) =>
+        {
+            addressingMode(memory, ref state); // Call addressing mode (usually does nothing for Implied)
+            state.Cycles++; // NOP takes 2 cycles total (1 from fetch + 1 here)
+        };
+    }
+
+    /// <summary>
+    /// BRK - Force Break instruction. Causes a software interrupt.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
+    /// <returns>An opcode handler that executes BRK.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler<Cpu65C02, Cpu65C02State> BRK(AddressingMode<Cpu65C02State> addressingMode)
+    {
+        return (cpu, memory, ref state) =>
+        {
+            addressingMode(memory, ref state); // Call addressing mode (usually does nothing for Implied)
+            
+            // BRK causes a software interrupt
+            // Total 7 cycles: 1 (opcode fetch) + 1 (PC increment) + 2 (push PC) + 1 (push P) + 2 (read IRQ vector)
+            ushort pc = state.PC;
+            byte s = state.S;
+            byte p = state.P;
+
+            pc++;
+            memory.Write((ushort)(StackBase + s--), (byte)(pc >> 8));
+            memory.Write((ushort)(StackBase + s--), (byte)(pc & 0xFF));
+            memory.Write((ushort)(StackBase + s--), (byte)(p | FlagB));
+            p |= FlagI;
+            pc = memory.ReadWord(0xFFFE);
+            state.Cycles += 6; // 6 cycles in handler + 1 from opcode fetch in Step()
+
+            state.PC = pc;
+            state.S = s;
+            state.P = p;
+            state.Halted = true; // Halt on BRK
+        };
+    }
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void SetZN(byte value, ref byte p)
     {
@@ -128,3 +179,4 @@ public static class Instructions
         }
     }
 }
+
