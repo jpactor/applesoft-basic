@@ -51,6 +51,7 @@ public static class AddressingModes
     {
         ushort address = state.PC;
         state.PC++;
+
         // Immediate mode: no extra cycles beyond the read that will happen
         return address;
     }
@@ -65,6 +66,7 @@ public static class AddressingModes
     {
         byte zpAddr = memory.Read(state.PC++);
         state.Cycles++; // 1 cycle to fetch the ZP address
+
         // The instruction will add 1 more cycle for the actual read
         return zpAddr;
     }
@@ -79,6 +81,7 @@ public static class AddressingModes
     {
         byte zpAddr = (byte)(memory.Read(state.PC++) + state.X);
         state.Cycles += 2; // 1 cycle to fetch ZP address, 1 cycle for indexing
+
         // The instruction will add 1 more cycle for the actual read
         return zpAddr;
     }
@@ -93,6 +96,7 @@ public static class AddressingModes
     {
         byte zpAddr = (byte)(memory.Read(state.PC++) + state.Y);
         state.Cycles += 2; // 1 cycle to fetch ZP address, 1 cycle for indexing
+
         // The instruction will add 1 more cycle for the actual read
         return zpAddr;
     }
@@ -108,6 +112,7 @@ public static class AddressingModes
         ushort address = memory.ReadWord(state.PC);
         state.PC += 2;
         state.Cycles += 2; // 2 cycles to fetch the 16-bit address
+
         // The instruction will add 1 more cycle for the actual read
         return address;
     }
@@ -124,7 +129,7 @@ public static class AddressingModes
         state.PC += 2;
         ushort effectiveAddr = (ushort)(baseAddr + state.X);
         state.Cycles += 2; // 2 cycles to fetch the 16-bit address
-        
+
         // Add extra cycle if page boundary crossed
         if ((baseAddr & 0xFF00) != (effectiveAddr & 0xFF00))
         {
@@ -147,7 +152,7 @@ public static class AddressingModes
         state.PC += 2;
         ushort effectiveAddr = (ushort)(baseAddr + state.Y);
         state.Cycles += 2; // 2 cycles to fetch the 16-bit address
-        
+
         // Add extra cycle if page boundary crossed
         if ((baseAddr & 0xFF00) != (effectiveAddr & 0xFF00))
         {
@@ -169,6 +174,7 @@ public static class AddressingModes
         byte zpAddr = (byte)(memory.Read(state.PC++) + state.X);
         ushort address = memory.ReadWord(zpAddr);
         state.Cycles += 4; // 1 (fetch ZP), 1 (index), 2 (read pointer from ZP)
+
         // The instruction will add 1 more cycle for the actual read
         return address;
     }
@@ -185,7 +191,7 @@ public static class AddressingModes
         ushort baseAddr = memory.ReadWord(zpAddr);
         ushort effectiveAddr = (ushort)(baseAddr + state.Y);
         state.Cycles += 3; // 1 (fetch ZP), 2 (read pointer from ZP)
-        
+
         // Add extra cycle if page boundary crossed
         if ((baseAddr & 0xFF00) != (effectiveAddr & 0xFF00))
         {
@@ -210,6 +216,7 @@ public static class AddressingModes
         state.PC += 2;
         ushort effectiveAddr = (ushort)(baseAddr + state.X);
         state.Cycles += 3; // 2 cycles to fetch address + 1 extra for write operations
+
         // The instruction will add 1 more cycle for the actual write
         return effectiveAddr;
     }
@@ -226,6 +233,7 @@ public static class AddressingModes
         state.PC += 2;
         ushort effectiveAddr = (ushort)(baseAddr + state.Y);
         state.Cycles += 3; // 2 cycles to fetch address + 1 extra for write operations
+
         // The instruction will add 1 more cycle for the actual write
         return effectiveAddr;
     }
@@ -242,8 +250,8 @@ public static class AddressingModes
         ushort baseAddr = memory.ReadWord(zpAddr);
         ushort effectiveAddr = (ushort)(baseAddr + state.Y);
         state.Cycles += 4; // 1 (fetch ZP), 2 (read pointer), 1 extra for write
+
         // The instruction will add 1 more cycle for the actual write
         return effectiveAddr;
     }
 }
-

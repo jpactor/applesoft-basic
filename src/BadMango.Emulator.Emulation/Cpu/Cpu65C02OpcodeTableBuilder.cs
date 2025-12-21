@@ -62,6 +62,15 @@ public static class Cpu65C02OpcodeTableBuilder
         // NOP - No Operation
         handlers[0xEA] = Instructions.NOP(AddressingModes.Implied);
 
+        // Flag manipulation instructions (all use Implied addressing)
+        handlers[0x18] = Instructions.CLC(AddressingModes.Implied); // Clear Carry
+        handlers[0x38] = Instructions.SEC(AddressingModes.Implied); // Set Carry
+        handlers[0x58] = Instructions.CLI(AddressingModes.Implied); // Clear Interrupt Disable
+        handlers[0x78] = Instructions.SEI(AddressingModes.Implied); // Set Interrupt Disable
+        handlers[0xD8] = Instructions.CLD(AddressingModes.Implied); // Clear Decimal
+        handlers[0xF8] = Instructions.SED(AddressingModes.Implied); // Set Decimal
+        handlers[0xB8] = Instructions.CLV(AddressingModes.Implied); // Clear Overflow
+
         return new OpcodeTable<Cpu65C02, Cpu65C02State>(handlers);
     }
 
