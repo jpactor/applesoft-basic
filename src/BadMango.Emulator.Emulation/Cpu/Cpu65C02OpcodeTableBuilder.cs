@@ -106,6 +106,22 @@ public static class Cpu65C02OpcodeTableBuilder
         handlers[0x08] = Instructions.PHP(AddressingModes.Implied); // Push Processor Status
         handlers[0x68] = Instructions.PLA(AddressingModes.Implied); // Pull Accumulator
         handlers[0x28] = Instructions.PLP(AddressingModes.Implied); // Pull Processor Status
+        handlers[0xDA] = Instructions.PHX(AddressingModes.Implied); // Push X (65C02)
+        handlers[0xFA] = Instructions.PLX(AddressingModes.Implied); // Pull X (65C02)
+        handlers[0x5A] = Instructions.PHY(AddressingModes.Implied); // Push Y (65C02)
+        handlers[0x7A] = Instructions.PLY(AddressingModes.Implied); // Pull Y (65C02)
+
+        // 65C02-Specific Instructions
+        handlers[0x64] = Instructions.STZ(AddressingModes.ZeroPage); // Store Zero
+        handlers[0x74] = Instructions.STZ(AddressingModes.ZeroPageX); // Store Zero
+        handlers[0x9C] = Instructions.STZ(AddressingModes.Absolute); // Store Zero
+        handlers[0x9E] = Instructions.STZ(AddressingModes.AbsoluteX); // Store Zero
+        handlers[0x04] = Instructions.TSB(AddressingModes.ZeroPage); // Test and Set Bits
+        handlers[0x0C] = Instructions.TSB(AddressingModes.Absolute); // Test and Set Bits
+        handlers[0x14] = Instructions.TRB(AddressingModes.ZeroPage); // Test and Reset Bits
+        handlers[0x1C] = Instructions.TRB(AddressingModes.Absolute); // Test and Reset Bits
+        handlers[0xCB] = Instructions.WAI(AddressingModes.Implied); // Wait for Interrupt
+        handlers[0xDB] = Instructions.STP(AddressingModes.Implied); // Stop Processor
 
         // Jump and Subroutine Operations
         handlers[0x4C] = Instructions.JMP(AddressingModes.Absolute); // Jump Absolute
@@ -141,6 +157,7 @@ public static class Cpu65C02OpcodeTableBuilder
         handlers[0x10] = Instructions.BPL(AddressingModes.Relative); // Branch if Plus
         handlers[0x50] = Instructions.BVC(AddressingModes.Relative); // Branch if Overflow Clear
         handlers[0x70] = Instructions.BVS(AddressingModes.Relative); // Branch if Overflow Set
+        handlers[0x80] = Instructions.BRA(AddressingModes.Relative); // Branch Always (65C02)
 
         // Arithmetic Operations
         handlers[0x69] = Instructions.ADC(AddressingModes.Immediate);
