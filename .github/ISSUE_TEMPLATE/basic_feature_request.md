@@ -1,6 +1,6 @@
 ---
-name: Feature Request
-about: Suggest a new feature or enhancement
+name: BASIC Feature Request
+about: Suggest a new feature or enhancement for the BASIC interpreter
 title: '[FEATURE] '
 labels: enhancement
 assignees: ''

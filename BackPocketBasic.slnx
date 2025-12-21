@@ -10,6 +10,12 @@
     <File Path=".gitignore" />
     <File Path="StyleCop.json" />
   </Folder>
+  <Folder Name="/config/Issue Templates/">
+    <File Path=".github/ISSUE_TEMPLATE/basic_bug_report.md" />
+    <File Path=".github/ISSUE_TEMPLATE/basic_feature_request.md" />
+    <File Path=".github/ISSUE_TEMPLATE/emulator_bug_report.md" />
+    <File Path=".github/ISSUE_TEMPLATE/emulator_feature_request.md" />
+  </Folder>
   <Folder Name="/docs/">
     <File Path="65C02-IMPLEMENTATION-ROADMAP.md" />
     <File Path="BRANCH_MIGRATION.md" />

@@ -1,6 +1,6 @@
 ---
-name: Bug Report
-about: Report a bug or unexpected behavior
+name: BASIC Bug Report
+about: Report a bug or unexpected behavior in the BASIC interpreter
 title: '[BUG] '
 labels: bug
 assignees: ''
