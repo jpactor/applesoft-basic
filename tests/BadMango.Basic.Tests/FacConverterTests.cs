@@ -5,7 +5,9 @@
 namespace BadMango.Basic.Tests;
 
 using BadMango.Basic.Emulation;
+
 using Microsoft.Extensions.Logging;
+
 using Moq;
 
 /// <summary>

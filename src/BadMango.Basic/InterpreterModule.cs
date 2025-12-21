@@ -7,12 +7,17 @@ namespace BadMango.Basic;
 using System.Diagnostics.CodeAnalysis;
 
 using Autofac;
+
 using Emulation;
+
 using Execution;
+
 using IO;
+
 using Lexer;
 
 using Parser;
+
 using Runtime;
 
 /// <summary>
