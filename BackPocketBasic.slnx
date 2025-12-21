@@ -36,6 +36,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/BadMango.Basic.Tests/BadMango.Basic.Tests.csproj" />
+    <Project Path="tests/BadMango.Emulator.Tests/BadMango.Emulator.Tests.csproj" />
   </Folder>
   <Folder Name="/wiki/">
     <File Path="wiki/6502-Emulation.md" />
