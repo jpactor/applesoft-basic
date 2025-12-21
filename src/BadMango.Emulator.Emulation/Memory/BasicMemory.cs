@@ -24,7 +24,11 @@ public class BasicMemory : IMemory
     /// Initializes a new instance of the <see cref="BasicMemory"/> class.
     /// </summary>
     /// <param name="size">The size of the memory in bytes. Defaults to 64KB (65536 bytes).</param>
-    public BasicMemory(int size = 65536)
+    /// <remarks>
+    /// Consider using constants from <see cref="MemorySizes"/> for common memory sizes.
+    /// For example: <c>new BasicMemory(MemorySizes.Size64KB)</c> or <c>new BasicMemory(MemorySizes.Size128KB)</c>.
+    /// </remarks>
+    public BasicMemory(int size = MemorySizes.Size64KB)
     {
         memory = new byte[size];
     }
@@ -70,5 +74,19 @@ public class BasicMemory : IMemory
     public void Clear()
     {
         Array.Clear(memory, 0, memory.Length);
+    }
+
+    /// <inheritdoc/>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public ReadOnlyMemory<byte> AsReadOnlyMemory()
+    {
+        return new ReadOnlyMemory<byte>(memory);
+    }
+
+    /// <inheritdoc/>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Memory<byte> AsMemory()
+    {
+        return new Memory<byte>(memory);
     }
 }

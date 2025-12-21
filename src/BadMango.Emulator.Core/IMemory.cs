@@ -72,4 +72,24 @@ public interface IMemory
     /// Clears all memory, setting all bytes to zero.
     /// </summary>
     void Clear();
+
+    /// <summary>
+    /// Gets a snapshot of the entire memory as a <see cref="ReadOnlyMemory{T}"/>.
+    /// </summary>
+    /// <returns>A read-only snapshot of the memory contents.</returns>
+    /// <remarks>
+    /// This method provides a safe, read-only view of the memory that can be used
+    /// for debugging, serialization, or analysis without risking modifications.
+    /// </remarks>
+    ReadOnlyMemory<byte> AsReadOnlyMemory();
+
+    /// <summary>
+    /// Gets a snapshot of the entire memory as a <see cref="Memory{T}"/>.
+    /// </summary>
+    /// <returns>A mutable snapshot of the memory contents.</returns>
+    /// <remarks>
+    /// This method provides direct access to the underlying memory buffer.
+    /// Use with caution as modifications will affect the emulated system's state.
+    /// </remarks>
+    Memory<byte> AsMemory();
 }
