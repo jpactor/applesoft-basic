@@ -54,9 +54,9 @@ public class InterruptAndHaltTests
         Assert.That(state.P & 0x04, Is.EqualTo(0x04), "I flag should be set after IRQ");
 
         // Verify stack contains pushed PC and P
-        byte pushedP = memory.Read(0x01FD);
-        byte pushedPCLo = memory.Read(0x01FC);
-        byte pushedPCHi = memory.Read(0x01FB);
+        byte pushedP = memory.Read(0x01FB);      // P is at top of stack
+        byte pushedPCLo = memory.Read(0x01FC);    // PC low byte
+        byte pushedPCHi = memory.Read(0x01FD);    // PC high byte
         Assert.That((pushedPCHi << 8) | pushedPCLo, Is.EqualTo(0x1001), "Pushed PC should point to NOP");
         Assert.That(pushedP & 0x10, Is.EqualTo(0), "B flag should be clear in pushed P");
     }

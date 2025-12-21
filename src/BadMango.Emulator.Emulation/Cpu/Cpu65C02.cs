@@ -90,14 +90,12 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
     public int Step()
     {
         // Check for pending interrupts at instruction boundary
-        if (!halted)
+        // Note: We check even when halted because WAI can resume on interrupts
+        bool interruptProcessed = CheckInterrupts();
+        if (interruptProcessed)
         {
-            bool interruptProcessed = CheckInterrupts();
-            if (interruptProcessed)
-            {
-                // Interrupt was processed, return cycles consumed
-                return 7; // Interrupt processing takes 7 cycles
-            }
+            // Interrupt was processed, return cycles consumed
+            return 7; // Interrupt processing takes 7 cycles
         }
 
         if (halted)
