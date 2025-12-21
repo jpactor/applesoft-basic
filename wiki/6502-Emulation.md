@@ -69,7 +69,7 @@ The 6502 has minimal registers:
 | **PC** | 16-bit | Program counter |
 | **P** | 8-bit | Processor status flags |
 
-**Note**: The emulator uses `SP` (Stack Pointer) consistently throughout the codebase for accuracy, not the sometimes-used abbreviation `S`.
+**Note**: The emulator uses `SP` (Stack Pointer) consistently throughout the codebase for accuracy. While the 6502 documentation sometimes abbreviates this as `S`, using `SP` is more precise and matches conventions from other processor architectures, improving code clarity and maintainability.
 
 ### Processor Status Flags (P Register)
 
