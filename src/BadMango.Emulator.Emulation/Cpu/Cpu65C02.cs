@@ -93,7 +93,7 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
     }
 
     /// <inheritdoc/>
-    public void Execute(int startAddress)
+    public void Execute(uint startAddress)
     {
         pc = (ushort)startAddress;
         halted = false;
@@ -503,7 +503,7 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
         ushort address = FetchWord();
         ushort effectiveAddress = (ushort)(address + x);
         memory.Write(effectiveAddress, value);
-        cycles += 3;
+        cycles += 2; // Index addition + write
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -512,7 +512,7 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
         ushort address = FetchWord();
         ushort effectiveAddress = (ushort)(address + y);
         memory.Write(effectiveAddress, value);
-        cycles += 3;
+        cycles += 2; // Index addition + write
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

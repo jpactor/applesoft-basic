@@ -38,7 +38,7 @@ public interface ICpu<TRegisters, TState>
     /// This method sets the program counter to the specified start address and begins
     /// executing instructions until the CPU is halted.
     /// </remarks>
-    void Execute(int startAddress);
+    void Execute(uint startAddress);
 
     /// <summary>
     /// Resets the CPU to its initial state.

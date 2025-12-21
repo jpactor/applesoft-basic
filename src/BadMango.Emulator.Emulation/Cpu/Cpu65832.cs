@@ -26,7 +26,7 @@ public class Cpu65832 : ICpu<Cpu65832Registers, Cpu65832State>
     }
 
     /// <inheritdoc/>
-    public void Execute(int startAddress)
+    public void Execute(uint startAddress)
     {
         throw new NotImplementedException();
     }

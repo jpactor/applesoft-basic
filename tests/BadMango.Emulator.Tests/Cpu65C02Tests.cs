@@ -578,4 +578,171 @@ public class Cpu65C02Tests
         // Assert
         Assert.That(memory.Read(0x8020), Is.EqualTo(0xAB));
     }
+
+    /// <summary>
+    /// Verifies that STA Absolute,X stores the accumulator correctly.
+    /// </summary>
+    [Test]
+    public void STA_AbsoluteX_StoresAccumulator()
+    {
+        // Arrange
+        memory.WriteWord(0xFFFC, 0x1000);
+        memory.Write(0x1000, 0xA9); // LDA #$CD
+        memory.Write(0x1001, 0xCD);
+        memory.Write(0x1002, 0xA2); // LDX #$10
+        memory.Write(0x1003, 0x10);
+        memory.Write(0x1004, 0x9D); // STA $2000,X -> $2010
+        memory.Write(0x1005, 0x00);
+        memory.Write(0x1006, 0x20);
+        cpu.Reset();
+
+        // Act
+        cpu.Step(); // LDA #$CD
+        cpu.Step(); // LDX #$10
+        int cycles = cpu.Step(); // STA $2000,X
+
+        // Assert
+        Assert.That(memory.Read(0x2010), Is.EqualTo(0xCD));
+        Assert.That(cycles, Is.EqualTo(5)); // 5 cycles for STA abs,X
+    }
+
+    /// <summary>
+    /// Verifies that STA Absolute,Y stores the accumulator correctly.
+    /// </summary>
+    [Test]
+    public void STA_AbsoluteY_StoresAccumulator()
+    {
+        // Arrange
+        memory.WriteWord(0xFFFC, 0x1000);
+        memory.Write(0x1000, 0xA9); // LDA #$EF
+        memory.Write(0x1001, 0xEF);
+        memory.Write(0x1002, 0xA0); // LDY #$08
+        memory.Write(0x1003, 0x08);
+        memory.Write(0x1004, 0x99); // STA $3000,Y -> $3008
+        memory.Write(0x1005, 0x00);
+        memory.Write(0x1006, 0x30);
+        cpu.Reset();
+
+        // Act
+        cpu.Step(); // LDA #$EF
+        cpu.Step(); // LDY #$08
+        int cycles = cpu.Step(); // STA $3000,Y
+
+        // Assert
+        Assert.That(memory.Read(0x3008), Is.EqualTo(0xEF));
+        Assert.That(cycles, Is.EqualTo(5)); // 5 cycles for STA abs,Y
+    }
+
+    /// <summary>
+    /// Verifies that LDA Absolute,Y with page crossing adds an extra cycle.
+    /// </summary>
+    [Test]
+    public void LDA_AbsoluteY_PageCrossAddsCycle()
+    {
+        // Arrange
+        memory.WriteWord(0xFFFC, 0x1000);
+        memory.Write(0x2100, 0x42); // Value at $2100 (crosses page from $20FF)
+        memory.Write(0x1000, 0xA0); // LDY #$01
+        memory.Write(0x1001, 0x01);
+        memory.Write(0x1002, 0xB9); // LDA $20FF,Y -> $2100 (page cross from $20 to $21)
+        memory.Write(0x1003, 0xFF);
+        memory.Write(0x1004, 0x20);
+        cpu.Reset();
+
+        // Act
+        cpu.Step(); // LDY #$01
+        int cycles = cpu.Step(); // LDA $20FF,Y
+
+        // Assert
+        var state = cpu.GetState();
+        Assert.That(state.A, Is.EqualTo(0x42));
+        Assert.That(cycles, Is.EqualTo(5)); // 4 base + 1 for page crossing
+    }
+
+    /// <summary>
+    /// Verifies that IllegalOpcode halts the CPU.
+    /// </summary>
+    [Test]
+    public void IllegalOpcode_HaltsCpu()
+    {
+        // Arrange
+        memory.WriteWord(0xFFFC, 0x1000);
+        memory.Write(0x1000, 0x02); // Illegal opcode (not implemented)
+        cpu.Reset();
+
+        // Act
+        int cycles = cpu.Step();
+
+        // Assert
+        Assert.That(cpu.Halted, Is.True);
+        Assert.That(cycles, Is.EqualTo(1)); // 1 cycle for fetching illegal opcode
+    }
+
+    /// <summary>
+    /// Verifies that Step returns 0 when CPU is halted.
+    /// </summary>
+    [Test]
+    public void Step_WhenHalted_ReturnsZero()
+    {
+        // Arrange
+        memory.WriteWord(0xFFFC, 0x1000);
+        memory.Write(0x1000, 0x02); // Illegal opcode
+        cpu.Reset();
+        cpu.Step(); // Execute illegal opcode to halt
+
+        // Act
+        int cycles = cpu.Step();
+
+        // Assert
+        Assert.That(cpu.Halted, Is.True);
+        Assert.That(cycles, Is.EqualTo(0));
+    }
+
+    /// <summary>
+    /// Verifies that Execute runs instructions until CPU halts.
+    /// </summary>
+    [Test]
+    public void Execute_RunsUntilHalted()
+    {
+        // Arrange
+        memory.Write(0x1000, 0xA9); // LDA #$42
+        memory.Write(0x1001, 0x42);
+        memory.Write(0x1002, 0xA2); // LDX #$10
+        memory.Write(0x1003, 0x10);
+        memory.Write(0x1004, 0xEA); // NOP
+        memory.Write(0x1005, 0x00); // BRK (halts CPU)
+        cpu.Reset();
+
+        // Act
+        cpu.Execute(0x1000);
+
+        // Assert
+        var state = cpu.GetState();
+        Assert.That(cpu.Halted, Is.True);
+        Assert.That(state.A, Is.EqualTo(0x42));
+        Assert.That(state.X, Is.EqualTo(0x10));
+    }
+
+    /// <summary>
+    /// Verifies that Execute accepts uint parameter without sign issues.
+    /// </summary>
+    [Test]
+    public void Execute_AcceptsUintParameter()
+    {
+        // Arrange
+        uint startAddress = 0x8000; // High address that would be negative as int16
+        memory.WriteWord(0xFFFE, 0x0000); // Set IRQ vector for BRK
+        memory.Write(0x8000, 0xA9); // LDA #$55
+        memory.Write(0x8001, 0x55);
+        memory.Write(0x8002, 0x00); // BRK
+        cpu.Reset();
+
+        // Act
+        cpu.Execute(startAddress);
+
+        // Assert
+        var state = cpu.GetState();
+        Assert.That(cpu.Halted, Is.True);
+        Assert.That(state.A, Is.EqualTo(0x55));
+    }
 }
