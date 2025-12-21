@@ -558,9 +558,6 @@ public class InstructionsTests
     public void BRK_PushesCorrectValuesToStack()
     {
         // Arrange
-        var memory = new BasicMemory();
-        var cpu = new Cpu65C02(memory);
-
         // Set up interrupt vector at 0xFFFE
         memory.WriteWord(0xFFFE, 0x8000);
 
@@ -608,9 +605,6 @@ public class InstructionsTests
     public void BRK_SetsInterruptDisableFlag()
     {
         // Arrange
-        var memory = new BasicMemory();
-        var cpu = new Cpu65C02(memory);
-
         memory.WriteWord(0xFFFE, 0x9000);
         memory.Write(0x1000, 0x00); // BRK
 
@@ -636,9 +630,6 @@ public class InstructionsTests
     public void BRK_IntegrationTest()
     {
         // Arrange
-        var memory = new BasicMemory();
-        var cpu = new Cpu65C02(memory);
-
         // Set up interrupt vector
         memory.WriteWord(0xFFFE, 0xA000);
 
