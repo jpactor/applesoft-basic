@@ -267,9 +267,12 @@ public class Cpu65C02 : ICpu
     private byte ReadIndirectX()
     {
         byte zpAddress = (byte)(FetchByte() + x);
+        cycles++; // Index addition
         ushort address = memory.ReadWord(zpAddress);
-        cycles += 4;
-        return memory.Read(address);
+        cycles += 2; // Read word from zero page
+        byte value = memory.Read(address);
+        cycles++; // Final read
+        return value;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -277,8 +280,9 @@ public class Cpu65C02 : ICpu
     {
         byte zpAddress = FetchByte();
         ushort address = memory.ReadWord(zpAddress);
+        cycles += 2; // Read word from zero page
         ushort effectiveAddress = (ushort)(address + y);
-        cycles += 3;
+        cycles++; // Base cycle for final read
         if ((address & 0xFF00) != (effectiveAddress & 0xFF00))
         {
             cycles++; // Page boundary crossed
@@ -333,9 +337,11 @@ public class Cpu65C02 : ICpu
     private void WriteIndirectX(byte value)
     {
         byte zpAddress = (byte)(FetchByte() + x);
+        cycles++; // Index addition
         ushort address = memory.ReadWord(zpAddress);
+        cycles += 2; // Read word from zero page
         memory.Write(address, value);
-        cycles += 5;
+        cycles++; // Final write
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -343,9 +349,10 @@ public class Cpu65C02 : ICpu
     {
         byte zpAddress = FetchByte();
         ushort address = memory.ReadWord(zpAddress);
+        cycles += 2; // Read word from zero page
         ushort effectiveAddress = (ushort)(address + y);
         memory.Write(effectiveAddress, value);
-        cycles += 4;
+        cycles++; // Final write
     }
 
     // Instruction implementations
