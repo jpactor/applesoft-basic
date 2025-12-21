@@ -10,6 +10,21 @@
     <File Path=".gitignore" />
     <File Path="StyleCop.json" />
   </Folder>
+  <Folder Name="/docs/">
+    <File Path="65C02-IMPLEMENTATION-ROADMAP.md" />
+    <File Path="BRANCH_MIGRATION.md" />
+    <File Path="BRANCH_PROTECTION.md" />
+    <File Path="CONTRIBUTING.md" />
+    <File Path="IMPLEMENTATION_DEDUPLICATION.md" />
+    <File Path="IMPLEMENTATION_SUMMARY.md" />
+    <File Path="ISSUE_COMMENT.md" />
+    <File Path="LICENSE" />
+    <File Path="LOCAL_CLONE_MIGRATION.md" />
+    <File Path="MODULAR_STRUCTURE.md" />
+    <File Path="README.md" />
+    <File Path="REPOSITORY_SETTINGS.md" />
+    <File Path="SETUP_GUIDE.md" />
+  </Folder>
   <Folder Name="/reference/">
     <File Path="reference/Emulator Evolution Plan.md" />
     <File Path="reference/WDC 65816 Emulator Implementation DotNet.md" />
