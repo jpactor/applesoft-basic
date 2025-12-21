@@ -36,7 +36,7 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
     private const ushort StackBase = 0x0100;
 
     private readonly IMemory memory;
-    private readonly Action<Cpu65C02>[] opcodeTable;
+    private readonly OpcodeTable<Cpu65C02> opcodeTable;
 
     private byte a;  // Accumulator
     private byte x;  // X register
@@ -54,7 +54,7 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
     public Cpu65C02(IMemory memory)
     {
         this.memory = memory ?? throw new ArgumentNullException(nameof(memory));
-        opcodeTable = BuildOpcodeTable();
+        opcodeTable = Cpu65C02OpcodeTableBuilder.Build();
     }
 
     /// <inheritdoc/>
@@ -88,7 +88,7 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
 
         ulong cyclesBefore = cycles;
         byte opcode = FetchByte();
-        opcodeTable[opcode](this);
+        opcodeTable.Execute(opcode, this);
         return (int)(cycles - cyclesBefore);
     }
 
@@ -149,44 +149,6 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
         p = state.P;
         pc = state.PC;
         cycles = state.Cycles;
-    }
-
-    private static Action<Cpu65C02>[] BuildOpcodeTable()
-    {
-        var table = new Action<Cpu65C02>[256];
-
-        // Initialize all opcodes to NOP (illegal opcodes)
-        for (int i = 0; i < 256; i++)
-        {
-            table[i] = cpu => cpu.IllegalOpcode();
-        }
-
-        // BRK - Force Break
-        table[0x00] = cpu => cpu.BRK();
-
-        // LDA - Load Accumulator
-        table[0xA9] = cpu => cpu.LDA_Immediate();
-        table[0xA5] = cpu => cpu.LDA_ZeroPage();
-        table[0xB5] = cpu => cpu.LDA_ZeroPageX();
-        table[0xAD] = cpu => cpu.LDA_Absolute();
-        table[0xBD] = cpu => cpu.LDA_AbsoluteX();
-        table[0xB9] = cpu => cpu.LDA_AbsoluteY();
-        table[0xA1] = cpu => cpu.LDA_IndirectX();
-        table[0xB1] = cpu => cpu.LDA_IndirectY();
-
-        // STA - Store Accumulator
-        table[0x85] = cpu => cpu.STA_ZeroPage();
-        table[0x95] = cpu => cpu.STA_ZeroPageX();
-        table[0x8D] = cpu => cpu.STA_Absolute();
-        table[0x9D] = cpu => cpu.STA_AbsoluteX();
-        table[0x99] = cpu => cpu.STA_AbsoluteY();
-        table[0x81] = cpu => cpu.STA_IndirectX();
-        table[0x91] = cpu => cpu.STA_IndirectY();
-
-        // NOP - No Operation
-        table[0xEA] = cpu => cpu.NOP();
-
-        return table;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -374,8 +336,12 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
     }
 
     // Instruction implementations
+
+    /// <summary>
+    /// BRK - Force Break instruction. Causes a software interrupt.
+    /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void BRK()
+    internal void BRK()
     {
         // BRK causes a software interrupt
         pc++;
@@ -388,112 +354,163 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
         halted = true; // For now, halt on BRK
     }
 
+    /// <summary>
+    /// LDA - Load Accumulator (Immediate addressing mode).
+    /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void LDA_Immediate()
+    internal void LDA_Immediate()
     {
         a = FetchByte();
         SetZN(a);
     }
 
+    /// <summary>
+    /// LDA - Load Accumulator (Zero Page addressing mode).
+    /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void LDA_ZeroPage()
+    internal void LDA_ZeroPage()
     {
         a = ReadZeroPage();
         SetZN(a);
     }
 
+    /// <summary>
+    /// LDA - Load Accumulator (Zero Page,X addressing mode).
+    /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void LDA_ZeroPageX()
+    internal void LDA_ZeroPageX()
     {
         a = ReadZeroPageX();
         SetZN(a);
     }
 
+    /// <summary>
+    /// LDA - Load Accumulator (Absolute addressing mode).
+    /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void LDA_Absolute()
+    internal void LDA_Absolute()
     {
         a = ReadAbsolute();
         SetZN(a);
     }
 
+    /// <summary>
+    /// LDA - Load Accumulator (Absolute,X addressing mode).
+    /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void LDA_AbsoluteX()
+    internal void LDA_AbsoluteX()
     {
         a = ReadAbsoluteX();
         SetZN(a);
     }
 
+    /// <summary>
+    /// LDA - Load Accumulator (Absolute,Y addressing mode).
+    /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void LDA_AbsoluteY()
+    internal void LDA_AbsoluteY()
     {
         a = ReadAbsoluteY();
         SetZN(a);
     }
 
+    /// <summary>
+    /// LDA - Load Accumulator (Indexed Indirect addressing mode).
+    /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void LDA_IndirectX()
+    internal void LDA_IndirectX()
     {
         a = ReadIndirectX();
         SetZN(a);
     }
 
+    /// <summary>
+    /// LDA - Load Accumulator (Indirect Indexed addressing mode).
+    /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void LDA_IndirectY()
+    internal void LDA_IndirectY()
     {
         a = ReadIndirectY();
         SetZN(a);
     }
 
+    /// <summary>
+    /// STA - Store Accumulator (Zero Page addressing mode).
+    /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void STA_ZeroPage()
+    internal void STA_ZeroPage()
     {
         WriteZeroPage(a);
     }
 
+    /// <summary>
+    /// STA - Store Accumulator (Zero Page,X addressing mode).
+    /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void STA_ZeroPageX()
+    internal void STA_ZeroPageX()
     {
         WriteZeroPageX(a);
     }
 
+    /// <summary>
+    /// STA - Store Accumulator (Absolute addressing mode).
+    /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void STA_Absolute()
+    internal void STA_Absolute()
     {
         WriteAbsolute(a);
     }
 
+    /// <summary>
+    /// STA - Store Accumulator (Absolute,X addressing mode).
+    /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void STA_AbsoluteX()
+    internal void STA_AbsoluteX()
     {
         WriteAbsoluteX(a);
     }
 
+    /// <summary>
+    /// STA - Store Accumulator (Absolute,Y addressing mode).
+    /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void STA_AbsoluteY()
+    internal void STA_AbsoluteY()
     {
         WriteAbsoluteY(a);
     }
 
+    /// <summary>
+    /// STA - Store Accumulator (Indexed Indirect addressing mode).
+    /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void STA_IndirectX()
+    internal void STA_IndirectX()
     {
         WriteIndirectX(a);
     }
 
+    /// <summary>
+    /// STA - Store Accumulator (Indirect Indexed addressing mode).
+    /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void STA_IndirectY()
+    internal void STA_IndirectY()
     {
         WriteIndirectY(a);
     }
 
+    /// <summary>
+    /// NOP - No Operation instruction.
+    /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void NOP()
+    internal void NOP()
     {
         cycles++; // Total 2 cycles (1 from FetchByte + 1 here)
     }
 
+    /// <summary>
+    /// Handles illegal/undefined opcodes by halting execution.
+    /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void IllegalOpcode()
+    internal void IllegalOpcode()
     {
         // For illegal opcodes, just halt execution
         halted = true;
