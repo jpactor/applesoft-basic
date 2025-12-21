@@ -26,11 +26,33 @@ public interface IMemory
     byte Read(int address);
 
     /// <summary>
+    /// Reads a byte from the specified memory address.
+    /// </summary>
+    /// <param name="address">The memory address to read from.</param>
+    /// <returns>The byte value at the specified address.</returns>
+    /// <remarks>
+    /// This method is functionally identical to <see cref="Read"/> and is provided
+    /// for future-proofing to support additional read methods (e.g., Read16, Read32).
+    /// </remarks>
+    byte ReadByte(int address) => Read(address);
+
+    /// <summary>
     /// Writes a byte to the specified memory address.
     /// </summary>
     /// <param name="address">The memory address to write to.</param>
     /// <param name="value">The byte value to write.</param>
     void Write(int address, byte value);
+
+    /// <summary>
+    /// Writes a byte to the specified memory address.
+    /// </summary>
+    /// <param name="address">The memory address to write to.</param>
+    /// <param name="value">The byte value to write.</param>
+    /// <remarks>
+    /// This method is functionally identical to <see cref="Write"/> and is provided
+    /// for future-proofing to support additional write methods (e.g., Write16, Write32).
+    /// </remarks>
+    void WriteByte(int address, byte value) => Write(address, value);
 
     /// <summary>
     /// Reads a 16-bit word from the specified memory address.

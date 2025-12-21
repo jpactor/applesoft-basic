@@ -38,4 +38,16 @@ public interface ICpu
     /// Resets the CPU to its initial state.
     /// </summary>
     void Reset();
+
+    /// <summary>
+    /// Gets the current CPU state.
+    /// </summary>
+    /// <returns>A <see cref="CpuState"/> structure containing all register values and cycle count.</returns>
+    CpuState GetState();
+
+    /// <summary>
+    /// Sets the CPU state.
+    /// </summary>
+    /// <param name="state">The <see cref="CpuState"/> structure containing register values and cycle count to restore.</param>
+    void SetState(CpuState state);
 }

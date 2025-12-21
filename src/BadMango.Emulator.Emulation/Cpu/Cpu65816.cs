@@ -36,4 +36,16 @@ public class Cpu65816 : ICpu
     {
         throw new NotImplementedException();
     }
+
+    /// <inheritdoc/>
+    public CpuState GetState()
+    {
+        throw new NotImplementedException();
+    }
+
+    /// <inheritdoc/>
+    public void SetState(CpuState state)
+    {
+        throw new NotImplementedException();
+    }
 }
