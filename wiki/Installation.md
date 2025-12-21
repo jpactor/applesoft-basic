@@ -22,7 +22,7 @@ The interpreter runs on any platform that supports .NET 10.0:
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/jpactor/applesoft-basic.git
+git clone https://github.com/Bad-Mango-Solutions/back-pocket-basic.git
 cd back-pocket-basic
 ```
 

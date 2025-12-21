@@ -16,8 +16,8 @@
     <Description>A fully-featured Applesoft BASIC interpreter written in .NET, complete with 6502 CPU emulation and Apple II memory space emulation.</Description>
     <Copyright>Copyright (c) Bad Mango Solutions</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/jpactor/applesoft-basic</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/jpactor/applesoft-basic.git</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/Bad-Mango-Solutions/back-pocket-basic</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Bad-Mango-Solutions/back-pocket-basic.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>applesoft;basic;interpreter;6502;emulator;apple2</PackageTags>
   </PropertyGroup>

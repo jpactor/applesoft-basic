@@ -69,7 +69,7 @@ A fully-featured Applesoft BASIC interpreter written in .NET, complete with 6502
 
 ```bash
 # Clone the repository
-git clone https://github.com/jpactor/applesoft-basic.git
+git clone https://github.com/Bad-Mango-Solutions/back-pocket-basic.git
 cd back-pocket-basic
 
 # Build the solution

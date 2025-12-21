@@ -62,7 +62,7 @@ This project is committed to providing a welcoming and inclusive environment for
 
 3. **Add upstream remote**:
    ```bash
-   git remote add upstream https://github.com/jpactor/applesoft-basic.git
+   git remote add upstream https://github.com/Bad-Mango-Solutions/back-pocket-basic.git
    ```
 
 4. **Restore dependencies**:
@@ -147,7 +147,7 @@ git push origin feature/your-feature-name
 
 ### 6. Create a Pull Request
 
-1. Go to the [repository](https://github.com/jpactor/applesoft-basic)
+1. Go to the [repository](https://github.com/Bad-Mango-Solutions/back-pocket-basic)
 2. Click "New Pull Request"
 3. Select your fork and branch
 4. Fill out the PR template

@@ -30,7 +30,7 @@ This guide covers everything you need to start developing on the project. For ge
 
 ### 1. Fork the Repository
 
-1. Visit [https://github.com/jpactor/applesoft-basic](https://github.com/jpactor/applesoft-basic)
+1. Visit [https://github.com/Bad-Mango-Solutions/back-pocket-basic](https://github.com/Bad-Mango-Solutions/back-pocket-basic)
 2. Click **Fork** button (top-right)
 3. Create fork in your GitHub account
 
@@ -38,11 +38,11 @@ This guide covers everything you need to start developing on the project. For ge
 
 ```bash
 # Clone your fork
-git clone https://github.com/YOUR_USERNAME/applesoft-basic.git
-cd applesoft-basic
+git clone https://github.com/YOUR_USERNAME/back-pocket-basic.git
+cd back-pocket-basic
 
 # Add upstream remote
-git remote add upstream https://github.com/jpactor/applesoft-basic.git
+git remote add upstream https://github.com/Bad-Mango-Solutions/back-pocket-basic.git
 
 # Verify remotes
 git remote -v
@@ -50,10 +50,10 @@ git remote -v
 
 **Expected output:**
 ```
-origin    https://github.com/YOUR_USERNAME/applesoft-basic.git (fetch)
-origin    https://github.com/YOUR_USERNAME/applesoft-basic.git (push)
-upstream  https://github.com/jpactor/applesoft-basic.git (fetch)
-upstream  https://github.com/jpactor/applesoft-basic.git (push)
+origin    https://github.com/YOUR_USERNAME/back-pocket-basic.git (fetch)
+origin    https://github.com/YOUR_USERNAME/back-pocket-basic.git (push)
+upstream  https://github.com/Bad-Mango-Solutions/back-pocket-basic.git (fetch)
+upstream  https://github.com/Bad-Mango-Solutions/back-pocket-basic.git (push)
 ```
 
 ### 3. Restore Dependencies
@@ -253,7 +253,7 @@ git push origin feature/your-feature-name
 
 1. Go to your fork on GitHub
 2. Click **Pull Request**
-3. Select base: `jpactor/applesoft-basic` main
+3. Select base: `Bad-Mango-Solutions/back-pocket-basic` main
 4. Select compare: `your-fork` feature/your-feature-name
 5. Fill out PR template
 6. Submit pull request
