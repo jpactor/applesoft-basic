@@ -2,11 +2,11 @@
 // Copyright (c) Josh Pactor. All rights reserved.
 // </copyright>
 
-using BadMango.Basic;
-using BadMango.Basic.Execution;
-
 using Autofac;
 using Autofac.Extensions.DependencyInjection;
+
+using BadMango.Basic;
+using BadMango.Basic.Execution;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
