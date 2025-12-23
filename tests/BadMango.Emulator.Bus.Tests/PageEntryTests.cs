@@ -24,6 +24,7 @@ public class PageEntryTests
         var entry = new PageEntry(
             DeviceId: 1,
             RegionTag: RegionTag.Ram,
+            Perms: PagePerms.ReadWrite,
             Caps: TargetCaps.SupportsPeek | TargetCaps.SupportsWide,
             Target: mockTarget.Object,
             PhysicalBase: 0x10000u);
@@ -32,6 +33,7 @@ public class PageEntryTests
         {
             Assert.That(entry.DeviceId, Is.EqualTo(1));
             Assert.That(entry.RegionTag, Is.EqualTo(RegionTag.Ram));
+            Assert.That(entry.Perms, Is.EqualTo(PagePerms.ReadWrite));
             Assert.That(entry.Caps, Is.EqualTo(TargetCaps.SupportsPeek | TargetCaps.SupportsWide));
             Assert.That(entry.Target, Is.SameAs(mockTarget.Object));
             Assert.That(entry.PhysicalBase, Is.EqualTo(0x10000u));
@@ -99,6 +101,86 @@ public class PageEntryTests
     }
 
     /// <summary>
+    /// Verifies CanRead returns true when Read permission is set.
+    /// </summary>
+    [Test]
+    public void PageEntry_CanRead_TrueWhenReadPermSet()
+    {
+        var entry = CreateEntryWithPerms(PagePerms.Read);
+        Assert.That(entry.CanRead, Is.True);
+    }
+
+    /// <summary>
+    /// Verifies CanRead returns false when Read permission is not set.
+    /// </summary>
+    [Test]
+    public void PageEntry_CanRead_FalseWhenReadPermNotSet()
+    {
+        var entry = CreateEntryWithPerms(PagePerms.None);
+        Assert.That(entry.CanRead, Is.False);
+    }
+
+    /// <summary>
+    /// Verifies CanWrite returns true when Write permission is set.
+    /// </summary>
+    [Test]
+    public void PageEntry_CanWrite_TrueWhenWritePermSet()
+    {
+        var entry = CreateEntryWithPerms(PagePerms.Write);
+        Assert.That(entry.CanWrite, Is.True);
+    }
+
+    /// <summary>
+    /// Verifies CanWrite returns false when Write permission is not set.
+    /// </summary>
+    [Test]
+    public void PageEntry_CanWrite_FalseWhenWritePermNotSet()
+    {
+        var entry = CreateEntryWithPerms(PagePerms.Read);
+        Assert.That(entry.CanWrite, Is.False);
+    }
+
+    /// <summary>
+    /// Verifies CanExecute returns true when Execute permission is set.
+    /// </summary>
+    [Test]
+    public void PageEntry_CanExecute_TrueWhenExecutePermSet()
+    {
+        var entry = CreateEntryWithPerms(PagePerms.Execute);
+        Assert.That(entry.CanExecute, Is.True);
+    }
+
+    /// <summary>
+    /// Verifies CanExecute returns false when Execute permission is not set.
+    /// </summary>
+    [Test]
+    public void PageEntry_CanExecute_FalseWhenExecutePermNotSet()
+    {
+        var entry = CreateEntryWithPerms(PagePerms.ReadWrite);
+        Assert.That(entry.CanExecute, Is.False);
+    }
+
+    /// <summary>
+    /// Verifies IsNx returns true when Execute permission is not set.
+    /// </summary>
+    [Test]
+    public void PageEntry_IsNx_TrueWhenExecutePermNotSet()
+    {
+        var entry = CreateEntryWithPerms(PagePerms.ReadWrite);
+        Assert.That(entry.IsNx, Is.True);
+    }
+
+    /// <summary>
+    /// Verifies IsNx returns false when Execute permission is set.
+    /// </summary>
+    [Test]
+    public void PageEntry_IsNx_FalseWhenExecutePermSet()
+    {
+        var entry = CreateEntryWithPerms(PagePerms.All);
+        Assert.That(entry.IsNx, Is.False);
+    }
+
+    /// <summary>
     /// Verifies record equality works correctly.
     /// </summary>
     [Test]
@@ -106,9 +188,9 @@ public class PageEntryTests
     {
         var mockTarget = new Mock<IBusTarget>();
 
-        var entry1 = new PageEntry(1, RegionTag.Ram, TargetCaps.SupportsPeek, mockTarget.Object, 0x1000u);
-        var entry2 = new PageEntry(1, RegionTag.Ram, TargetCaps.SupportsPeek, mockTarget.Object, 0x1000u);
-        var entry3 = new PageEntry(2, RegionTag.Ram, TargetCaps.SupportsPeek, mockTarget.Object, 0x1000u);
+        var entry1 = new PageEntry(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, mockTarget.Object, 0x1000u);
+        var entry2 = new PageEntry(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, mockTarget.Object, 0x1000u);
+        var entry3 = new PageEntry(2, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, mockTarget.Object, 0x1000u);
 
         Assert.Multiple(() =>
         {
@@ -120,6 +202,12 @@ public class PageEntryTests
     private static PageEntry CreateEntry(TargetCaps caps)
     {
         var mockTarget = new Mock<IBusTarget>();
-        return new PageEntry(1, RegionTag.Ram, caps, mockTarget.Object, 0);
+        return new PageEntry(1, RegionTag.Ram, PagePerms.All, caps, mockTarget.Object, 0);
+    }
+
+    private static PageEntry CreateEntryWithPerms(PagePerms perms)
+    {
+        var mockTarget = new Mock<IBusTarget>();
+        return new PageEntry(1, RegionTag.Ram, perms, TargetCaps.None, mockTarget.Object, 0);
     }
 }
