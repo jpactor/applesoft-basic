@@ -1,0 +1,29 @@
+// <copyright file="DebugPrivilege.cs" company="Bad Mango Solutions">
+// Copyright (c) Bad Mango Solutions. All rights reserved.
+// </copyright>
+
+namespace BadMango.Emulator.Bus;
+
+/// <summary>
+/// A marker object that gates access to debug-only memory operations.
+/// </summary>
+/// <remarks>
+/// <para>
+/// This class exists to prevent accidental use of direct physical memory writes
+/// in normal emulation code. Only code with access to a <see cref="DebugPrivilege"/>
+/// instance can invoke debug write methods on <see cref="IPhysicalMemory"/>.
+/// </para>
+/// <para>
+/// The internal constructor ensures that only assemblies with internal access
+/// (such as the test assembly) can create instances.
+/// </para>
+/// </remarks>
+public sealed class DebugPrivilege
+{
+    /// <summary>
+    /// Initializes a new instance of the <see cref="DebugPrivilege"/> class.
+    /// </summary>
+    internal DebugPrivilege()
+    {
+    }
+}

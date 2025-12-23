@@ -475,6 +475,117 @@ public class PhysicalMemoryTests
     }
 
     /// <summary>
+    /// Verifies that Memory property returns the entire memory as ReadOnlyMemory.
+    /// </summary>
+    [Test]
+    public void PhysicalMemory_Memory_ReturnsEntireMemory()
+    {
+        var data = new byte[] { 0x11, 0x22, 0x33, 0x44 };
+        var memory = new PhysicalMemory(data, "Test");
+
+        ReadOnlyMemory<byte> readOnlyMem = memory.Memory;
+
+        Assert.That(readOnlyMem.Length, Is.EqualTo(4));
+        Assert.That(readOnlyMem.Span[0], Is.EqualTo(0x11));
+        Assert.That(readOnlyMem.Span[1], Is.EqualTo(0x22));
+        Assert.That(readOnlyMem.Span[2], Is.EqualTo(0x33));
+        Assert.That(readOnlyMem.Span[3], Is.EqualTo(0x44));
+    }
+
+    /// <summary>
+    /// Verifies that WriteBytePhysical writes a single byte at the specified address.
+    /// </summary>
+    [Test]
+    public void PhysicalMemory_WriteBytePhysical_WritesSingleByte()
+    {
+        var memory = new PhysicalMemory(16, "Test");
+        var debugPrivilege = new DebugPrivilege();
+
+        memory.WriteBytePhysical(debugPrivilege, 5, 0xAA);
+
+        Assert.That(memory.AsReadOnlySpan()[5], Is.EqualTo(0xAA));
+    }
+
+    /// <summary>
+    /// Verifies that WriteBytePhysical throws for negative address.
+    /// </summary>
+    [Test]
+    public void PhysicalMemory_WriteBytePhysical_ThrowsForNegativeAddress()
+    {
+        var memory = new PhysicalMemory(16, "Test");
+        var debugPrivilege = new DebugPrivilege();
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => memory.WriteBytePhysical(debugPrivilege, -1, 0xAA));
+    }
+
+    /// <summary>
+    /// Verifies that WriteBytePhysical throws when address exceeds bounds.
+    /// </summary>
+    [Test]
+    public void PhysicalMemory_WriteBytePhysical_ThrowsWhenExceedingBounds()
+    {
+        var memory = new PhysicalMemory(16, "Test");
+        var debugPrivilege = new DebugPrivilege();
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => memory.WriteBytePhysical(debugPrivilege, 16, 0xAA));
+    }
+
+    /// <summary>
+    /// Verifies that WritePhysical writes multiple bytes at the specified address.
+    /// </summary>
+    [Test]
+    public void PhysicalMemory_WritePhysical_WritesMultipleBytes()
+    {
+        var memory = new PhysicalMemory(16, "Test");
+        var debugPrivilege = new DebugPrivilege();
+        var dataToWrite = new byte[] { 0x11, 0x22, 0x33 };
+
+        memory.WritePhysical(debugPrivilege, 4, dataToWrite);
+
+        Assert.That(memory.AsReadOnlySpan()[4], Is.EqualTo(0x11));
+        Assert.That(memory.AsReadOnlySpan()[5], Is.EqualTo(0x22));
+        Assert.That(memory.AsReadOnlySpan()[6], Is.EqualTo(0x33));
+    }
+
+    /// <summary>
+    /// Verifies that WritePhysical throws for negative address.
+    /// </summary>
+    [Test]
+    public void PhysicalMemory_WritePhysical_ThrowsForNegativeAddress()
+    {
+        var memory = new PhysicalMemory(16, "Test");
+        var debugPrivilege = new DebugPrivilege();
+        var dataToWrite = new byte[] { 0x11, 0x22 };
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => memory.WritePhysical(debugPrivilege, -1, dataToWrite));
+    }
+
+    /// <summary>
+    /// Verifies that WritePhysical throws when write exceeds bounds.
+    /// </summary>
+    [Test]
+    public void PhysicalMemory_WritePhysical_ThrowsWhenExceedingBounds()
+    {
+        var memory = new PhysicalMemory(16, "Test");
+        var debugPrivilege = new DebugPrivilege();
+        var dataToWrite = new byte[] { 0x11, 0x22, 0x33 };
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => memory.WritePhysical(debugPrivilege, 14, dataToWrite));
+    }
+
+    /// <summary>
+    /// Verifies that WritePhysical with empty data succeeds.
+    /// </summary>
+    [Test]
+    public void PhysicalMemory_WritePhysical_EmptyDataSucceeds()
+    {
+        var memory = new PhysicalMemory(16, "Test");
+        var debugPrivilege = new DebugPrivilege();
+
+        Assert.DoesNotThrow(() => memory.WritePhysical(debugPrivilege, 0, ReadOnlySpan<byte>.Empty));
+    }
+
+    /// <summary>
     /// Creates a default BusAccess for testing.
     /// </summary>
     /// <returns>A default BusAccess instance.</returns>

@@ -20,6 +20,7 @@ namespace BadMango.Emulator.Bus;
 public sealed class PhysicalMemory : IPhysicalMemory
 {
     private readonly byte[] data;
+    private readonly Memory<byte> mem;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="PhysicalMemory"/> class with the specified size.
@@ -37,6 +38,7 @@ public sealed class PhysicalMemory : IPhysicalMemory
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
 
         data = new byte[size];
+        mem = data.AsMemory();
         Name = name;
     }
 
@@ -56,6 +58,7 @@ public sealed class PhysicalMemory : IPhysicalMemory
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(initialData.Length);
 
         data = initialData.ToArray();
+        mem = data.AsMemory();
         Name = name;
     }
 
@@ -66,17 +69,20 @@ public sealed class PhysicalMemory : IPhysicalMemory
     public string Name { get; }
 
     /// <inheritdoc />
+    public ReadOnlyMemory<byte> Memory => mem;
+
+    /// <inheritdoc />
     public Memory<byte> Slice(int offset, int length)
     {
         ValidateSliceParameters(offset, length);
-        return data.AsMemory(offset, length);
+        return mem.Slice(offset, length);
     }
 
     /// <inheritdoc />
     public ReadOnlyMemory<byte> ReadOnlySlice(int offset, int length)
     {
         ValidateSliceParameters(offset, length);
-        return data.AsMemory(offset, length);
+        return mem.Slice(offset, length);
     }
 
     /// <inheritdoc />
@@ -84,7 +90,7 @@ public sealed class PhysicalMemory : IPhysicalMemory
     {
         ValidatePageParameters(pageIndex, pageSize);
         int offset = pageIndex * pageSize;
-        return data.AsMemory(offset, pageSize);
+        return mem.Slice(offset, pageSize);
     }
 
     /// <inheritdoc />
@@ -92,26 +98,56 @@ public sealed class PhysicalMemory : IPhysicalMemory
     {
         ValidatePageParameters(pageIndex, pageSize);
         int offset = pageIndex * pageSize;
-        return data.AsMemory(offset, pageSize);
+        return mem.Slice(offset, pageSize);
     }
 
     /// <inheritdoc />
-    public Span<byte> AsSpan() => data.AsSpan();
+    public Span<byte> AsSpan() => mem.Span;
 
     /// <inheritdoc />
-    public ReadOnlySpan<byte> AsReadOnlySpan() => data.AsSpan();
+    public ReadOnlySpan<byte> AsReadOnlySpan() => mem.Span;
 
     /// <inheritdoc />
-    public void Fill(byte value) => Array.Fill(data, value);
+    public void Fill(byte value) => mem.Span.Fill(value);
 
     /// <inheritdoc />
-    public void Clear() => Array.Clear(data);
+    public void Clear() => mem.Span.Clear();
 
     /// <inheritdoc />
     public int PageCount(int pageSize = 4096)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(pageSize);
         return data.Length / pageSize;
+    }
+
+    /// <inheritdoc />
+    public void WritePhysical(DebugPrivilege privilege, int address, ReadOnlySpan<byte> dataToWrite)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(address);
+
+        if (address + dataToWrite.Length > data.Length)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(address),
+                $"Write at address {address} with length {dataToWrite.Length} exceeds memory size ({data.Length}).");
+        }
+
+        dataToWrite.CopyTo(mem.Span.Slice(address));
+    }
+
+    /// <inheritdoc />
+    public void WriteBytePhysical(DebugPrivilege privilege, int address, byte value)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(address);
+
+        if (address >= data.Length)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(address),
+                $"Address {address} exceeds memory size ({data.Length}).");
+        }
+
+        mem.Span[address] = value;
     }
 
     private void ValidateSliceParameters(int offset, int length)

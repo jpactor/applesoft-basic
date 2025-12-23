@@ -38,6 +38,12 @@ public interface IPhysicalMemory
     string Name { get; }
 
     /// <summary>
+    /// Gets the entire memory as a read-only memory block for debugging and tools.
+    /// </summary>
+    /// <value>A <see cref="ReadOnlyMemory{T}"/> containing the entire memory.</value>
+    ReadOnlyMemory<byte> Memory { get; }
+
+    /// <summary>
     /// Gets a writable slice of the memory.
     /// </summary>
     /// <param name="offset">The starting offset within the memory.</param>
@@ -121,4 +127,26 @@ public interface IPhysicalMemory
     /// Thrown when <paramref name="pageSize"/> is not positive.
     /// </exception>
     int PageCount(int pageSize = 4096);
+
+    /// <summary>
+    /// Writes data directly to physical memory at the specified address for debugging purposes.
+    /// </summary>
+    /// <param name="privilege">The debug privilege token authorizing this operation.</param>
+    /// <param name="address">The starting address to write to.</param>
+    /// <param name="data">The data to write.</param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown when <paramref name="address"/> is negative or the write would exceed memory bounds.
+    /// </exception>
+    void WritePhysical(DebugPrivilege privilege, int address, ReadOnlySpan<byte> data);
+
+    /// <summary>
+    /// Writes a single byte directly to physical memory at the specified address for debugging purposes.
+    /// </summary>
+    /// <param name="privilege">The debug privilege token authorizing this operation.</param>
+    /// <param name="address">The address to write to.</param>
+    /// <param name="value">The byte value to write.</param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown when <paramref name="address"/> is negative or exceeds memory bounds.
+    /// </exception>
+    void WriteBytePhysical(DebugPrivilege privilege, int address, byte value);
 }
