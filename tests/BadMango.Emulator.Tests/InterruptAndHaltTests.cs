@@ -53,7 +53,6 @@ public class InterruptAndHaltTests
         Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x2000), "PC should be at IRQ vector");
         Assert.That(state.Registers.P.IsInterruptDisabled(), Is.False, "I flag should be set after IRQ");
 
-        var inspect = memory.Inspect(0x01F0, 16).ToArray();
         // Verify stack contains pushed PC and P
         byte p = memory.Read(0x01FD);      // P is at top of stack
         byte lo = memory.Read(0x01FE);    // PC low byte

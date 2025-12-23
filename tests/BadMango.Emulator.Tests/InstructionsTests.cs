@@ -571,7 +571,6 @@ public class InstructionsTests
 
         // Assert
         state = cpu.GetState();
-        var inspect = memory.Inspect(0xf0, 16).ToArray();
 
         // Check stack pointer decremented by 3
         Assert.That(state.Registers.SP.GetByte(), Is.EqualTo(0xFA), "SP should be decremented by 3");

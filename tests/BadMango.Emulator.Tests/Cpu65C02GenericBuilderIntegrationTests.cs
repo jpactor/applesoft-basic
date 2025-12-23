@@ -53,7 +53,6 @@ public class Cpu65C02GenericBuilderIntegrationTests
     {
         // Arrange
         var opcodeTable = Cpu65C02OpcodeTableBuilder.Build();
-        var cpu = new Cpu65C02(memory);
         memory.Write(0x1000, 0x42); // Value to load
         var state = CreateState(pc: 0x1000, a: 0x00, p: 0, cycles: 0);
 
@@ -74,7 +73,6 @@ public class Cpu65C02GenericBuilderIntegrationTests
     {
         // Arrange
         var opcodeTable = Cpu65C02OpcodeTableBuilder.Build();
-        var cpu = new Cpu65C02(memory);
 
         // Test LDA Zero Page (0xA5)
         memory.Write(0x1000, 0x50); // ZP address
@@ -97,7 +95,6 @@ public class Cpu65C02GenericBuilderIntegrationTests
     {
         // Arrange
         var opcodeTable = Cpu65C02OpcodeTableBuilder.Build();
-        var cpu = new Cpu65C02(memory);
         memory.Write(0x1000, 0x50); // ZP address
         var state = CreateState(pc: 0x1000, a: 0x42, p: 0, cycles: 0);
 
@@ -135,7 +132,6 @@ public class Cpu65C02GenericBuilderIntegrationTests
     {
         // Arrange
         var opcodeTable = Cpu65C02OpcodeTableBuilder.Build();
-        var cpu = new Cpu65C02(memory);
 
         // Set up a simple program: LDA #$42, STA $50
         memory.Write(0x1000, 0x42); // Value for LDA immediate

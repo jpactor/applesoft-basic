@@ -180,8 +180,6 @@ public static partial class Instructions
             state.Registers.PC.Advance();
 
             Word pc = state.Registers.PC.GetWord();
-            var hi = pc.HighByte();
-            var lo = pc.LowByte();
 
             memory.Write(state.PushByte(Cpu65C02Constants.StackBase), pc.HighByte());
             memory.Write(state.PushByte(Cpu65C02Constants.StackBase), pc.LowByte());

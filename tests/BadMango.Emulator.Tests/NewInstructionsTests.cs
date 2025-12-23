@@ -37,7 +37,7 @@ public class NewInstructionsTests
     #region Register Transfer Tests
 
     /// <summary>
-    /// Verifies TAX transfers RegisterAccumulator to X and sets flags.
+    /// Verifies TAX transfers accumulator to X and sets flags.
     /// </summary>
     [Test]
     public void TAX_TransfersAccumulatorToX()
@@ -775,7 +775,6 @@ public class NewInstructionsTests
         // Act
         var handler = Instructions.JSR(AddressingModes.Absolute);
         handler(memory, ref state);
-        var inspect = memory.Inspect(0x01F0, 16);
 
         // Assert
         Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x2000));
@@ -819,7 +818,6 @@ public class NewInstructionsTests
         // Act
         var handler = Instructions.RTI(AddressingModes.Implied);
         handler(memory, ref state);
-        var inspect = memory.Inspect(0x01F0, 16);
 
         // Assert
         Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x2000));
