@@ -50,8 +50,8 @@ public class InterruptAndHaltTests
 
         // Assert
         var state = cpu.GetState();
-        Assert.That(state.PC, Is.EqualTo(0x2000), "PC should be at IRQ vector");
-        Assert.That(state.P & 0x04, Is.EqualTo(0x04), "I flag should be set after IRQ");
+        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x2000), "PC should be at IRQ vector");
+        Assert.That(state.Registers.P & ProcessorStatusFlags.I, Is.EqualTo(ProcessorStatusFlags.I), "I flag should be set after IRQ");
 
         // Verify stack contains pushed PC and P
         byte pushedP = memory.Read(0x01FB);      // P is at top of stack
@@ -81,7 +81,7 @@ public class InterruptAndHaltTests
 
         // Assert
         var state = cpu.GetState();
-        Assert.That(state.PC, Is.EqualTo(0x1002), "PC should have advanced normally, not jumped to IRQ");
+        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1002), "PC should have advanced normally, not jumped to IRQ");
     }
 
     #endregion
@@ -109,7 +109,7 @@ public class InterruptAndHaltTests
 
         // Assert
         var state = cpu.GetState();
-        Assert.That(state.PC, Is.EqualTo(0x3000), "PC should be at NMI vector");
+        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x3000), "PC should be at NMI vector");
     }
 
     /// <summary>
@@ -134,7 +134,7 @@ public class InterruptAndHaltTests
 
         // Assert
         var state = cpu.GetState();
-        Assert.That(state.PC, Is.EqualTo(0x3000), "PC should be at NMI vector, not IRQ vector");
+        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x3000), "PC should be at NMI vector, not IRQ vector");
     }
 
     #endregion
@@ -186,7 +186,7 @@ public class InterruptAndHaltTests
         // Assert
         var state = cpu.GetState();
         Assert.That(cpu.Halted, Is.False, "CPU should not be halted after IRQ");
-        Assert.That(state.PC, Is.EqualTo(0x2000), "PC should be at IRQ vector");
+        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x2000), "PC should be at IRQ vector");
         Assert.That(state.HaltReason, Is.EqualTo(HaltState.None), "Halt reason should be None");
     }
 
@@ -213,7 +213,7 @@ public class InterruptAndHaltTests
         // Assert
         var state = cpu.GetState();
         Assert.That(cpu.Halted, Is.False, "CPU should not be halted after NMI");
-        Assert.That(state.PC, Is.EqualTo(0x3000), "PC should be at NMI vector");
+        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x3000), "PC should be at NMI vector");
     }
 
     /// <summary>
@@ -358,7 +358,7 @@ public class InterruptAndHaltTests
         var state = cpu.GetState();
         Assert.That(cpu.Halted, Is.False, "CPU should not be halted after BRK");
         Assert.That(state.HaltReason, Is.EqualTo(HaltState.None), "Halt reason should be None");
-        Assert.That(state.PC, Is.EqualTo(0x2000), "PC should be at IRQ vector");
+        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x2000), "PC should be at IRQ vector");
     }
 
     /// <summary>
@@ -408,8 +408,8 @@ public class InterruptAndHaltTests
 
         // Assert
         var state = cpu.GetState();
-        Assert.That(state.PC, Is.EqualTo(0x1001), "PC should be restored to instruction after CLI");
-        Assert.That(state.P & 0x04, Is.EqualTo(0), "I flag should be restored to clear");
+        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1001), "PC should be restored to instruction after CLI");
+        Assert.That(state.Registers.P & ProcessorStatusFlags.I, Is.EqualTo((ProcessorStatusFlags)0), "I flag should be restored to clear");
     }
 
     #endregion
