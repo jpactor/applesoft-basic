@@ -61,6 +61,15 @@ public class RamTargetTests
     }
 
     /// <summary>
+    /// Verifies that constructor throws for empty data array.
+    /// </summary>
+    [Test]
+    public void RamTarget_Constructor_ThrowsForEmptyData()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => new RamTarget(Array.Empty<byte>()));
+    }
+
+    /// <summary>
     /// Verifies that Capabilities includes expected flags.
     /// </summary>
     [Test]

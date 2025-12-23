@@ -59,7 +59,7 @@ public sealed class SignalBus : ISignalBus
         lineAsserters.Add(deviceId);
 
         // NMI edge detection: detect rising edge (clear to asserted)
-        if (line == SignalLine.Nmi && !wasAsserted && lineAsserters.Count > 0)
+        if (line == SignalLine.Nmi && !wasAsserted)
         {
             nmiEdgeDetected = true;
         }

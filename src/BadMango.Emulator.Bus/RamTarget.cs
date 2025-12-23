@@ -38,9 +38,13 @@ public sealed class RamTarget : IBusTarget
     /// </summary>
     /// <param name="initialData">The initial data to populate the RAM with.</param>
     /// <exception cref="ArgumentNullException">Thrown when initialData is null.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown when <paramref name="initialData"/> has a length that is less than or equal to zero.
+    /// </exception>
     public RamTarget(byte[] initialData)
     {
         ArgumentNullException.ThrowIfNull(initialData);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(initialData.Length);
         data = new byte[initialData.Length];
         Array.Copy(initialData, data, initialData.Length);
     }
