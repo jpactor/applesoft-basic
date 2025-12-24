@@ -12,14 +12,18 @@ using System.Globalization;
 /// <remarks>
 /// <para>
 /// Supports multiple modes of operation:
-/// - Single byte: poke $1234 $AB.
-/// - Multiple bytes: poke $1234 $AB $CD $EF.
+/// - Single byte: poke $1234 AB or poke $1234 $AB.
+/// - Multiple bytes: poke $1234 AB CD EF or poke $1234 $AB $CD $EF.
 /// - Byte sequence: poke $1234 "Hello" (writes ASCII bytes).
 /// - Interactive mode: poke $1234 -i (enter bytes interactively).
 /// </para>
 /// <para>
-/// In interactive mode, enter hex bytes separated by spaces. Enter an empty line
-/// or 'q' to finish. The address auto-increments after each entry.
+/// Byte values can be specified with or without a $ or 0x prefix. Values without
+/// a prefix are treated as hexadecimal.
+/// </para>
+/// <para>
+/// In interactive mode, enter hex bytes separated by spaces. Use $addr: prefix to
+/// change the write address. A blank line ends interactive mode.
 /// </para>
 /// </remarks>
 public sealed class PokeCommand : CommandHandlerBase
@@ -81,13 +85,13 @@ public sealed class PokeCommand : CommandHandlerBase
             return WriteString(debugContext, startAddress, args[1]);
         }
 
-        // Parse byte values
+        // Parse byte values (allow unprefixed hex values)
         var bytes = new List<byte>();
         for (int i = 1; i < args.Length; i++)
         {
-            if (!TryParseByte(args[i], out byte value))
+            if (!TryParseByteValue(args[i], out byte value))
             {
-                return CommandResult.Error($"Invalid byte value: '{args[i]}'. Use hex format ($AB or 0xAB) or decimal (0-255).");
+                return CommandResult.Error($"Invalid byte value: '{args[i]}'. Use hex (ab, $AB, 0xAB) or decimal (0-255).");
             }
 
             bytes.Add(value);
@@ -123,7 +127,7 @@ public sealed class PokeCommand : CommandHandlerBase
         }
 
         context.Output.WriteLine($"Interactive poke mode starting at ${startAddress:X4}");
-        context.Output.WriteLine("Enter hex bytes (space-separated), empty line or 'q' to finish.");
+        context.Output.WriteLine("Enter hex bytes (space-separated). Use $addr: to change address. Blank line to finish.");
         context.Output.WriteLine();
 
         uint currentAddress = startAddress;
@@ -134,20 +138,38 @@ public sealed class PokeCommand : CommandHandlerBase
             context.Output.Write($"${currentAddress:X4}: ");
 
             var line = context.Input.ReadLine();
-            if (line is null || string.IsNullOrWhiteSpace(line) ||
-                line.Equals("q", StringComparison.OrdinalIgnoreCase) ||
-                line.Equals("quit", StringComparison.OrdinalIgnoreCase))
+
+            // End on null, empty, or whitespace-only line
+            if (line is null || string.IsNullOrWhiteSpace(line))
             {
                 break;
             }
 
-            var parts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            // Check for address prefix (e.g., "$1234: ab cd ef")
+            var trimmedLine = line.Trim();
+            if (TryParseAddressPrefix(trimmedLine, out uint newAddress, out string remainingBytes))
+            {
+                currentAddress = newAddress;
+                context.Output.WriteLine($"  Address changed to ${currentAddress:X4}");
+
+                // If there are bytes after the address prefix, process them
+                if (!string.IsNullOrWhiteSpace(remainingBytes))
+                {
+                    trimmedLine = remainingBytes;
+                }
+                else
+                {
+                    continue;
+                }
+            }
+
+            var parts = trimmedLine.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             var bytes = new List<byte>();
             bool hasError = false;
 
             foreach (var part in parts)
             {
-                if (TryParseByte(part, out byte value))
+                if (TryParseByteValue(part, out byte value))
                 {
                     bytes.Add(value);
                 }
@@ -173,23 +195,52 @@ public sealed class PokeCommand : CommandHandlerBase
                     context.Memory.Write(currentAddress + (uint)i, bytes[i]);
                 }
 
-                var hexValues = string.Join(" ", bytes.Select(b => $"${b:X2}"));
+                var hexValues = string.Join(" ", bytes.Select(b => $"{b:X2}"));
                 context.Output.WriteLine($"  Wrote: {hexValues}");
 
                 currentAddress += (uint)bytes.Count;
                 totalBytesWritten += bytes.Count;
             }
-            else if (!hasError)
+            else if (hasError)
             {
-                // Empty line with no errors means quit
-                break;
+                // Had errors but no valid bytes - continue to next line
+                continue;
             }
         }
 
         context.Output.WriteLine();
-        context.Output.WriteLine($"Interactive mode complete. Wrote {totalBytesWritten} byte(s) from ${startAddress:X4} to ${currentAddress - 1:X4}.");
+        if (totalBytesWritten > 0)
+        {
+            context.Output.WriteLine($"Interactive mode complete. Wrote {totalBytesWritten} byte(s) from ${startAddress:X4} to ${currentAddress - 1:X4}.");
+        }
+        else
+        {
+            context.Output.WriteLine("Interactive mode complete. No bytes written.");
+        }
 
         return CommandResult.Ok();
+    }
+
+    private static bool TryParseAddressPrefix(string line, out uint address, out string remainingBytes)
+    {
+        address = 0;
+        remainingBytes = string.Empty;
+
+        // Look for pattern like "$1234:" or "0x1234:"
+        int colonIndex = line.IndexOf(':', StringComparison.Ordinal);
+        if (colonIndex < 1)
+        {
+            return false;
+        }
+
+        var addressPart = line[..colonIndex].Trim();
+        if (!TryParseAddress(addressPart, out address))
+        {
+            return false;
+        }
+
+        remainingBytes = line[(colonIndex + 1)..].Trim();
+        return true;
     }
 
     private static CommandResult WriteString(IDebugContext context, uint startAddress, string quotedString)
@@ -229,7 +280,7 @@ public sealed class PokeCommand : CommandHandlerBase
         context.Output.WriteLine($"Wrote {bytes.Count} byte(s) starting at ${startAddress:X4}:");
 
         // Show what was written
-        var hexValues = string.Join(" ", bytes.Select(b => $"${b:X2}"));
+        var hexValues = string.Join(" ", bytes.Select(b => $"{b:X2}"));
         context.Output.WriteLine($"  {hexValues}");
     }
 
@@ -250,20 +301,57 @@ public sealed class PokeCommand : CommandHandlerBase
         return uint.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out result);
     }
 
-    private static bool TryParseByte(string value, out byte result)
+    /// <summary>
+    /// Parses a byte value that can be in various formats:
+    /// - Unprefixed hex: "ab", "AB", "ff"
+    /// - Dollar-prefixed hex: "$ab", "$AB"
+    /// - 0x-prefixed hex: "0xab", "0xAB"
+    /// - Decimal: "171" (0-255).
+    /// </summary>
+    /// <param name="value">The string value to parse.</param>
+    /// <param name="result">The parsed byte value.</param>
+    /// <returns>True if parsing succeeded, false otherwise.</returns>
+    private static bool TryParseByteValue(string value, out byte result)
     {
         result = 0;
 
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        // Dollar-prefixed hex
         if (value.StartsWith("$", StringComparison.Ordinal))
         {
             return byte.TryParse(value[1..], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out result);
         }
 
+        // 0x-prefixed hex
         if (value.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
         {
             return byte.TryParse(value[2..], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out result);
         }
 
+        // Try as unprefixed hex first (if it looks like hex - contains a-f)
+        if (value.Length <= 2 && IsValidHexString(value))
+        {
+            return byte.TryParse(value, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out result);
+        }
+
+        // Try as decimal
         return byte.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out result);
+    }
+
+    private static bool IsValidHexString(string value)
+    {
+        foreach (char c in value)
+        {
+            if (!char.IsAsciiHexDigit(c))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

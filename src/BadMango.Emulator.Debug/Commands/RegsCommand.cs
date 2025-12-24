@@ -71,7 +71,7 @@ public sealed class RegsCommand : CommandHandlerBase
         // Additional mode information
         output.WriteLine("├─────────────────────────────────────────────────┤");
         output.WriteLine($"│  E = {(registers.E ? "1 (Emulation)" : "0 (Native)")}                          │");
-        output.WriteLine($"│  Halted = {(registers.P.HasFlag(ProcessorStatusFlags.I) ? "IRQ Disabled" : "IRQ Enabled")}                     │");
+        output.WriteLine($"│  Interrupts = {(registers.P.HasFlag(ProcessorStatusFlags.I) ? "Disabled" : "Enabled")}                       │");
         output.WriteLine("└─────────────────────────────────────────────────┘");
     }
 

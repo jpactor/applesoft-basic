@@ -552,13 +552,49 @@ public class DebugCommandsTests
     }
 
     /// <summary>
+    /// Verifies that PokeCommand accepts unprefixed hex bytes.
+    /// </summary>
+    [Test]
+    public void PokeCommand_AcceptsUnprefixedHexBytes()
+    {
+        var command = new PokeCommand();
+        var result = command.Execute(debugContext, ["$0900", "ab", "cd", "ef"]);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.True);
+            Assert.That(memory.Read(0x0900), Is.EqualTo(0xAB));
+            Assert.That(memory.Read(0x0901), Is.EqualTo(0xCD));
+            Assert.That(memory.Read(0x0902), Is.EqualTo(0xEF));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that PokeCommand accepts mixed prefixed and unprefixed bytes.
+    /// </summary>
+    [Test]
+    public void PokeCommand_AcceptsMixedPrefixedAndUnprefixedBytes()
+    {
+        var command = new PokeCommand();
+        var result = command.Execute(debugContext, ["$0950", "$11", "22", "0x33"]);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.True);
+            Assert.That(memory.Read(0x0950), Is.EqualTo(0x11));
+            Assert.That(memory.Read(0x0951), Is.EqualTo(0x22));
+            Assert.That(memory.Read(0x0952), Is.EqualTo(0x33));
+        });
+    }
+
+    /// <summary>
     /// Verifies that PokeCommand interactive mode writes bytes from input.
     /// </summary>
     [Test]
     public void PokeCommand_InteractiveMode_WritesBytesFromInput()
     {
-        // Set up input with some hex bytes and a quit command
-        var inputText = "$AA $BB $CC\nq\n";
+        // Set up input with some hex bytes and blank line to finish
+        var inputText = "AA BB CC\n\n";
         using var inputReader = new StringReader(inputText);
         var contextWithInput = new DebugContext(dispatcher, outputWriter, errorWriter, cpu, memory, disassembler, inputReader);
 
@@ -581,7 +617,7 @@ public class DebugCommandsTests
     [Test]
     public void PokeCommand_InteractiveMode_HandlesMultipleLines()
     {
-        var inputText = "$11 $22\n$33 $44\nq\n";
+        var inputText = "11 22\n33 44\n\n";
         using var inputReader = new StringReader(inputText);
         var contextWithInput = new DebugContext(dispatcher, outputWriter, errorWriter, cpu, memory, disassembler, inputReader);
 
@@ -604,7 +640,7 @@ public class DebugCommandsTests
     [Test]
     public void PokeCommand_InteractiveMode_ExitsOnEmptyLine()
     {
-        var inputText = "$55\n\n";
+        var inputText = "55\n\n";
         using var inputReader = new StringReader(inputText);
         var contextWithInput = new DebugContext(dispatcher, outputWriter, errorWriter, cpu, memory, disassembler, inputReader);
 
@@ -635,6 +671,74 @@ public class DebugCommandsTests
         {
             Assert.That(result.Success, Is.False);
             Assert.That(result.Message, Does.Contain("Interactive mode not available"));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that PokeCommand interactive mode supports address prefix to change write location.
+    /// </summary>
+    [Test]
+    public void PokeCommand_InteractiveMode_SupportsAddressPrefix()
+    {
+        // Start at $0A00, then change to $0B00
+        var inputText = "11 22\n$0B00: 33 44\n\n";
+        using var inputReader = new StringReader(inputText);
+        var contextWithInput = new DebugContext(dispatcher, outputWriter, errorWriter, cpu, memory, disassembler, inputReader);
+
+        var command = new PokeCommand();
+        var result = command.Execute(contextWithInput, ["$0A00", "-i"]);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.True);
+            Assert.That(memory.Read(0x0A00), Is.EqualTo(0x11));
+            Assert.That(memory.Read(0x0A01), Is.EqualTo(0x22));
+            Assert.That(memory.Read(0x0B00), Is.EqualTo(0x33));
+            Assert.That(memory.Read(0x0B01), Is.EqualTo(0x44));
+            Assert.That(outputWriter.ToString(), Does.Contain("Address changed to $0B00"));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that PokeCommand interactive mode supports address-only line to change location.
+    /// </summary>
+    [Test]
+    public void PokeCommand_InteractiveMode_SupportsAddressOnlyLine()
+    {
+        // Start at $0C00, change to $0D00, then write
+        var inputText = "$0D00:\n55 66\n\n";
+        using var inputReader = new StringReader(inputText);
+        var contextWithInput = new DebugContext(dispatcher, outputWriter, errorWriter, cpu, memory, disassembler, inputReader);
+
+        var command = new PokeCommand();
+        var result = command.Execute(contextWithInput, ["$0C00", "-i"]);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.True);
+            Assert.That(memory.Read(0x0D00), Is.EqualTo(0x55));
+            Assert.That(memory.Read(0x0D01), Is.EqualTo(0x66));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that PokeCommand interactive mode with 0x address prefix works.
+    /// </summary>
+    [Test]
+    public void PokeCommand_InteractiveMode_Supports0xAddressPrefix()
+    {
+        var inputText = "0x0E00: 77 88\n\n";
+        using var inputReader = new StringReader(inputText);
+        var contextWithInput = new DebugContext(dispatcher, outputWriter, errorWriter, cpu, memory, disassembler, inputReader);
+
+        var command = new PokeCommand();
+        var result = command.Execute(contextWithInput, ["$0100", "-i"]);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.True);
+            Assert.That(memory.Read(0x0E00), Is.EqualTo(0x77));
+            Assert.That(memory.Read(0x0E01), Is.EqualTo(0x88));
         });
     }
 
@@ -872,7 +976,8 @@ public class DebugCommandsTests
 
         foreach (var command in commands)
         {
-            var result = command.Execute(normalContext, ["$1000", "$10"]);
+            // Use empty args - the check for debug context should happen before argument validation
+            var result = command.Execute(normalContext, []);
             Assert.That(result.Success, Is.False, $"Command {command.Name} should fail with non-debug context");
             Assert.That(result.Message, Does.Contain("Debug context required"), $"Command {command.Name} should mention debug context");
         }
