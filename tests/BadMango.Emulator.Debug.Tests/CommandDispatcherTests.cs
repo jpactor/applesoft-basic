@@ -78,6 +78,32 @@ public class CommandDispatcherTests
     }
 
     /// <summary>
+    /// Verifies that Register lists all conflicting aliases in the exception message.
+    /// </summary>
+    [Test]
+    public void Register_ListsAllConflictingAliasesInExceptionMessage()
+    {
+        var dispatcher = new CommandDispatcher();
+        var handler1 = new TestCommand("cmd1", "Command 1", ["a", "b"]);
+        var handler2 = new TestCommand("cmd2", "Command 2", ["c", "d"]);
+        var handler3 = new TestCommand("cmd3", "Command 3", ["a", "b", "c"]);
+
+        dispatcher.Register(handler1);
+        dispatcher.Register(handler2);
+
+        var ex = Assert.Throws<InvalidOperationException>(() => dispatcher.Register(handler3));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(ex!.Message, Does.Contain("cmd3"));
+            Assert.That(ex.Message, Does.Contain("'a' (already registered by 'cmd1')"));
+            Assert.That(ex.Message, Does.Contain("'b' (already registered by 'cmd1')"));
+            Assert.That(ex.Message, Does.Contain("'c' (already registered by 'cmd2')"));
+            Assert.That(ex.Message, Does.Contain("aliases"));
+        });
+    }
+
+    /// <summary>
     /// Verifies that TryGetHandler returns true and finds handler by name.
     /// </summary>
     [Test]
