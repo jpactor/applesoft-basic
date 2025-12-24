@@ -8,12 +8,10 @@ using Emulation;
 using Execution;
 using IO;
 using Lexer;
+using Microsoft.Extensions.Logging;
+using Moq;
 using Parser;
 using Runtime;
-
-using Microsoft.Extensions.Logging;
-
-using Moq;
 
 /// <summary>
 /// Contains unit tests for the <see cref="BasicInterpreter"/> class,

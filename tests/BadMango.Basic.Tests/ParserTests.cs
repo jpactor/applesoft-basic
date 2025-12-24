@@ -6,11 +6,9 @@ namespace BadMango.Basic.Tests;
 
 using AST;
 using Lexer;
-using Parser;
-
 using Microsoft.Extensions.Logging;
-
 using Moq;
+using Parser;
 
 /// <summary>
 /// Contains unit tests for the <see cref="BasicParser"/> class, ensuring correct parsing of Applesoft BASIC statements.

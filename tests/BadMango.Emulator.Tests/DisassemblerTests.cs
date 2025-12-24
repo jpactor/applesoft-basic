@@ -6,9 +6,8 @@ namespace BadMango.Emulator.Tests;
 
 using Core;
 using Emulation.Cpu;
-using Emulation.Memory;
-
 using Emulation.Debugging;
+using Emulation.Memory;
 
 /// <summary>
 /// Unit tests for the disassembler helper functionality.
