@@ -43,6 +43,34 @@ public static class OpcodeTableAnalyzer
     };
 
     /// <summary>
+    /// Maps addressing mode method names to their <see cref="CpuAddressingModes"/> enum values.
+    /// </summary>
+    private static readonly Dictionary<string, CpuAddressingModes> AddressingModeEnumMap = new()
+    {
+        [nameof(AddressingModes.Implied)] = CpuAddressingModes.Implied,
+        [nameof(AddressingModes.Accumulator)] = CpuAddressingModes.Accumulator,
+        [nameof(AddressingModes.Immediate)] = CpuAddressingModes.Immediate,
+        [nameof(AddressingModes.ZeroPage)] = CpuAddressingModes.ZeroPage,
+        [nameof(AddressingModes.ZeroPageX)] = CpuAddressingModes.ZeroPageX,
+        [nameof(AddressingModes.ZeroPageY)] = CpuAddressingModes.ZeroPageY,
+        [nameof(AddressingModes.Relative)] = CpuAddressingModes.Relative,
+        [nameof(AddressingModes.IndirectX)] = CpuAddressingModes.IndirectX,
+        [nameof(AddressingModes.IndirectY)] = CpuAddressingModes.IndirectY,
+        [nameof(AddressingModes.IndirectYWrite)] = CpuAddressingModes.IndirectY, // Write variant maps to same mode
+        [nameof(AddressingModes.Absolute)] = CpuAddressingModes.Absolute,
+        [nameof(AddressingModes.AbsoluteX)] = CpuAddressingModes.AbsoluteX,
+        [nameof(AddressingModes.AbsoluteY)] = CpuAddressingModes.AbsoluteY,
+        [nameof(AddressingModes.AbsoluteXWrite)] = CpuAddressingModes.AbsoluteX, // Write variant maps to same mode
+        [nameof(AddressingModes.AbsoluteYWrite)] = CpuAddressingModes.AbsoluteY, // Write variant maps to same mode
+        [nameof(AddressingModes.Indirect)] = CpuAddressingModes.Indirect,
+    };
+
+    /// <summary>
+    /// Maps instruction method names to their <see cref="CpuInstructions"/> enum values.
+    /// </summary>
+    private static readonly Dictionary<string, CpuInstructions> InstructionEnumMap = CreateInstructionEnumMap();
+
+    /// <summary>
     /// Builds an operand length lookup table by analyzing the opcode handlers.
     /// </summary>
     /// <param name="opcodeTable">The opcode table to analyze.</param>
@@ -55,32 +83,177 @@ public static class OpcodeTableAnalyzer
 
         for (int i = 0; i < 256; i++)
         {
-            operandLengths[i] = GetOperandLengthFromHandler(opcodeTable.GetHandler((byte)i));
+            operandLengths[i] = GetOpcodeInfoFromHandler(opcodeTable.GetHandler((byte)i)).OperandLength;
         }
 
         return operandLengths;
     }
 
     /// <summary>
-    /// Extracts the operand length from an opcode handler by inspecting its captured addressing mode delegate.
+    /// Builds a complete opcode information table by analyzing the opcode handlers.
+    /// </summary>
+    /// <param name="opcodeTable">The opcode table to analyze.</param>
+    /// <returns>
+    /// A dictionary mapping opcode bytes (0x00-0xFF) to <see cref="OpcodeInfo"/> structures
+    /// containing the instruction mnemonic, addressing mode, and operand length.
+    /// Invalid or unimplemented opcodes will have <see cref="CpuInstructions.None"/> as the instruction.
+    /// </returns>
+    /// <remarks>
+    /// This method analyzes the opcode table dynamically using reflection, ensuring the
+    /// disassembler does not rely on statically created arrays for opcode/instruction mode mapping.
+    /// The analysis is performed once at initialization time, outside of any hot execution paths.
+    /// </remarks>
+    public static Dictionary<byte, OpcodeInfo> BuildOpcodeInfoTable(OpcodeTable opcodeTable)
+    {
+        ArgumentNullException.ThrowIfNull(opcodeTable);
+
+        var opcodeInfoTable = new Dictionary<byte, OpcodeInfo>(256);
+
+        for (int i = 0; i < 256; i++)
+        {
+            var opcode = (byte)i;
+            var info = GetOpcodeInfoFromHandler(opcodeTable.GetHandler(opcode));
+            opcodeInfoTable[opcode] = info;
+        }
+
+        return opcodeInfoTable;
+    }
+
+    /// <summary>
+    /// Builds a complete opcode information table as an array by analyzing the opcode handlers.
+    /// </summary>
+    /// <param name="opcodeTable">The opcode table to analyze.</param>
+    /// <returns>
+    /// An array of 256 <see cref="OpcodeInfo"/> structures where each index is an opcode (0x00-0xFF).
+    /// Invalid or unimplemented opcodes will have <see cref="CpuInstructions.None"/> as the instruction.
+    /// </returns>
+    /// <remarks>
+    /// This method provides an alternative to <see cref="BuildOpcodeInfoTable"/> that returns
+    /// an array for potentially faster O(1) lookups. The analysis is performed dynamically
+    /// using reflection, ensuring the disassembler does not rely on statically created arrays.
+    /// </remarks>
+    public static OpcodeInfo[] BuildOpcodeInfoArray(OpcodeTable opcodeTable)
+    {
+        ArgumentNullException.ThrowIfNull(opcodeTable);
+
+        var opcodeInfoArray = new OpcodeInfo[256];
+
+        for (int i = 0; i < 256; i++)
+        {
+            opcodeInfoArray[i] = GetOpcodeInfoFromHandler(opcodeTable.GetHandler((byte)i));
+        }
+
+        return opcodeInfoArray;
+    }
+
+    /// <summary>
+    /// Creates the instruction enum map mapping method names to enum values.
+    /// </summary>
+    /// <returns>A dictionary mapping method names to instruction enum values.</returns>
+    private static Dictionary<string, CpuInstructions> CreateInstructionEnumMap()
+    {
+        var map = new Dictionary<string, CpuInstructions>(StringComparer.Ordinal);
+
+        // Map all instruction names from the enum
+        foreach (CpuInstructions instruction in Enum.GetValues<CpuInstructions>())
+        {
+            if (instruction != CpuInstructions.None)
+            {
+                var name = instruction.ToString();
+                map[name] = instruction;
+            }
+        }
+
+        // Add variants for accumulator operations (e.g., ASLa -> ASL)
+        map["ASLa"] = CpuInstructions.ASL;
+        map["LSRa"] = CpuInstructions.LSR;
+        map["ROLa"] = CpuInstructions.ROL;
+        map["RORa"] = CpuInstructions.ROR;
+
+        return map;
+    }
+
+    /// <summary>
+    /// Extracts complete opcode information from an opcode handler by inspecting its captured delegates.
     /// </summary>
     /// <param name="handler">The opcode handler to analyze.</param>
-    /// <returns>The operand length in bytes (0, 1, or 2).</returns>
-    private static byte GetOperandLengthFromHandler(OpcodeHandler handler)
+    /// <returns>
+    /// An <see cref="OpcodeInfo"/> structure containing the instruction, addressing mode, and operand length.
+    /// Returns a default <see cref="OpcodeInfo"/> with <see cref="CpuInstructions.None"/> if the handler
+    /// cannot be analyzed.
+    /// </returns>
+    private static OpcodeInfo GetOpcodeInfoFromHandler(OpcodeHandler handler)
     {
         if (handler == null)
         {
-            return 0;
+            return default;
         }
 
         // The handler is a closure - its Target is the compiler-generated display class
         object? target = handler.Target;
         if (target == null)
         {
-            return 0; // Static method, no captured state
+            // Static method (like IllegalOpcode) - no captured state
+            return default;
         }
 
+        // Extract the instruction from the handler's declaring type name
+        // The handler is generated from Instructions.LDA, Instructions.STA, etc.
+        var instruction = GetInstructionFromHandler(handler);
+
         // Find the captured AddressingMode delegate field
+        var (addressingMode, operandLength) = GetAddressingModeFromTarget(target);
+
+        return new OpcodeInfo(instruction, addressingMode, operandLength);
+    }
+
+    /// <summary>
+    /// Extracts the instruction mnemonic from an opcode handler.
+    /// </summary>
+    /// <param name="handler">The opcode handler to analyze.</param>
+    /// <returns>The instruction mnemonic, or <see cref="CpuInstructions.None"/> if not found.</returns>
+    private static CpuInstructions GetInstructionFromHandler(OpcodeHandler handler)
+    {
+        // The handler's Method is the lambda, but we need the method that created the lambda
+        // For closures created by Instructions.LDA, the closure's type name contains the method name
+        var target = handler.Target;
+        if (target == null)
+        {
+            return CpuInstructions.None;
+        }
+
+        // Get the closure type name which includes the parent method name
+        // Format is like <>c__DisplayClass0_0 or similar, but method info is in the handler
+        var method = handler.Method;
+
+        // The method name will be something like "<LDA>b__0" for a lambda inside LDA
+        string methodName = method.Name;
+
+        // Extract the instruction name from the lambda naming pattern
+        // Pattern: "<InstructionName>b__X" where X is a number
+        if (methodName.StartsWith("<", StringComparison.Ordinal))
+        {
+            int endIndex = methodName.IndexOf(">", StringComparison.Ordinal);
+            if (endIndex > 1)
+            {
+                string instructionName = methodName.Substring(1, endIndex - 1);
+                if (InstructionEnumMap.TryGetValue(instructionName, out var instruction))
+                {
+                    return instruction;
+                }
+            }
+        }
+
+        return CpuInstructions.None;
+    }
+
+    /// <summary>
+    /// Extracts the addressing mode and operand length from the closure's captured state.
+    /// </summary>
+    /// <param name="target">The closure target containing captured variables.</param>
+    /// <returns>A tuple containing the addressing mode and operand length.</returns>
+    private static (CpuAddressingModes AddressingMode, byte OperandLength) GetAddressingModeFromTarget(object target)
+    {
         var targetType = target.GetType();
         var addressingModeFields = targetType
             .GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
@@ -91,15 +264,25 @@ public static class OpcodeTableAnalyzer
             var addressingModeDelegate = field.GetValue(target) as AddressingMode<CpuState>;
             if (addressingModeDelegate != null)
             {
-                // Get the method name and look up operand length
                 string methodName = addressingModeDelegate.Method.Name;
-                if (AddressingModeOperandLengths.TryGetValue(methodName, out byte length))
+
+                var addressingMode = CpuAddressingModes.None;
+                byte operandLength = 0;
+
+                if (AddressingModeEnumMap.TryGetValue(methodName, out var mode))
                 {
-                    return length;
+                    addressingMode = mode;
                 }
+
+                if (AddressingModeOperandLengths.TryGetValue(methodName, out var length))
+                {
+                    operandLength = length;
+                }
+
+                return (addressingMode, operandLength);
             }
         }
 
-        return 0; // Default for unknown/implied
+        return (CpuAddressingModes.None, 0);
     }
 }
