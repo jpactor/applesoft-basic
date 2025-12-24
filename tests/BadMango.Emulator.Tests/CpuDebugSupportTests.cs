@@ -124,7 +124,7 @@ public class CpuDebugSupportTests
         memory.Write(0x1000, 0xEA); // NOP
         cpu.Reset();
 
-        // Listener is created but intentionally not attached to the CPU
+        // Create listener without attaching to verify no events are emitted when debugger not attached
         var listener = new TestDebugListener();
         cpu.Step();
 

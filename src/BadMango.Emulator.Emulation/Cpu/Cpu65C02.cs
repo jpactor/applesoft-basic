@@ -19,6 +19,50 @@ using Core;
 /// </remarks>
 public class Cpu65C02 : ICpu
 {
+    /// <summary>
+    /// Lookup table for instruction operand lengths.
+    /// Each index corresponds to an opcode (0x00-0xFF).
+    /// Values are 0, 1, or 2 indicating the number of operand bytes.
+    /// </summary>
+    /// <remarks>
+    /// <para>The table is organized in rows of 16 opcodes ($x0-$xF).</para>
+    /// <para>$00-$0F: BRK/ORA/TSB/ASL family.</para>
+    /// <para>$10-$1F: BPL/ORA/TRB/CLC family.</para>
+    /// <para>$20-$2F: JSR/AND/BIT/ROL family.</para>
+    /// <para>$30-$3F: BMI/AND/SEC family.</para>
+    /// <para>$40-$4F: RTI/EOR/LSR/JMP family.</para>
+    /// <para>$50-$5F: BVC/EOR/CLI/PHY family.</para>
+    /// <para>$60-$6F: RTS/ADC/ROR/PLA family.</para>
+    /// <para>$70-$7F: BVS/ADC/SEI/PLY family.</para>
+    /// <para>$80-$8F: BRA/STA/STY/STX family.</para>
+    /// <para>$90-$9F: BCC/STA/STZ/TYA family.</para>
+    /// <para>$A0-$AF: LDY/LDA/LDX family.</para>
+    /// <para>$B0-$BF: BCS/LDA/CLV family.</para>
+    /// <para>$C0-$CF: CPY/CMP/DEC/WAI family.</para>
+    /// <para>$D0-$DF: BNE/CMP/CLD/STP family.</para>
+    /// <para>$E0-$EF: CPX/SBC/INC/NOP family.</para>
+    /// <para>$F0-$FF: BEQ/SBC/SED family.</para>
+    /// </remarks>
+    private static readonly byte[] OperandLengths =
+    [
+        0, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 2, 2, 2, 0,
+        1, 1, 0, 0, 1, 1, 1, 0, 0, 2, 0, 0, 2, 2, 2, 0,
+        2, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 2, 2, 2, 0,
+        1, 1, 0, 0, 1, 1, 1, 0, 0, 2, 0, 0, 2, 2, 2, 0,
+        0, 1, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 2, 2, 2, 0,
+        1, 1, 0, 0, 0, 1, 1, 0, 0, 2, 0, 0, 0, 2, 2, 0,
+        0, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 2, 2, 2, 0,
+        1, 1, 0, 0, 1, 1, 1, 0, 0, 2, 0, 0, 2, 2, 2, 0,
+        1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 2, 2, 2, 0,
+        1, 1, 0, 0, 1, 1, 1, 0, 0, 2, 0, 0, 2, 2, 2, 0,
+        1, 1, 1, 0, 1, 1, 1, 0, 0, 1, 0, 0, 2, 2, 2, 0,
+        1, 1, 0, 0, 1, 1, 1, 0, 0, 2, 0, 0, 2, 2, 2, 0,
+        1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 2, 2, 2, 0,
+        1, 1, 0, 0, 0, 1, 1, 0, 0, 2, 0, 0, 0, 2, 2, 0,
+        1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 2, 2, 2, 0,
+        1, 1, 0, 0, 0, 1, 1, 0, 0, 2, 0, 0, 0, 2, 2, 0,
+    ];
+
     private readonly IMemory memory;
     private readonly OpcodeTable opcodeTable;
 
@@ -246,94 +290,10 @@ public class Cpu65C02 : ICpu
     /// <returns>The number of operand bytes (0, 1, or 2).</returns>
     /// <remarks>
     /// This method does not cost cycles - it's used for debug purposes only.
-    /// It determines the instruction length based on addressing mode patterns.
+    /// It uses a precomputed lookup table for O(1) access.
     /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static byte GetOperandLength(byte opcode)
-    {
-        // Immediate and zero-page modes have 1 byte operand
-        // Absolute and indirect modes have 2 byte operand
-        // Implied and accumulator modes have 0 byte operand
-        // This is a simplified mapping based on 6502 opcode patterns
-        int mode = opcode & 0x1F;
-        int group = opcode & 0x03;
-
-        // Special cases for specific opcodes
-        return opcode switch
-        {
-            // BRK and RTI have 0 bytes (BRK technically has 1 signature byte, but PC skips it)
-            0x00 => 0, // BRK
-            0x40 => 0, // RTI
-            0x60 => 0, // RTS
-
-            // JSR and JMP absolute have 2 bytes
-            0x20 => 2, // JSR abs
-            0x4C => 2, // JMP abs
-            0x6C => 2, // JMP (ind)
-
-            // Branch instructions have 1 byte (relative offset)
-            0x10 or 0x30 or 0x50 or 0x70 or 0x90 or 0xB0 or 0xD0 or 0xF0 or 0x80 => 1,
-
-            // WAI and STP have 0 bytes
-            0xCB => 0, // WAI
-            0xDB => 0, // STP
-
-            // Implied mode instructions have 0 bytes
-            _ when (mode == 0x08 || mode == 0x18 || mode == 0x0A || mode == 0x1A) && group != 0x01 => 0,
-
-            // Immediate mode (pattern: xxx01001) has 1 byte
-            _ when (opcode & 0x1F) == 0x09 => 1,
-
-            // Zero page modes have 1 byte
-            _ when (opcode & 0x1F) is 0x05 or 0x15 or 0x04 or 0x14 or 0x06 or 0x16 => 1,
-
-            // Absolute modes have 2 bytes
-            _ when (opcode & 0x1F) is 0x0D or 0x1D or 0x0C or 0x1C or 0x0E or 0x1E or 0x19 => 2,
-
-            // Indexed indirect and indirect indexed have 1 byte (zp operand)
-            _ when (opcode & 0x1F) is 0x01 or 0x11 => 1,
-
-            // For group 01 instructions (LDA, STA, etc.)
-            _ when group == 0x01 => (opcode & 0x1C) switch
-            {
-                0x00 => 1, // (zp,X)
-                0x04 => 1, // zp
-                0x08 => 1, // #imm
-                0x0C => 2, // abs
-                0x10 => 1, // (zp),Y
-                0x14 => 1, // zp,X
-                0x18 => 2, // abs,Y
-                0x1C => 2, // abs,X
-                _ => 0,
-            },
-
-            // For group 10 instructions (ASL, ROL, etc.)
-            _ when group == 0x02 => (opcode & 0x1C) switch
-            {
-                0x00 => 1, // #imm (LDX only)
-                0x04 => 1, // zp
-                0x08 => 0, // accumulator/implied
-                0x0C => 2, // abs
-                0x14 => 1, // zp,X or zp,Y
-                0x1C => 2, // abs,X or abs,Y
-                _ => 0,
-            },
-
-            // For group 00 instructions (BIT, JMP, STY, etc.)
-            _ when group == 0x00 => (opcode & 0x1C) switch
-            {
-                0x00 => 1, // #imm
-                0x04 => 1, // zp
-                0x0C => 2, // abs
-                0x14 => 1, // zp,X
-                0x1C => 2, // abs,X
-                _ => 0,
-            },
-
-            // Default to 0 for unknown/implied
-            _ => 0,
-        };
-    }
+    private static byte GetOperandLength(byte opcode) => OperandLengths[opcode];
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private byte FetchByte()
