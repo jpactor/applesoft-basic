@@ -41,7 +41,7 @@ public class DebugConsoleModuleTests
         var context = container.Resolve<ICommandContext>();
 
         Assert.That(context, Is.Not.Null);
-        Assert.That(context, Is.InstanceOf<CommandContext>());
+        Assert.That(context, Is.InstanceOf<DebugContext>());
     }
 
     /// <summary>
@@ -56,8 +56,23 @@ public class DebugConsoleModuleTests
 
         var handlers = container.Resolve<IEnumerable<ICommandHandler>>().ToList();
 
-        Assert.That(handlers, Has.Count.EqualTo(4));
-        Assert.That(handlers.Select(h => h.Name), Is.EquivalentTo(new[] { "help", "exit", "version", "clear" }));
+        // 4 built-in + 11 debug commands = 15 total
+        Assert.That(handlers, Has.Count.EqualTo(15));
+        Assert.That(handlers.Select(h => h.Name), Does.Contain("help"));
+        Assert.That(handlers.Select(h => h.Name), Does.Contain("exit"));
+        Assert.That(handlers.Select(h => h.Name), Does.Contain("version"));
+        Assert.That(handlers.Select(h => h.Name), Does.Contain("clear"));
+        Assert.That(handlers.Select(h => h.Name), Does.Contain("regs"));
+        Assert.That(handlers.Select(h => h.Name), Does.Contain("step"));
+        Assert.That(handlers.Select(h => h.Name), Does.Contain("run"));
+        Assert.That(handlers.Select(h => h.Name), Does.Contain("stop"));
+        Assert.That(handlers.Select(h => h.Name), Does.Contain("reset"));
+        Assert.That(handlers.Select(h => h.Name), Does.Contain("pc"));
+        Assert.That(handlers.Select(h => h.Name), Does.Contain("mem"));
+        Assert.That(handlers.Select(h => h.Name), Does.Contain("poke"));
+        Assert.That(handlers.Select(h => h.Name), Does.Contain("load"));
+        Assert.That(handlers.Select(h => h.Name), Does.Contain("save"));
+        Assert.That(handlers.Select(h => h.Name), Does.Contain("dasm"));
     }
 
     /// <summary>
@@ -76,7 +91,9 @@ public class DebugConsoleModuleTests
         Assert.Multiple(() =>
         {
             Assert.That(repl, Is.Not.Null);
-            Assert.That(dispatcher.Commands, Has.Count.EqualTo(4));
+
+            // 4 built-in + 11 debug commands = 15 total
+            Assert.That(dispatcher.Commands, Has.Count.EqualTo(15));
         });
     }
 
@@ -111,7 +128,8 @@ public class DebugConsoleModuleTests
 
         var handlers = container.Resolve<IEnumerable<ICommandHandler>>().ToList();
 
-        Assert.That(handlers, Has.Count.EqualTo(5));
+        // 4 built-in + 11 debug + 1 custom = 16 total
+        Assert.That(handlers, Has.Count.EqualTo(16));
         Assert.That(handlers.Select(h => h.Name), Does.Contain("testcmd"));
     }
 

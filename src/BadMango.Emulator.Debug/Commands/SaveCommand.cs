@@ -1,0 +1,151 @@
+// <copyright file="SaveCommand.cs" company="Bad Mango Solutions">
+// Copyright (c) Bad Mango Solutions. All rights reserved.
+// </copyright>
+
+namespace BadMango.Emulator.Debug.Commands;
+
+using System.Globalization;
+
+/// <summary>
+/// Saves memory contents to a binary file.
+/// </summary>
+/// <remarks>
+/// <para>
+/// Reads memory from the specified address range and writes it to a file.
+/// Both the start address and length must be specified.
+/// </para>
+/// <para>
+/// If the file already exists, it will be overwritten unless the --no-overwrite
+/// flag is specified.
+/// </para>
+/// </remarks>
+public sealed class SaveCommand : CommandHandlerBase
+{
+    /// <summary>
+    /// Initializes a new instance of the <see cref="SaveCommand"/> class.
+    /// </summary>
+    public SaveCommand()
+        : base("save", "Save memory contents to binary file")
+    {
+    }
+
+    /// <inheritdoc/>
+    public override IReadOnlyList<string> Aliases { get; } = [];
+
+    /// <inheritdoc/>
+    public override string Usage => "save <filename> <address> <length> [--no-overwrite]";
+
+    /// <inheritdoc/>
+    public override CommandResult Execute(ICommandContext context, string[] args)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+
+        if (context is not IDebugContext debugContext)
+        {
+            return CommandResult.Error("Debug context required for this command.");
+        }
+
+        if (debugContext.Memory is null)
+        {
+            return CommandResult.Error("No memory attached. Use 'attach' command first.");
+        }
+
+        if (args.Length < 3)
+        {
+            return CommandResult.Error("Filename, address, and length required. Usage: save <filename> <address> <length>");
+        }
+
+        string filename = args[0];
+
+        if (!TryParseAddress(args[1], out uint startAddress))
+        {
+            return CommandResult.Error($"Invalid address: '{args[1]}'. Use hex format ($1234 or 0x1234) or decimal.");
+        }
+
+        if (!TryParseLength(args[2], out int length) || length < 1)
+        {
+            return CommandResult.Error($"Invalid length: '{args[2]}'. Expected a positive integer.");
+        }
+
+        bool noOverwrite = args.Any(arg =>
+            arg.Equals("--no-overwrite", StringComparison.OrdinalIgnoreCase) ||
+            arg.Equals("-n", StringComparison.OrdinalIgnoreCase));
+
+        // Validate address range
+        if (startAddress >= debugContext.Memory.Size)
+        {
+            return CommandResult.Error($"Address ${startAddress:X4} is out of range (memory size: ${debugContext.Memory.Size:X4}).");
+        }
+
+        if (startAddress + (uint)length > debugContext.Memory.Size)
+        {
+            length = (int)(debugContext.Memory.Size - startAddress);
+            debugContext.Output.WriteLine($"Warning: Length adjusted to {length} bytes to stay within memory bounds.");
+        }
+
+        // Check if file exists
+        if (File.Exists(filename) && noOverwrite)
+        {
+            return CommandResult.Error($"File already exists: '{filename}'. Remove --no-overwrite to overwrite.");
+        }
+
+        try
+        {
+            // Read data from memory
+            byte[] data = new byte[length];
+            for (int i = 0; i < length; i++)
+            {
+                data[i] = debugContext.Memory.Read(startAddress + (uint)i);
+            }
+
+            // Write to file
+            File.WriteAllBytes(filename, data);
+
+            debugContext.Output.WriteLine($"Saved {length} bytes from ${startAddress:X4}-${startAddress + (uint)length - 1:X4} to '{filename}'");
+
+            return CommandResult.Ok();
+        }
+        catch (IOException ex)
+        {
+            return CommandResult.Error($"Error writing file: {ex.Message}");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return CommandResult.Error($"Access denied: {ex.Message}");
+        }
+    }
+
+    private static bool TryParseAddress(string value, out uint result)
+    {
+        result = 0;
+
+        if (value.StartsWith("$", StringComparison.Ordinal))
+        {
+            return uint.TryParse(value[1..], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out result);
+        }
+
+        if (value.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+        {
+            return uint.TryParse(value[2..], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out result);
+        }
+
+        return uint.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out result);
+    }
+
+    private static bool TryParseLength(string value, out int result)
+    {
+        result = 0;
+
+        if (value.StartsWith("$", StringComparison.Ordinal))
+        {
+            return int.TryParse(value[1..], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out result);
+        }
+
+        if (value.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+        {
+            return int.TryParse(value[2..], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out result);
+        }
+
+        return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out result);
+    }
+}

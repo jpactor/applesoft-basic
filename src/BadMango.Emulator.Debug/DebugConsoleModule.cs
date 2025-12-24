@@ -43,12 +43,58 @@ public class DebugConsoleModule : Module
             .As<ICommandHandler>()
             .SingleInstance();
 
-        // Register the command context factory
+        // Register debug command handlers
+        builder.RegisterType<RegsCommand>()
+            .As<ICommandHandler>()
+            .SingleInstance();
+
+        builder.RegisterType<StepCommand>()
+            .As<ICommandHandler>()
+            .SingleInstance();
+
+        builder.RegisterType<RunCommand>()
+            .As<ICommandHandler>()
+            .SingleInstance();
+
+        builder.RegisterType<StopCommand>()
+            .As<ICommandHandler>()
+            .SingleInstance();
+
+        builder.RegisterType<ResetCommand>()
+            .As<ICommandHandler>()
+            .SingleInstance();
+
+        builder.RegisterType<PcCommand>()
+            .As<ICommandHandler>()
+            .SingleInstance();
+
+        builder.RegisterType<MemCommand>()
+            .As<ICommandHandler>()
+            .SingleInstance();
+
+        builder.RegisterType<PokeCommand>()
+            .As<ICommandHandler>()
+            .SingleInstance();
+
+        builder.RegisterType<LoadCommand>()
+            .As<ICommandHandler>()
+            .SingleInstance();
+
+        builder.RegisterType<SaveCommand>()
+            .As<ICommandHandler>()
+            .SingleInstance();
+
+        builder.RegisterType<DasmCommand>()
+            .As<ICommandHandler>()
+            .SingleInstance();
+
+        // Register the debug context factory (provides access to CPU, Memory, Disassembler)
         builder.Register(ctx =>
         {
             var dispatcher = ctx.Resolve<ICommandDispatcher>();
-            return CommandContext.CreateConsoleContext(dispatcher);
+            return DebugContext.CreateConsoleContext(dispatcher);
         })
+        .As<IDebugContext>()
         .As<ICommandContext>()
         .SingleInstance();
 

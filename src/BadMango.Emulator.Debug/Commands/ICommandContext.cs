@@ -28,4 +28,13 @@ public interface ICommandContext
     /// Gets the console error writer.
     /// </summary>
     TextWriter Error { get; }
+
+    /// <summary>
+    /// Gets the console input reader for interactive commands.
+    /// </summary>
+    /// <remarks>
+    /// This property may be null if the context does not support interactive input.
+    /// Commands should check for null before attempting to read input.
+    /// </remarks>
+    TextReader? Input { get; }
 }

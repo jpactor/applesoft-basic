@@ -18,7 +18,8 @@ public sealed class CommandContext : ICommandContext
     /// <param name="dispatcher">The command dispatcher.</param>
     /// <param name="output">The output writer.</param>
     /// <param name="error">The error writer.</param>
-    public CommandContext(ICommandDispatcher dispatcher, TextWriter output, TextWriter error)
+    /// <param name="input">The input reader for interactive commands.</param>
+    public CommandContext(ICommandDispatcher dispatcher, TextWriter output, TextWriter error, TextReader? input = null)
     {
         ArgumentNullException.ThrowIfNull(dispatcher);
         ArgumentNullException.ThrowIfNull(output);
@@ -27,6 +28,7 @@ public sealed class CommandContext : ICommandContext
         this.Dispatcher = dispatcher;
         this.Output = output;
         this.Error = error;
+        this.Input = input;
     }
 
     /// <inheritdoc/>
@@ -38,6 +40,9 @@ public sealed class CommandContext : ICommandContext
     /// <inheritdoc/>
     public TextWriter Error { get; }
 
+    /// <inheritdoc/>
+    public TextReader? Input { get; }
+
     /// <summary>
     /// Creates a command context using the standard console streams.
     /// </summary>
@@ -45,6 +50,6 @@ public sealed class CommandContext : ICommandContext
     /// <returns>A new <see cref="CommandContext"/> using console streams.</returns>
     public static CommandContext CreateConsoleContext(ICommandDispatcher dispatcher)
     {
-        return new CommandContext(dispatcher, Console.Out, Console.Error);
+        return new CommandContext(dispatcher, Console.Out, Console.Error, Console.In);
     }
 }
