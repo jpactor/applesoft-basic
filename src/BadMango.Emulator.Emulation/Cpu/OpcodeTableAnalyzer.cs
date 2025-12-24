@@ -82,20 +82,20 @@ public static class OpcodeTableAnalyzer
 
         // Find the captured AddressingMode delegate field
         var targetType = target.GetType();
-        foreach (var field in targetType.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+        var addressingModeFields = targetType
+            .GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            .Where(f => f.FieldType == typeof(AddressingMode<CpuState>));
+
+        foreach (var field in addressingModeFields)
         {
-            // Look for a field of type AddressingMode<CpuState>
-            if (field.FieldType == typeof(AddressingMode<CpuState>))
+            var addressingModeDelegate = field.GetValue(target) as AddressingMode<CpuState>;
+            if (addressingModeDelegate != null)
             {
-                var addressingModeDelegate = field.GetValue(target) as AddressingMode<CpuState>;
-                if (addressingModeDelegate != null)
+                // Get the method name and look up operand length
+                string methodName = addressingModeDelegate.Method.Name;
+                if (AddressingModeOperandLengths.TryGetValue(methodName, out byte length))
                 {
-                    // Get the method name and look up operand length
-                    string methodName = addressingModeDelegate.Method.Name;
-                    if (AddressingModeOperandLengths.TryGetValue(methodName, out byte length))
-                    {
-                        return length;
-                    }
+                    return length;
                 }
             }
         }
