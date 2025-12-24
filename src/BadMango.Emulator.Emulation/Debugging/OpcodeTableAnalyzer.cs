@@ -234,14 +234,11 @@ public static class OpcodeTableAnalyzer
             int endIndex = methodName.IndexOf('>', 1);
             if (endIndex > 1)
             {
-                // Use span to avoid allocating a new string
-                var instructionSpan = methodName.AsSpan(1, endIndex - 1);
-                foreach (var kvp in InstructionEnumMap)
+                // Extract instruction name and look it up directly
+                var instructionName = methodName.Substring(1, endIndex - 1);
+                if (InstructionEnumMap.TryGetValue(instructionName, out var instruction))
                 {
-                    if (instructionSpan.SequenceEqual(kvp.Key.AsSpan()))
-                    {
-                        return kvp.Value;
-                    }
+                    return instruction;
                 }
             }
         }
@@ -257,31 +254,30 @@ public static class OpcodeTableAnalyzer
     private static (CpuAddressingModes AddressingMode, byte OperandLength) GetAddressingModeFromTarget(object target)
     {
         var targetType = target.GetType();
-        var addressingModeFields = targetType
+        var addressingModeDelegate = targetType
             .GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-            .Where(f => f.FieldType == typeof(AddressingModeHandler<CpuState>));
+            .Where(f => f.FieldType == typeof(AddressingModeHandler<CpuState>))
+            .Select(f => f.GetValue(target) as AddressingModeHandler<CpuState>)
+            .FirstOrDefault(d => d is not null);
 
-        foreach (var field in addressingModeFields)
+        if (addressingModeDelegate is not null)
         {
-            if (field.GetValue(target) is AddressingModeHandler<CpuState> addressingModeDelegate)
+            string methodName = addressingModeDelegate.Method.Name;
+
+            var addressingMode = CpuAddressingModes.None;
+            byte operandLength = 0;
+
+            if (AddressingModeEnumMap.TryGetValue(methodName, out var mode))
             {
-                string methodName = addressingModeDelegate.Method.Name;
-
-                var addressingMode = CpuAddressingModes.None;
-                byte operandLength = 0;
-
-                if (AddressingModeEnumMap.TryGetValue(methodName, out var mode))
-                {
-                    addressingMode = mode;
-                }
-
-                if (AddressingModeOperandLengths.TryGetValue(methodName, out var length))
-                {
-                    operandLength = length;
-                }
-
-                return (addressingMode, operandLength);
+                addressingMode = mode;
             }
+
+            if (AddressingModeOperandLengths.TryGetValue(methodName, out var length))
+            {
+                operandLength = length;
+            }
+
+            return (addressingMode, operandLength);
         }
 
         return (CpuAddressingModes.None, 0);
