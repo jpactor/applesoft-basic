@@ -26,6 +26,8 @@ public sealed class ClearCommand : CommandHandlerBase
     /// <inheritdoc/>
     public override CommandResult Execute(ICommandContext context, string[] args)
     {
+        ArgumentNullException.ThrowIfNull(context);
+
         try
         {
             Console.Clear();

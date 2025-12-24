@@ -29,12 +29,10 @@ public sealed class CommandDispatcher : ICommandDispatcher
             throw new InvalidOperationException($"A command with name '{handler.Name}' is already registered.");
         }
 
-        foreach (var alias in handler.Aliases)
+        var conflictingAlias = handler.Aliases.FirstOrDefault(alias => this.commandMap.ContainsKey(alias));
+        if (conflictingAlias is not null)
         {
-            if (this.commandMap.ContainsKey(alias))
-            {
-                throw new InvalidOperationException($"A command with alias '{alias}' is already registered.");
-            }
+            throw new InvalidOperationException($"A command with alias '{conflictingAlias}' is already registered.");
         }
 
         this.handlers.Add(handler);

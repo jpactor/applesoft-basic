@@ -196,15 +196,20 @@ public class DebugReplTests
     {
         var repl = DebugRepl.CreateConsoleRepl();
 
-        // The REPL should have help, exit, version, and clear commands registered
-        // We can't directly access the dispatcher, but we can verify by testing ProcessLine
-        var dispatcher = new CommandDispatcher();
-        dispatcher.Register(new HelpCommand());
-        dispatcher.Register(new ExitCommand());
-        dispatcher.Register(new VersionCommand());
-        dispatcher.Register(new ClearCommand());
+        // The REPL should have help, exit, version, and clear commands registered.
+        // We verify this by executing the commands via ProcessLine and checking the results.
+        var helpResult = repl.ProcessLine("help");
+        var exitResult = repl.ProcessLine("exit");
+        var versionResult = repl.ProcessLine("version");
+        var clearResult = repl.ProcessLine("clear");
 
-        Assert.That(dispatcher.Commands, Has.Count.EqualTo(4));
+        Assert.Multiple(() =>
+        {
+            Assert.That(helpResult.Success, Is.True, "Help command should be registered and succeed.");
+            Assert.That(exitResult.Success, Is.True, "Exit command should be registered and succeed.");
+            Assert.That(versionResult.Success, Is.True, "Version command should be registered and succeed.");
+            Assert.That(clearResult.Success, Is.True, "Clear command should be registered and succeed.");
+        });
     }
 
     private static CommandContext CreateTestContext(ICommandDispatcher dispatcher, out StringWriter outputWriter, out StringWriter errorWriter)

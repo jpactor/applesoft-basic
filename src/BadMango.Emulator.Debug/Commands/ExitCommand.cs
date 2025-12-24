@@ -26,6 +26,8 @@ public sealed class ExitCommand : CommandHandlerBase
     /// <inheritdoc/>
     public override CommandResult Execute(ICommandContext context, string[] args)
     {
+        ArgumentNullException.ThrowIfNull(context);
+
         return CommandResult.Exit("Goodbye!");
     }
 }
