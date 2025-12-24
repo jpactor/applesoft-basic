@@ -127,22 +127,26 @@ public sealed class Disassembler
     /// </summary>
     /// <param name="address">The address of the instruction to disassemble.</param>
     /// <returns>A <see cref="DisassembledInstruction"/> representing the decoded instruction.</returns>
+    /// <remarks>
+    /// Uses <see cref="OperandBuffer"/> to avoid heap allocation for operand bytes.
+    /// </remarks>
     public DisassembledInstruction DisassembleInstruction(uint address)
     {
         byte opcode = memory.Read(address);
         var opcodeInfo = opcodeInfoTable[opcode];
 
-        // Read operand bytes based on the operand length
-        var operandBytes = new byte[opcodeInfo.OperandLength];
+        // Read operand bytes into the fixed-size buffer
+        OperandBuffer operandBuffer = default;
         for (int i = 0; i < opcodeInfo.OperandLength; i++)
         {
-            operandBytes[i] = memory.Read(address + 1 + (uint)i);
+            operandBuffer[i] = memory.Read(address + 1 + (uint)i);
         }
 
         return new DisassembledInstruction(
             address,
             opcode,
-            operandBytes,
+            operandBuffer,
+            opcodeInfo.OperandLength,
             opcodeInfo.Instruction,
             opcodeInfo.AddressingMode);
     }

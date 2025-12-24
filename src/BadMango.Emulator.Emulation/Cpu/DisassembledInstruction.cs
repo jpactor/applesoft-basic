@@ -4,6 +4,8 @@
 
 namespace BadMango.Emulator.Emulation.Cpu;
 
+using System.Text;
+
 using BadMango.Emulator.Core;
 
 /// <summary>
@@ -31,19 +33,22 @@ public sealed class DisassembledInstruction
     /// </summary>
     /// <param name="address">The address where the instruction starts.</param>
     /// <param name="opcode">The opcode byte.</param>
-    /// <param name="operandBytes">The operand bytes (may be empty).</param>
+    /// <param name="operandBytes">The operand bytes buffer.</param>
+    /// <param name="operandLength">The number of valid operand bytes (0-4).</param>
     /// <param name="instruction">The instruction mnemonic.</param>
     /// <param name="addressingMode">The addressing mode.</param>
     public DisassembledInstruction(
         uint address,
         byte opcode,
-        byte[] operandBytes,
+        OperandBuffer operandBytes,
+        byte operandLength,
         CpuInstructions instruction,
         CpuAddressingModes addressingMode)
     {
         Address = address;
         Opcode = opcode;
-        OperandBytes = operandBytes ?? [];
+        OperandBytes = operandBytes;
+        OperandLength = operandLength;
         Instruction = instruction;
         AddressingMode = addressingMode;
         Metadata = new Dictionary<string, object>();
@@ -60,9 +65,18 @@ public sealed class DisassembledInstruction
     public byte Opcode { get; }
 
     /// <summary>
-    /// Gets the operand bytes (may be empty for implied addressing).
+    /// Gets the operand bytes buffer.
     /// </summary>
-    public byte[] OperandBytes { get; }
+    /// <remarks>
+    /// Use <see cref="OperandLength"/> to determine how many bytes are valid.
+    /// The buffer is a fixed-size value type to avoid heap allocation.
+    /// </remarks>
+    public OperandBuffer OperandBytes { get; }
+
+    /// <summary>
+    /// Gets the number of valid operand bytes (0-4).
+    /// </summary>
+    public byte OperandLength { get; }
 
     /// <summary>
     /// Gets the instruction mnemonic.
@@ -96,7 +110,7 @@ public sealed class DisassembledInstruction
     /// <summary>
     /// Gets the total length of the instruction including opcode and operands.
     /// </summary>
-    public int TotalLength => 1 + OperandBytes.Length;
+    public int TotalLength => 1 + OperandLength;
 
     /// <summary>
     /// Gets all bytes of the instruction (opcode followed by operands).
@@ -106,7 +120,11 @@ public sealed class DisassembledInstruction
     {
         var bytes = new byte[TotalLength];
         bytes[0] = Opcode;
-        Array.Copy(OperandBytes, 0, bytes, 1, OperandBytes.Length);
+        for (int i = 0; i < OperandLength; i++)
+        {
+            bytes[i + 1] = OperandBytes[i];
+        }
+
         return bytes;
     }
 
@@ -153,8 +171,18 @@ public sealed class DisassembledInstruction
     /// <returns>A string like "A9 42" or "8D 00 02".</returns>
     public string FormatBytes()
     {
-        var allBytes = GetAllBytes();
-        return string.Join(" ", allBytes.Select(b => b.ToString("X2")));
+        // Pre-calculate exact capacity: 2 chars per byte + 1 space between bytes
+        int capacity = (TotalLength * 2) + (TotalLength - 1);
+        var sb = new StringBuilder(capacity);
+
+        sb.Append(Opcode.ToString("X2"));
+        for (int i = 0; i < OperandLength; i++)
+        {
+            sb.Append(' ');
+            sb.Append(OperandBytes[i].ToString("X2"));
+        }
+
+        return sb.ToString();
     }
 
     /// <summary>
@@ -163,7 +191,7 @@ public sealed class DisassembledInstruction
     /// <returns>The operand value, or 0 if no operands.</returns>
     private ushort GetOperandValue()
     {
-        return OperandBytes.Length switch
+        return OperandLength switch
         {
             0 => 0,
             1 => OperandBytes[0],
@@ -177,7 +205,7 @@ public sealed class DisassembledInstruction
     /// <returns>The branch target address in hex.</returns>
     private string FormatRelativeAddress()
     {
-        if (OperandBytes.Length == 0)
+        if (OperandLength == 0)
         {
             return "$????";
         }

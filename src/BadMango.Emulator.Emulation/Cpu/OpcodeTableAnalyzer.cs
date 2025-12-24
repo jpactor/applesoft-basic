@@ -75,15 +75,19 @@ public static class OpcodeTableAnalyzer
     /// </summary>
     /// <param name="opcodeTable">The opcode table to analyze.</param>
     /// <returns>An array of 256 bytes where each index is an opcode and the value is the operand length.</returns>
+    /// <remarks>
+    /// This method uses <see cref="BuildOpcodeInfoArray"/> internally to avoid duplicate reflection work.
+    /// </remarks>
     public static byte[] BuildOperandLengthTable(OpcodeTable opcodeTable)
     {
         ArgumentNullException.ThrowIfNull(opcodeTable);
 
+        var opcodeInfoArray = BuildOpcodeInfoArray(opcodeTable);
         var operandLengths = new byte[256];
 
         for (int i = 0; i < 256; i++)
         {
-            operandLengths[i] = GetOpcodeInfoFromHandler(opcodeTable.GetHandler((byte)i)).OperandLength;
+            operandLengths[i] = opcodeInfoArray[i].OperandLength;
         }
 
         return operandLengths;
@@ -231,15 +235,19 @@ public static class OpcodeTableAnalyzer
 
         // Extract the instruction name from the lambda naming pattern
         // Pattern: "<InstructionName>b__X" where X is a number
-        if (methodName.StartsWith("<", StringComparison.Ordinal))
+        if (methodName.Length > 2 && methodName[0] == '<')
         {
-            int endIndex = methodName.IndexOf(">", StringComparison.Ordinal);
+            int endIndex = methodName.IndexOf('>', 1);
             if (endIndex > 1)
             {
-                string instructionName = methodName.Substring(1, endIndex - 1);
-                if (InstructionEnumMap.TryGetValue(instructionName, out var instruction))
+                // Use span to avoid allocating a new string
+                var instructionSpan = methodName.AsSpan(1, endIndex - 1);
+                foreach (var kvp in InstructionEnumMap)
                 {
-                    return instruction;
+                    if (instructionSpan.SequenceEqual(kvp.Key.AsSpan()))
+                    {
+                        return kvp.Value;
+                    }
                 }
             }
         }

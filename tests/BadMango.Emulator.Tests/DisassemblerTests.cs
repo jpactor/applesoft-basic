@@ -234,10 +234,12 @@ public class DisassemblerTests
     public void DisassembledInstruction_ImmediateMode_FormatsCorrectly()
     {
         // Arrange
+        var operandBuffer = new OperandBuffer { [0] = 0x42 };
         var instruction = new DisassembledInstruction(
             0x1000,
             0xA9,
-            [0x42],
+            operandBuffer,
+            1,
             CpuInstructions.LDA,
             CpuAddressingModes.Immediate);
 
@@ -258,10 +260,12 @@ public class DisassemblerTests
     public void DisassembledInstruction_AbsoluteMode_FormatsCorrectly()
     {
         // Arrange
+        var operandBuffer = new OperandBuffer { [0] = 0x00, [1] = 0x02 };
         var instruction = new DisassembledInstruction(
             0x1002,
             0x8D,
-            [0x00, 0x02],
+            operandBuffer,
+            2,
             CpuInstructions.STA,
             CpuAddressingModes.Absolute);
 
@@ -285,7 +289,8 @@ public class DisassemblerTests
         var instruction = new DisassembledInstruction(
             0x1005,
             0xEA,
-            [],
+            default,
+            0,
             CpuInstructions.NOP,
             CpuAddressingModes.Implied);
 
@@ -306,10 +311,12 @@ public class DisassemblerTests
     public void DisassembledInstruction_RelativeMode_FormatsCorrectly()
     {
         // Arrange - Branch forward by 10 bytes from address 0x1000
+        var operandBuffer = new OperandBuffer { [0] = 0x0A };
         var instruction = new DisassembledInstruction(
             0x1000,
             0xF0,
-            [0x0A],
+            operandBuffer,
+            1,
             CpuInstructions.BEQ,
             CpuAddressingModes.Relative);
 
@@ -328,10 +335,12 @@ public class DisassemblerTests
     public void DisassembledInstruction_RelativeModeNegative_FormatsCorrectly()
     {
         // Arrange - Branch backward by 6 bytes from address 0x1010
+        var operandBuffer = new OperandBuffer { [0] = 0xFA }; // -6 as signed byte
         var instruction = new DisassembledInstruction(
             0x1010,
             0xD0,
-            [0xFA], // -6 as signed byte
+            operandBuffer,
+            1,
             CpuInstructions.BNE,
             CpuAddressingModes.Relative);
 
@@ -350,19 +359,23 @@ public class DisassemblerTests
     public void DisassembledInstruction_IndexedModes_FormatCorrectly()
     {
         // Test ZeroPage,X
-        var zpx = new DisassembledInstruction(0x1000, 0xB5, [0x50], CpuInstructions.LDA, CpuAddressingModes.ZeroPageX);
+        var zpxBuffer = new OperandBuffer { [0] = 0x50 };
+        var zpx = new DisassembledInstruction(0x1000, 0xB5, zpxBuffer, 1, CpuInstructions.LDA, CpuAddressingModes.ZeroPageX);
         Assert.That(zpx.FormatOperand(), Is.EqualTo("$50,X"));
 
         // Test Absolute,Y
-        var aby = new DisassembledInstruction(0x1000, 0xB9, [0x00, 0x20], CpuInstructions.LDA, CpuAddressingModes.AbsoluteY);
+        var abyBuffer = new OperandBuffer { [0] = 0x00, [1] = 0x20 };
+        var aby = new DisassembledInstruction(0x1000, 0xB9, abyBuffer, 2, CpuInstructions.LDA, CpuAddressingModes.AbsoluteY);
         Assert.That(aby.FormatOperand(), Is.EqualTo("$2000,Y"));
 
         // Test (Indirect,X)
-        var indx = new DisassembledInstruction(0x1000, 0xA1, [0x40], CpuInstructions.LDA, CpuAddressingModes.IndirectX);
+        var indxBuffer = new OperandBuffer { [0] = 0x40 };
+        var indx = new DisassembledInstruction(0x1000, 0xA1, indxBuffer, 1, CpuInstructions.LDA, CpuAddressingModes.IndirectX);
         Assert.That(indx.FormatOperand(), Is.EqualTo("($40,X)"));
 
         // Test (Indirect),Y
-        var indy = new DisassembledInstruction(0x1000, 0xB1, [0x40], CpuInstructions.LDA, CpuAddressingModes.IndirectY);
+        var indyBuffer = new OperandBuffer { [0] = 0x40 };
+        var indy = new DisassembledInstruction(0x1000, 0xB1, indyBuffer, 1, CpuInstructions.LDA, CpuAddressingModes.IndirectY);
         Assert.That(indy.FormatOperand(), Is.EqualTo("($40),Y"));
     }
 
@@ -373,10 +386,12 @@ public class DisassemblerTests
     public void DisassembledInstruction_GetAllBytes_ReturnsOpcodeAndOperands()
     {
         // Arrange
+        var operandBuffer = new OperandBuffer { [0] = 0x00, [1] = 0x02 };
         var instruction = new DisassembledInstruction(
             0x1000,
             0x8D,
-            [0x00, 0x02],
+            operandBuffer,
+            2,
             CpuInstructions.STA,
             CpuAddressingModes.Absolute);
 
@@ -394,10 +409,12 @@ public class DisassemblerTests
     public void DisassembledInstruction_Metadata_IsExtensible()
     {
         // Arrange
+        var operandBuffer = new OperandBuffer { [0] = 0x42 };
         var instruction = new DisassembledInstruction(
             0x1000,
             0xA9,
-            [0x42],
+            operandBuffer,
+            1,
             CpuInstructions.LDA,
             CpuAddressingModes.Immediate);
 
@@ -435,7 +452,8 @@ public class DisassemblerTests
         {
             Assert.That(instruction.Address, Is.EqualTo(0x1000u));
             Assert.That(instruction.Opcode, Is.EqualTo(0xA9));
-            Assert.That(instruction.OperandBytes, Is.EqualTo(new byte[] { 0x42 }));
+            Assert.That(instruction.OperandLength, Is.EqualTo(1));
+            Assert.That(instruction.OperandBytes[0], Is.EqualTo(0x42));
             Assert.That(instruction.Instruction, Is.EqualTo(CpuInstructions.LDA));
             Assert.That(instruction.AddressingMode, Is.EqualTo(CpuAddressingModes.Immediate));
         });
@@ -529,7 +547,7 @@ public class DisassemblerTests
         {
             Assert.That(instruction.Instruction, Is.EqualTo(CpuInstructions.CLC));
             Assert.That(instruction.AddressingMode, Is.EqualTo(CpuAddressingModes.Implied));
-            Assert.That(instruction.OperandBytes, Is.Empty);
+            Assert.That(instruction.OperandLength, Is.EqualTo(0));
             Assert.That(instruction.TotalLength, Is.EqualTo(1));
         });
     }
