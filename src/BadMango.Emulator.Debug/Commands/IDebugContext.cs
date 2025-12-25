@@ -1,0 +1,72 @@
+// <copyright file="IDebugContext.cs" company="Bad Mango Solutions">
+// Copyright (c) Bad Mango Solutions. All rights reserved.
+// </copyright>
+
+namespace BadMango.Emulator.Debug.Commands;
+
+using BadMango.Emulator.Core;
+using BadMango.Emulator.Core.Configuration;
+
+/// <summary>
+/// Provides extended context for debug command execution including access to emulator components.
+/// </summary>
+/// <remarks>
+/// The debug context extends <see cref="ICommandContext"/> to provide commands with
+/// access to the CPU, memory, and disassembler for debugging operations.
+/// </remarks>
+public interface IDebugContext : ICommandContext
+{
+    /// <summary>
+    /// Gets the CPU instance for the debug session.
+    /// </summary>
+    /// <remarks>
+    /// May be null if no CPU has been attached to the debug context.
+    /// Commands should check for null before accessing CPU operations.
+    /// </remarks>
+    ICpu? Cpu { get; }
+
+    /// <summary>
+    /// Gets the memory instance for the debug session.
+    /// </summary>
+    /// <remarks>
+    /// May be null if no memory has been attached to the debug context.
+    /// Commands should check for null before accessing memory operations.
+    /// </remarks>
+    IMemory? Memory { get; }
+
+    /// <summary>
+    /// Gets the disassembler instance for the debug session.
+    /// </summary>
+    /// <remarks>
+    /// May be null if no disassembler has been attached to the debug context.
+    /// Commands should check for null before accessing disassembly operations.
+    /// </remarks>
+    IDisassembler? Disassembler { get; }
+
+    /// <summary>
+    /// Gets the machine information for the current debug session.
+    /// </summary>
+    /// <remarks>
+    /// Provides display-friendly information about the attached machine configuration,
+    /// including CPU type, memory size, and display name. May be null if no system
+    /// has been attached to the debug context.
+    /// </remarks>
+    MachineInfo? MachineInfo { get; }
+
+    /// <summary>
+    /// Gets the tracing debug listener for the debug session.
+    /// </summary>
+    /// <remarks>
+    /// The tracing listener can be used to capture instruction execution traces
+    /// for debugging and analysis. May be null if no listener has been configured.
+    /// </remarks>
+    TracingDebugListener? TracingListener { get; }
+
+    /// <summary>
+    /// Gets a value indicating whether a system is attached to this debug context.
+    /// </summary>
+    /// <remarks>
+    /// Returns true if CPU, Memory, and Disassembler are all available.
+    /// </remarks>
+    bool IsSystemAttached { get; }
+}
