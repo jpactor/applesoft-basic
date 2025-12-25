@@ -19,7 +19,7 @@ public class DebugReplTests
         var dispatcher = new CommandDispatcher();
         var handler = new TestCommand("test", "Test command");
         dispatcher.Register(handler);
-        var context = CreateTestContext(dispatcher, out _, out _);
+        var context = CreateTestDebugContext(dispatcher, out _, out _);
         var repl = new DebugRepl(dispatcher, context, new StringReader(string.Empty));
 
         var result = repl.ProcessLine("test");
@@ -38,7 +38,7 @@ public class DebugReplTests
     public void ProcessLine_ReturnsErrorForUnknownCommand()
     {
         var dispatcher = new CommandDispatcher();
-        var context = CreateTestContext(dispatcher, out _, out var errorWriter);
+        var context = CreateTestDebugContext(dispatcher, out _, out var errorWriter);
         var repl = new DebugRepl(dispatcher, context, new StringReader(string.Empty));
 
         var result = repl.ProcessLine("unknown");
@@ -57,7 +57,7 @@ public class DebugReplTests
     public void ProcessLine_ReturnsSuccessForEmptyInput()
     {
         var dispatcher = new CommandDispatcher();
-        var context = CreateTestContext(dispatcher, out _, out _);
+        var context = CreateTestDebugContext(dispatcher, out _, out _);
         var repl = new DebugRepl(dispatcher, context, new StringReader(string.Empty));
 
         var result = repl.ProcessLine(string.Empty);
@@ -72,7 +72,7 @@ public class DebugReplTests
     public void ProcessLine_ReturnsSuccessForWhitespaceInput()
     {
         var dispatcher = new CommandDispatcher();
-        var context = CreateTestContext(dispatcher, out _, out _);
+        var context = CreateTestDebugContext(dispatcher, out _, out _);
         var repl = new DebugRepl(dispatcher, context, new StringReader(string.Empty));
 
         var result = repl.ProcessLine("   ");
@@ -89,7 +89,7 @@ public class DebugReplTests
         var dispatcher = new CommandDispatcher();
         var handler = new TestCommand("test", "Test command", resultMessage: "Success!");
         dispatcher.Register(handler);
-        var context = CreateTestContext(dispatcher, out var outputWriter, out _);
+        var context = CreateTestDebugContext(dispatcher, out var outputWriter, out _);
         var repl = new DebugRepl(dispatcher, context, new StringReader(string.Empty));
 
         repl.ProcessLine("test");
@@ -110,7 +110,7 @@ public class DebugReplTests
         dispatcher.Register(handler2);
         dispatcher.Register(new ExitCommand());
         var input = new StringReader("cmd1\ncmd2\nexit\n");
-        var context = CreateTestContext(dispatcher, out _, out _);
+        var context = CreateTestDebugContext(dispatcher, out _, out _);
         var repl = new DebugRepl(dispatcher, context, input) { ShowBanner = false };
 
         repl.Run();
@@ -132,7 +132,7 @@ public class DebugReplTests
         var handler = new TestCommand("cmd", "Command");
         dispatcher.Register(handler);
         var input = new StringReader("cmd\ncmd\n");
-        var context = CreateTestContext(dispatcher, out _, out _);
+        var context = CreateTestDebugContext(dispatcher, out _, out _);
         var repl = new DebugRepl(dispatcher, context, input) { ShowBanner = false };
 
         repl.Run();
@@ -148,7 +148,7 @@ public class DebugReplTests
     {
         var dispatcher = new CommandDispatcher();
         var input = new StringReader(string.Empty);
-        var context = CreateTestContext(dispatcher, out var outputWriter, out _);
+        var context = CreateTestDebugContext(dispatcher, out var outputWriter, out _);
         var repl = new DebugRepl(dispatcher, context, input) { ShowBanner = true };
 
         repl.Run();
@@ -164,7 +164,7 @@ public class DebugReplTests
     {
         var dispatcher = new CommandDispatcher();
         var input = new StringReader(string.Empty);
-        var context = CreateTestContext(dispatcher, out var outputWriter, out _);
+        var context = CreateTestDebugContext(dispatcher, out var outputWriter, out _);
         var repl = new DebugRepl(dispatcher, context, input) { ShowBanner = false };
 
         repl.Run();
@@ -180,7 +180,7 @@ public class DebugReplTests
     {
         var dispatcher = new CommandDispatcher();
         var input = new StringReader(string.Empty);
-        var context = CreateTestContext(dispatcher, out var outputWriter, out _);
+        var context = CreateTestDebugContext(dispatcher, out var outputWriter, out _);
         var repl = new DebugRepl(dispatcher, context, input, "dbg> ") { ShowBanner = false };
 
         repl.Run();
@@ -212,11 +212,27 @@ public class DebugReplTests
         });
     }
 
-    private static CommandContext CreateTestContext(ICommandDispatcher dispatcher, out StringWriter outputWriter, out StringWriter errorWriter)
+    /// <summary>
+    /// Verifies that Run displays machine information in banner.
+    /// </summary>
+    [Test]
+    public void Run_DisplaysMachineInfoInBanner()
+    {
+        var dispatcher = new CommandDispatcher();
+        var input = new StringReader(string.Empty);
+        var context = CreateTestDebugContext(dispatcher, out var outputWriter, out _);
+        var repl = new DebugRepl(dispatcher, context, input) { ShowBanner = true };
+
+        repl.Run();
+
+        Assert.That(outputWriter.ToString(), Does.Contain("Machine:"));
+    }
+
+    private static DebugContext CreateTestDebugContext(ICommandDispatcher dispatcher, out StringWriter outputWriter, out StringWriter errorWriter)
     {
         outputWriter = new StringWriter();
         errorWriter = new StringWriter();
-        return new CommandContext(dispatcher, outputWriter, errorWriter);
+        return new DebugContext(dispatcher, outputWriter, errorWriter);
     }
 
     private sealed class TestCommand : CommandHandlerBase

@@ -20,6 +20,7 @@ public sealed class DebugRepl
     private readonly ICommandContext context;
     private readonly TextReader input;
     private readonly string prompt;
+    private readonly IDebugContext debugContext;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="DebugRepl"/> class.
@@ -39,6 +40,7 @@ public sealed class DebugRepl
         this.context = context;
         this.input = input;
         this.prompt = prompt;
+        this.debugContext = context as IDebugContext ?? throw new ArgumentException("Context must implement IDebugContext.", nameof(context));
     }
 
     /// <summary>
@@ -60,7 +62,7 @@ public sealed class DebugRepl
         dispatcher.Register(new VersionCommand());
         dispatcher.Register(new ClearCommand());
 
-        var context = CommandContext.CreateConsoleContext(dispatcher);
+        var context = DebugContext.CreateConsoleContext(dispatcher);
 
         return new DebugRepl(dispatcher, context, Console.In);
     }
@@ -131,10 +133,13 @@ public sealed class DebugRepl
 
     private void DisplayBanner()
     {
-        this.context.Output.WriteLine("═══════════════════════════════════════════════════════════");
+        var machineDescription = this.debugContext.MachineInfo?.Summary ?? "No machine attached";
+
+        this.context.Output.WriteLine("═══════════════════════════════════════════════════════════════════════");
         this.context.Output.WriteLine("  Emulator Debug Console");
+        this.context.Output.WriteLine($"  Machine:  {machineDescription}");
         this.context.Output.WriteLine("  Type 'help' for a list of commands, 'exit' to quit");
-        this.context.Output.WriteLine("═══════════════════════════════════════════════════════════");
+        this.context.Output.WriteLine("═══════════════════════════════════════════════════════════════════════");
         this.context.Output.WriteLine();
     }
 }

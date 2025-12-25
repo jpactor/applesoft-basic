@@ -31,6 +31,9 @@
     <File Path="REPOSITORY_SETTINGS.md" />
     <File Path="SETUP_GUIDE.md" />
   </Folder>
+  <Folder Name="/profiles/">
+    <File Path="profiles/simple-65c02.json" />
+  </Folder>
   <Folder Name="/reference/">
     <File Path="reference/Emulator Evolution Plan.md" />
     <File Path="reference/WDC 65816 Emulator Implementation DotNet.md" />
@@ -45,6 +48,7 @@
     <File Path="samples/sleep.bas" />
     <File Path="samples/speaker.bas" />
   </Folder>
+  <Folder Name="/schemas/" />
   <Folder Name="/src/">
     <Project Path="src/BadMango.Basic.Console/BadMango.Basic.Console.csproj" />
     <Project Path="src/BadMango.Basic/BadMango.Basic.csproj" />

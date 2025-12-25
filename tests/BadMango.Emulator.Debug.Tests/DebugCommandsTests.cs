@@ -596,7 +596,7 @@ public class DebugCommandsTests
         // Set up input with some hex bytes and blank line to finish
         var inputText = "AA BB CC\n\n";
         using var inputReader = new StringReader(inputText);
-        var contextWithInput = new DebugContext(dispatcher, outputWriter, errorWriter, cpu, memory, disassembler, inputReader);
+        var contextWithInput = new DebugContext(dispatcher, outputWriter, errorWriter, cpu, memory, disassembler, machineInfo: null, input: inputReader);
 
         var command = new PokeCommand();
         var result = command.Execute(contextWithInput, ["$0500", "-i"]);
@@ -619,7 +619,7 @@ public class DebugCommandsTests
     {
         var inputText = "11 22\n33 44\n\n";
         using var inputReader = new StringReader(inputText);
-        var contextWithInput = new DebugContext(dispatcher, outputWriter, errorWriter, cpu, memory, disassembler, inputReader);
+        var contextWithInput = new DebugContext(dispatcher, outputWriter, errorWriter, cpu, memory, disassembler, machineInfo: null, input: inputReader);
 
         var command = new PokeCommand();
         var result = command.Execute(contextWithInput, ["$0600", "--interactive"]);
@@ -642,7 +642,7 @@ public class DebugCommandsTests
     {
         var inputText = "55\n\n";
         using var inputReader = new StringReader(inputText);
-        var contextWithInput = new DebugContext(dispatcher, outputWriter, errorWriter, cpu, memory, disassembler, inputReader);
+        var contextWithInput = new DebugContext(dispatcher, outputWriter, errorWriter, cpu, memory, disassembler, machineInfo: null, input: inputReader);
 
         var command = new PokeCommand();
         var result = command.Execute(contextWithInput, ["$0700", "-i"]);
@@ -683,7 +683,7 @@ public class DebugCommandsTests
         // Start at $0A00, then change to $0B00
         var inputText = "11 22\n$0B00: 33 44\n\n";
         using var inputReader = new StringReader(inputText);
-        var contextWithInput = new DebugContext(dispatcher, outputWriter, errorWriter, cpu, memory, disassembler, inputReader);
+        var contextWithInput = new DebugContext(dispatcher, outputWriter, errorWriter, cpu, memory, disassembler, machineInfo: null, input: inputReader);
 
         var command = new PokeCommand();
         var result = command.Execute(contextWithInput, ["$0A00", "-i"]);
@@ -708,7 +708,7 @@ public class DebugCommandsTests
         // Start at $0C00, change to $0D00, then write
         var inputText = "$0D00:\n55 66\n\n";
         using var inputReader = new StringReader(inputText);
-        var contextWithInput = new DebugContext(dispatcher, outputWriter, errorWriter, cpu, memory, disassembler, inputReader);
+        var contextWithInput = new DebugContext(dispatcher, outputWriter, errorWriter, cpu, memory, disassembler, machineInfo: null, input: inputReader);
 
         var command = new PokeCommand();
         var result = command.Execute(contextWithInput, ["$0C00", "-i"]);
@@ -729,7 +729,7 @@ public class DebugCommandsTests
     {
         var inputText = "0x0E00: 77 88\n\n";
         using var inputReader = new StringReader(inputText);
-        var contextWithInput = new DebugContext(dispatcher, outputWriter, errorWriter, cpu, memory, disassembler, inputReader);
+        var contextWithInput = new DebugContext(dispatcher, outputWriter, errorWriter, cpu, memory, disassembler, machineInfo: null, input: inputReader);
 
         var command = new PokeCommand();
         var result = command.Execute(contextWithInput, ["$0100", "-i"]);

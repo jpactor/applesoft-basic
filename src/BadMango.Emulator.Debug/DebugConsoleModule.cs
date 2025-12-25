@@ -8,6 +8,9 @@ using Autofac;
 
 using Commands;
 
+using Core;
+using Core.Configuration;
+
 /// <summary>
 /// Autofac module for registering debug console services.
 /// </summary>
@@ -88,11 +91,38 @@ public class DebugConsoleModule : Module
             .As<ICommandHandler>()
             .SingleInstance();
 
+        builder.RegisterType<MachineProfileLoader>()
+            .As<IMachineProfileLoader>()
+            .SingleInstance();
+
+        // Register the tracing debug listener
+        builder.RegisterType<TracingDebugListener>()
+            .AsSelf()
+            .SingleInstance();
+
+        // Register the default machine profile.
+        builder.Register(ctx =>
+        {
+            var loader = ctx.Resolve<IMachineProfileLoader>();
+            return loader.DefaultProfile;
+        });
+
         // Register the debug context factory (provides access to CPU, Memory, Disassembler)
         builder.Register(ctx =>
         {
             var dispatcher = ctx.Resolve<ICommandDispatcher>();
-            return DebugContext.CreateConsoleContext(dispatcher);
+            var profile = ctx.Resolve<MachineProfile>();
+            var tracingListener = ctx.Resolve<TracingDebugListener>();
+            var context = DebugContext.CreateConsoleContext(dispatcher);
+
+            (ICpu cpu, IMemory memory, IDisassembler disassembler, MachineInfo info) = MachineFactory.CreateSystem(profile);
+
+            // Attach the tracing listener to the CPU
+            cpu.AttachDebugger(tracingListener);
+
+            context.AttachSystem(cpu, memory, disassembler, info, tracingListener);
+
+            return context;
         })
         .As<IDebugContext>()
         .As<ICommandContext>()

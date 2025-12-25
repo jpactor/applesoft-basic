@@ -5,6 +5,7 @@
 namespace BadMango.Emulator.Debug.Commands;
 
 using BadMango.Emulator.Core;
+using BadMango.Emulator.Core.Configuration;
 
 /// <summary>
 /// Provides extended context for debug command execution including access to emulator components.
@@ -41,6 +42,25 @@ public interface IDebugContext : ICommandContext
     /// Commands should check for null before accessing disassembly operations.
     /// </remarks>
     IDisassembler? Disassembler { get; }
+
+    /// <summary>
+    /// Gets the machine information for the current debug session.
+    /// </summary>
+    /// <remarks>
+    /// Provides display-friendly information about the attached machine configuration,
+    /// including CPU type, memory size, and display name. May be null if no system
+    /// has been attached to the debug context.
+    /// </remarks>
+    MachineInfo? MachineInfo { get; }
+
+    /// <summary>
+    /// Gets the tracing debug listener for the debug session.
+    /// </summary>
+    /// <remarks>
+    /// The tracing listener can be used to capture instruction execution traces
+    /// for debugging and analysis. May be null if no listener has been configured.
+    /// </remarks>
+    TracingDebugListener? TracingListener { get; }
 
     /// <summary>
     /// Gets a value indicating whether a system is attached to this debug context.

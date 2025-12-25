@@ -5,6 +5,7 @@
 namespace BadMango.Emulator.Debug.Commands;
 
 using BadMango.Emulator.Core;
+using BadMango.Emulator.Core.Configuration;
 
 /// <summary>
 /// Implementation of <see cref="IDebugContext"/> providing access to emulator components.
@@ -44,6 +45,8 @@ public sealed class DebugContext : IDebugContext
     /// <param name="cpu">The CPU instance.</param>
     /// <param name="memory">The memory instance.</param>
     /// <param name="disassembler">The disassembler instance.</param>
+    /// <param name="machineInfo">The machine information.</param>
+    /// <param name="tracingListener">The tracing debug listener.</param>
     /// <param name="input">The input reader for interactive commands.</param>
     public DebugContext(
         ICommandDispatcher dispatcher,
@@ -52,12 +55,16 @@ public sealed class DebugContext : IDebugContext
         ICpu? cpu,
         IMemory? memory,
         IDisassembler? disassembler,
+        MachineInfo? machineInfo = null,
+        TracingDebugListener? tracingListener = null,
         TextReader? input = null)
         : this(dispatcher, output, error, input)
     {
         this.Cpu = cpu;
         this.Memory = memory;
         this.Disassembler = disassembler;
+        this.MachineInfo = machineInfo;
+        this.TracingListener = tracingListener;
     }
 
     /// <inheritdoc/>
@@ -80,6 +87,12 @@ public sealed class DebugContext : IDebugContext
 
     /// <inheritdoc/>
     public IDisassembler? Disassembler { get; private set; }
+
+    /// <inheritdoc/>
+    public MachineInfo? MachineInfo { get; private set; }
+
+    /// <inheritdoc/>
+    public TracingDebugListener? TracingListener { get; private set; }
 
     /// <inheritdoc/>
     public bool IsSystemAttached => this.Cpu is not null && this.Memory is not null && this.Disassembler is not null;
@@ -125,6 +138,26 @@ public sealed class DebugContext : IDebugContext
     }
 
     /// <summary>
+    /// Attaches machine information to this debug context.
+    /// </summary>
+    /// <param name="machineInfo">The machine information to attach.</param>
+    public void AttachMachineInfo(MachineInfo machineInfo)
+    {
+        ArgumentNullException.ThrowIfNull(machineInfo);
+        this.MachineInfo = machineInfo;
+    }
+
+    /// <summary>
+    /// Attaches a tracing debug listener to this debug context.
+    /// </summary>
+    /// <param name="tracingListener">The tracing listener to attach.</param>
+    public void AttachTracingListener(TracingDebugListener tracingListener)
+    {
+        ArgumentNullException.ThrowIfNull(tracingListener);
+        this.TracingListener = tracingListener;
+    }
+
+    /// <summary>
     /// Attaches all emulator components to this debug context.
     /// </summary>
     /// <param name="cpu">The CPU to attach.</param>
@@ -138,6 +171,33 @@ public sealed class DebugContext : IDebugContext
     }
 
     /// <summary>
+    /// Attaches all emulator components and machine information to this debug context.
+    /// </summary>
+    /// <param name="cpu">The CPU to attach.</param>
+    /// <param name="memory">The memory to attach.</param>
+    /// <param name="disassembler">The disassembler to attach.</param>
+    /// <param name="machineInfo">The machine information to attach.</param>
+    public void AttachSystem(ICpu cpu, IMemory memory, IDisassembler disassembler, MachineInfo machineInfo)
+    {
+        this.AttachSystem(cpu, memory, disassembler);
+        this.AttachMachineInfo(machineInfo);
+    }
+
+    /// <summary>
+    /// Attaches all emulator components, machine information, and tracing listener to this debug context.
+    /// </summary>
+    /// <param name="cpu">The CPU to attach.</param>
+    /// <param name="memory">The memory to attach.</param>
+    /// <param name="disassembler">The disassembler to attach.</param>
+    /// <param name="machineInfo">The machine information to attach.</param>
+    /// <param name="tracingListener">The tracing listener to attach.</param>
+    public void AttachSystem(ICpu cpu, IMemory memory, IDisassembler disassembler, MachineInfo machineInfo, TracingDebugListener tracingListener)
+    {
+        this.AttachSystem(cpu, memory, disassembler, machineInfo);
+        this.AttachTracingListener(tracingListener);
+    }
+
+    /// <summary>
     /// Detaches all emulator components from this debug context.
     /// </summary>
     public void DetachSystem()
@@ -145,5 +205,7 @@ public sealed class DebugContext : IDebugContext
         this.Cpu = null;
         this.Memory = null;
         this.Disassembler = null;
+        this.MachineInfo = null;
+        this.TracingListener = null;
     }
 }

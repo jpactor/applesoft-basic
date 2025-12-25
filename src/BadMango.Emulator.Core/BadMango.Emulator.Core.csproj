@@ -38,6 +38,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="..\..\profiles\*.json" LinkBase="profiles">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="BadMango.Emulator.Tests" />
     <InternalsVisibleTo Include="BadMango.Emulator.Emulation" />
   </ItemGroup>
