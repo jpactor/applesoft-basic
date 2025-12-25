@@ -4,6 +4,5 @@
 
 #pragma warning disable SA1200 // Using directives should be placed correctly
 
-global using BadMango.Emulator.Debug;
 global using BadMango.Emulator.Debug.Infrastructure;
 global using BadMango.Emulator.Debug.Infrastructure.Commands;
