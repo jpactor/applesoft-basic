@@ -58,12 +58,9 @@ public sealed class LoadCommand : CommandHandlerBase
         string filename = args[0];
 
         uint startAddress = 0;
-        if (args.Length > 1)
+        if (args.Length > 1 && !TryParseAddress(args[1], out startAddress))
         {
-            if (!TryParseAddress(args[1], out startAddress))
-            {
-                return CommandResult.Error($"Invalid address: '{args[1]}'. Use hex format ($1234 or 0x1234) or decimal.");
-            }
+            return CommandResult.Error($"Invalid address: '{args[1]}'. Use hex format ($1234 or 0x1234) or decimal.");
         }
 
         // Check if file exists

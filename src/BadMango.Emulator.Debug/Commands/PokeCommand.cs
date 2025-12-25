@@ -344,14 +344,6 @@ public sealed class PokeCommand : CommandHandlerBase
 
     private static bool IsValidHexString(string value)
     {
-        foreach (char c in value)
-        {
-            if (!char.IsAsciiHexDigit(c))
-            {
-                return false;
-            }
-        }
-
-        return true;
+        return value.All(char.IsAsciiHexDigit);
     }
 }

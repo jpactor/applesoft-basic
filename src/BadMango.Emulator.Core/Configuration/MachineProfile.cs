@@ -50,8 +50,6 @@ public sealed class MachineProfile
     [JsonPropertyName("memory")]
     public required MemoryProfileSection Memory { get; set; }
 
-    // TODO: Potential future expansion points (commented for now):
-    // TODO: public RomProfileSection[]? Roms { get; set; }
-    // TODO: public IoProfileSection?  Io { get; set; }
-    // TODO: public DisplayProfileSection? Display { get; set; }
+    // Additional hardware profile sections (for example, ROM, I/O, or display configuration)
+    // can be introduced here in future versions of the emulator.
 }

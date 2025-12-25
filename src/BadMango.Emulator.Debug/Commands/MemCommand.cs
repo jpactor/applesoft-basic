@@ -62,12 +62,9 @@ public sealed class MemCommand : CommandHandlerBase
         }
 
         int byteCount = DefaultByteCount;
-        if (args.Length > 1)
+        if (args.Length > 1 && !TryParseLength(args[1], out byteCount))
         {
-            if (!TryParseLength(args[1], out byteCount))
-            {
-                return CommandResult.Error($"Invalid length: '{args[1]}'. Expected a positive integer.");
-            }
+            return CommandResult.Error($"Invalid length: '{args[1]}'. Expected a positive integer.");
         }
 
         // Clamp byte count to valid range
