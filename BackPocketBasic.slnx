@@ -54,6 +54,11 @@
     <File Path="specs/Architecture Spec v1.0 Part 1.md" />
     <File Path="specs/Architecture Spec v1.0 Part 2.md" />
     <File Path="specs/Architecture Spec v1.0 Part 3.md" />
+    <File Path="specs/Debugger Infrastructure Migration.md" />
+    <File Path="specs/Emulator UI Specification.md" />
+    <File Path="specs/Implementation Roadmap - Bus Architecture.md" />
+    <File Path="specs/Keyboard Mapping Specification.md" />
+    <File Path="specs/Unified Development Schedule.md" />
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/BadMango.Basic.Console/BadMango.Basic.Console.csproj" />
