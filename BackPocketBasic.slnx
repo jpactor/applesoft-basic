@@ -49,6 +49,9 @@
     <File Path="samples/speaker.bas" />
   </Folder>
   <Folder Name="/schemas/" />
+  <Folder Name="/specs/">
+    <File Path="specs/Authoritative Emulator Architecture Specification v1.0.md" />
+  </Folder>
   <Folder Name="/src/">
     <Project Path="src/BadMango.Basic.Console/BadMango.Basic.Console.csproj" />
     <Project Path="src/BadMango.Basic/BadMango.Basic.csproj" />
