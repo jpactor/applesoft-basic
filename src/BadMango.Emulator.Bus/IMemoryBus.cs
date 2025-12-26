@@ -62,6 +62,16 @@ public interface IMemoryBus
     /// </summary>
     /// <param name="access">The access context describing the operation.</param>
     /// <returns>The byte value at the specified address.</returns>
+    /// <remarks>
+    /// <para>
+    /// <b>Hot-path method:</b> This method assumes the caller has already validated
+    /// the access via <see cref="TryRead8"/> or knows the page is mapped. Calling this
+    /// method on an unmapped page will result in undefined behavior.
+    /// </para>
+    /// <para>
+    /// For safe access with fault detection, use <see cref="TryRead8"/> instead.
+    /// </para>
+    /// </remarks>
     byte Read8(in BusAccess access);
 
     /// <summary>
@@ -69,6 +79,16 @@ public interface IMemoryBus
     /// </summary>
     /// <param name="access">The access context describing the operation.</param>
     /// <param name="value">The byte value to write.</param>
+    /// <remarks>
+    /// <para>
+    /// <b>Hot-path method:</b> This method assumes the caller has already validated
+    /// the access via <see cref="TryWrite8"/> or knows the page is mapped and writable.
+    /// Calling this method on an unmapped or read-only page will result in undefined behavior.
+    /// </para>
+    /// <para>
+    /// For safe access with fault detection, use <see cref="TryWrite8"/> instead.
+    /// </para>
+    /// </remarks>
     void Write8(in BusAccess access, byte value);
 
     /// <summary>
@@ -78,6 +98,11 @@ public interface IMemoryBus
     /// <returns>The 16-bit value at the specified address (little-endian).</returns>
     /// <remarks>
     /// <para>
+    /// <b>Hot-path method:</b> This method assumes the caller has already validated
+    /// the access via <see cref="TryRead16"/> or knows all affected pages are mapped.
+    /// Calling this method on unmapped pages will result in undefined behavior.
+    /// </para>
+    /// <para>
     /// The bus determines whether to use atomic or decomposed access based on:
     /// </para>
     /// <list type="bullet">
@@ -86,6 +111,9 @@ public interface IMemoryBus
     /// <item><description>The target's <see cref="TargetCaps.SupportsWide"/> capability</description></item>
     /// <item><description>The <see cref="AccessFlags.Atomic"/> flag and CPU mode defaults</description></item>
     /// </list>
+    /// <para>
+    /// For safe access with fault detection, use <see cref="TryRead16"/> instead.
+    /// </para>
     /// </remarks>
     Word Read16(in BusAccess access);
 
@@ -96,6 +124,11 @@ public interface IMemoryBus
     /// <param name="value">The 16-bit value to write (little-endian).</param>
     /// <remarks>
     /// <para>
+    /// <b>Hot-path method:</b> This method assumes the caller has already validated
+    /// the access via <see cref="TryWrite16"/> or knows all affected pages are mapped and writable.
+    /// Calling this method on unmapped or read-only pages will result in undefined behavior.
+    /// </para>
+    /// <para>
     /// The bus determines whether to use atomic or decomposed access based on:
     /// </para>
     /// <list type="bullet">
@@ -104,6 +137,9 @@ public interface IMemoryBus
     /// <item><description>The target's <see cref="TargetCaps.SupportsWide"/> capability</description></item>
     /// <item><description>The <see cref="AccessFlags.Atomic"/> flag and CPU mode defaults</description></item>
     /// </list>
+    /// <para>
+    /// For safe access with fault detection, use <see cref="TryWrite16"/> instead.
+    /// </para>
     /// </remarks>
     void Write16(in BusAccess access, Word value);
 
@@ -114,6 +150,11 @@ public interface IMemoryBus
     /// <returns>The 32-bit value at the specified address (little-endian).</returns>
     /// <remarks>
     /// <para>
+    /// <b>Hot-path method:</b> This method assumes the caller has already validated
+    /// the access via <see cref="TryRead32"/> or knows all affected pages are mapped.
+    /// Calling this method on unmapped pages will result in undefined behavior.
+    /// </para>
+    /// <para>
     /// The bus determines whether to use atomic or decomposed access based on:
     /// </para>
     /// <list type="bullet">
@@ -122,6 +163,9 @@ public interface IMemoryBus
     /// <item><description>The target's <see cref="TargetCaps.SupportsWide"/> capability</description></item>
     /// <item><description>The <see cref="AccessFlags.Atomic"/> flag and CPU mode defaults</description></item>
     /// </list>
+    /// <para>
+    /// For safe access with fault detection, use <see cref="TryRead32"/> instead.
+    /// </para>
     /// </remarks>
     DWord Read32(in BusAccess access);
 
@@ -132,6 +176,11 @@ public interface IMemoryBus
     /// <param name="value">The 32-bit value to write (little-endian).</param>
     /// <remarks>
     /// <para>
+    /// <b>Hot-path method:</b> This method assumes the caller has already validated
+    /// the access via <see cref="TryWrite32"/> or knows all affected pages are mapped and writable.
+    /// Calling this method on unmapped or read-only pages will result in undefined behavior.
+    /// </para>
+    /// <para>
     /// The bus determines whether to use atomic or decomposed access based on:
     /// </para>
     /// <list type="bullet">
@@ -140,6 +189,9 @@ public interface IMemoryBus
     /// <item><description>The target's <see cref="TargetCaps.SupportsWide"/> capability</description></item>
     /// <item><description>The <see cref="AccessFlags.Atomic"/> flag and CPU mode defaults</description></item>
     /// </list>
+    /// <para>
+    /// For safe access with fault detection, use <see cref="TryWrite32"/> instead.
+    /// </para>
     /// </remarks>
     void Write32(in BusAccess access, DWord value);
 
