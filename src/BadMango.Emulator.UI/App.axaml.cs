@@ -35,7 +35,11 @@ public partial class App : Application
     public override void OnFrameworkInitializationCompleted()
     {
         // Remove Avalonia's data validation to avoid duplicate validations with CommunityToolkit.Mvvm
-        BindingPlugins.DataValidators.RemoveAt(0);
+        // Check if validators exist before removing (supports headless testing scenarios)
+        if (BindingPlugins.DataValidators.Count > 0)
+        {
+            BindingPlugins.DataValidators.RemoveAt(0);
+        }
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
