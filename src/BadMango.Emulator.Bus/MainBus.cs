@@ -802,6 +802,23 @@ public sealed class MainBus : IMemoryBus
         }
     }
 
+    /// <inheritdoc />
+    public void Clear()
+    {
+        // Collect unique targets to avoid clearing the same target multiple times
+        // (e.g., when multiple pages map to the same RAM target)
+        var clearedTargets = new HashSet<IBusTarget>(ReferenceEqualityComparer.Instance);
+
+        for (int i = 0; i < pageTable.Length; i++)
+        {
+            var target = pageTable[i].Target;
+            if (target is not null && clearedTargets.Add(target))
+            {
+                target.Clear();
+            }
+        }
+    }
+
     /// <summary>
     /// Checks if an access of the given width crosses a page boundary.
     /// </summary>

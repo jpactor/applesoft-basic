@@ -150,16 +150,20 @@ public sealed class MemoryBusAdapter : IMemory
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// <para>
+    /// Clears all mapped memory by delegating to each target's own <see cref="IBusTarget.Clear"/>
+    /// method via the bus. Each target type is responsible for its own clearing behavior,
+    /// allowing for efficient implementations (e.g., <c>Array.Clear</c> for RAM targets).
+    /// </para>
+    /// <para>
+    /// This operation should NEVER cause side effects. Read-only targets (ROM) will not
+    /// be affected. This method is primarily intended for testing scenarios.
+    /// </para>
+    /// </remarks>
     public void Clear()
     {
-        // Clear is not directly supported by the bus interface.
-        // This method iterates through all addresses and writes zeros.
-        // This is intentionally slow as Clear is typically only used during testing.
-        for (Addr addr = 0; addr < Size; addr++)
-        {
-            var access = CreateAccess(addr, 8, AccessIntent.DataWrite, AccessFlags.NoSideEffects);
-            _ = bus.TryWrite8(access, 0);
-        }
+        bus.Clear();
     }
 
     /// <inheritdoc />

@@ -365,4 +365,21 @@ public interface IMemoryBus
     /// </para>
     /// </remarks>
     void RemapPageRange(int startPage, int pageCount, IBusTarget newTarget, Addr newPhysBase);
+
+    /// <summary>
+    /// Clears all mapped memory targets.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This method iterates through all unique targets mapped in the page table
+    /// and calls their <see cref="IBusTarget.Clear"/> method. Each target is
+    /// responsible for its own clearing behavior, allowing efficient implementations
+    /// (e.g., <c>Array.Clear</c> for RAM).
+    /// </para>
+    /// <para>
+    /// This operation is intended for testing scenarios and system reset. It should
+    /// NEVER cause side effects. Read-only targets (ROM) will not be affected.
+    /// </para>
+    /// </remarks>
+    void Clear();
 }

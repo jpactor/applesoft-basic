@@ -302,6 +302,76 @@ public class MemoryBusAdapterTests
     }
 
     /// <summary>
+    /// Verifies Clear sets all memory to zero.
+    /// </summary>
+    [Test]
+    public void Clear_SetsAllMemoryToZero()
+    {
+        var bus = CreateBusWithRam(out var memory);
+
+        // Write some non-zero values
+        memory.AsSpan()[0x100] = 0xAA;
+        memory.AsSpan()[0x200] = 0xBB;
+        memory.AsSpan()[0x300] = 0xCC;
+
+        var adapter = new MemoryBusAdapter(bus);
+
+        // Verify values are set
+        Assert.That(adapter.Read(0x100), Is.EqualTo(0xAA), "Before clear");
+        Assert.That(adapter.Read(0x200), Is.EqualTo(0xBB), "Before clear");
+        Assert.That(adapter.Read(0x300), Is.EqualTo(0xCC), "Before clear");
+
+        adapter.Clear();
+
+        // Verify all values are now zero
+        Assert.Multiple(() =>
+        {
+            Assert.That(adapter.Read(0x100), Is.EqualTo(0x00), "After clear");
+            Assert.That(adapter.Read(0x200), Is.EqualTo(0x00), "After clear");
+            Assert.That(adapter.Read(0x300), Is.EqualTo(0x00), "After clear");
+        });
+    }
+
+    /// <summary>
+    /// Verifies Clear does not affect ROM targets.
+    /// </summary>
+    [Test]
+    public void Clear_DoesNotAffectRomTargets()
+    {
+        var bus = new MainBus(addressSpaceBits: 16);
+        var ramMemory = new PhysicalMemory(32768, "TestRAM");
+        var romMemory = new PhysicalMemory(32768, "TestROM");
+
+        // Fill ROM with non-zero values
+        romMemory.Fill(0xFF);
+
+        var ramTarget = new RamTarget(ramMemory.Slice(0, 32768));
+        var romTarget = new RomTarget(romMemory.ReadOnlySlice(0, 32768));
+
+        // Map RAM at pages 0-7 (0x0000-0x7FFF) and ROM at pages 8-15 (0x8000-0xFFFF)
+        bus.MapPageRange(0, 8, 1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsWide, ramTarget, 0);
+        bus.MapPageRange(8, 8, 2, RegionTag.Rom, PagePerms.Read, TargetCaps.SupportsPeek, romTarget, 0);
+
+        // Write non-zero value to RAM
+        ramMemory.AsSpan()[0x100] = 0xAA;
+
+        var adapter = new MemoryBusAdapter(bus);
+
+        // Verify values before clear
+        Assert.That(adapter.Read(0x0100), Is.EqualTo(0xAA), "RAM before clear");
+        Assert.That(adapter.Read(0x8000), Is.EqualTo(0xFF), "ROM before clear");
+
+        adapter.Clear();
+
+        // RAM should be cleared, ROM should be unchanged
+        Assert.Multiple(() =>
+        {
+            Assert.That(adapter.Read(0x0100), Is.EqualTo(0x00), "RAM after clear");
+            Assert.That(adapter.Read(0x8000), Is.EqualTo(0xFF), "ROM after clear");
+        });
+    }
+
+    /// <summary>
     /// Helper method to create a bus with full RAM mapping.
     /// </summary>
     private static MainBus CreateBusWithRam(out PhysicalMemory memory)

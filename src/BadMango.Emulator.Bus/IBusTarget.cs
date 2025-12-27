@@ -115,4 +115,28 @@ public interface IBusTarget
         Write8(physicalAddress + 2, (byte)(value >> 16), access.WithAddressOffset(2));
         Write8(physicalAddress + 3, (byte)(value >> 24), access.WithAddressOffset(3));
     }
+
+    /// <summary>
+    /// Clears all data in this target to zero.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This method is used for bulk memory clearing without causing side effects.
+    /// Each target type is responsible for its own clearing behavior, allowing
+    /// for efficient implementations (e.g., <c>Array.Clear</c> for RAM).
+    /// </para>
+    /// <para>
+    /// The default implementation does nothing. Read-only targets like ROM
+    /// should not override this method. RAM targets should override to clear
+    /// their underlying storage efficiently.
+    /// </para>
+    /// <para>
+    /// This operation should NEVER cause side effects (no I/O triggers, no
+    /// timing-sensitive behavior).
+    /// </para>
+    /// </remarks>
+    void Clear()
+    {
+        // Default: no-op. ROM and other read-only targets don't need clearing.
+    }
 }

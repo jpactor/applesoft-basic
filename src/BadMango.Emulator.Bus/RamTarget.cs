@@ -129,4 +129,16 @@ public sealed class RamTarget : IBusTarget
         span[index + 2] = (byte)(value >> 16);
         span[index + 3] = (byte)(value >> 24);
     }
+
+    /// <summary>
+    /// Clears all RAM to zero.
+    /// </summary>
+    /// <remarks>
+    /// This method efficiently clears the underlying memory using <see cref="Span{T}.Clear"/>,
+    /// which is significantly faster than writing byte-by-byte through the bus.
+    /// </remarks>
+    public void Clear()
+    {
+        memory.Span.Clear();
+    }
 }
