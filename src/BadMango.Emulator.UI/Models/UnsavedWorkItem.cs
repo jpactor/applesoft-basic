@@ -9,15 +9,40 @@ namespace BadMango.Emulator.UI.Models;
 /// </summary>
 public record UnsavedWorkItem
 {
+    private readonly string name = string.Empty;
+    private readonly string description = string.Empty;
+
     /// <summary>
     /// Gets the display name of the unsaved item.
     /// </summary>
-    public required string Name { get; init; }
+    /// <remarks>
+    /// This value is required and must not be empty or consist only of whitespace characters.
+    /// </remarks>
+    public required string Name
+    {
+        get => name;
+        init
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(value, nameof(Name));
+            name = value;
+        }
+    }
 
     /// <summary>
     /// Gets a description of the unsaved changes.
     /// </summary>
-    public required string Description { get; init; }
+    /// <remarks>
+    /// This value is required and must not be empty or consist only of whitespace characters.
+    /// </remarks>
+    public required string Description
+    {
+        get => description;
+        init
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(value, nameof(Description));
+            description = value;
+        }
+    }
 
     /// <summary>
     /// Gets the component type containing the unsaved work.

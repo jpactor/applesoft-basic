@@ -13,10 +13,6 @@
         MinHeight="300"
         WindowStartupLocation="CenterScreen">
 
-    <Design.DataContext>
-        <vm:PopOutWindowViewModel />
-    </Design.DataContext>
-
     <DockPanel>
         <!-- Toolbar -->
         <Border DockPanel.Dock="Top"

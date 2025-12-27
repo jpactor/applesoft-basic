@@ -118,6 +118,14 @@ public partial class PopOutWindow : Window, IPopOutWindow
     /// <inheritdoc />
     protected override void OnClosed(EventArgs e)
     {
+        // Unregister event handlers to prevent memory leaks
+        KeyDown -= OnKeyDown;
+
+        if (DataContext is PopOutWindowViewModel viewModel)
+        {
+            viewModel.DockRequested -= OnDockRequested;
+        }
+
         base.OnClosed(e);
         closingTaskSource.TrySetResult(dockOnClose);
     }
