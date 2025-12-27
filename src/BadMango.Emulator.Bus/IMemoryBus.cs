@@ -62,6 +62,16 @@ public interface IMemoryBus
     /// </summary>
     /// <param name="access">The access context describing the operation.</param>
     /// <returns>The byte value at the specified address.</returns>
+    /// <remarks>
+    /// <para>
+    /// <b>Hot-path method:</b> This method assumes the caller has already validated
+    /// the access via <see cref="TryRead8"/> or knows the page is mapped. Calling this
+    /// method on an unmapped page will result in undefined behavior.
+    /// </para>
+    /// <para>
+    /// For safe access with fault detection, use <see cref="TryRead8"/> instead.
+    /// </para>
+    /// </remarks>
     byte Read8(in BusAccess access);
 
     /// <summary>
@@ -69,6 +79,16 @@ public interface IMemoryBus
     /// </summary>
     /// <param name="access">The access context describing the operation.</param>
     /// <param name="value">The byte value to write.</param>
+    /// <remarks>
+    /// <para>
+    /// <b>Hot-path method:</b> This method assumes the caller has already validated
+    /// the access via <see cref="TryWrite8"/> or knows the page is mapped and writable.
+    /// Calling this method on an unmapped or read-only page will result in undefined behavior.
+    /// </para>
+    /// <para>
+    /// For safe access with fault detection, use <see cref="TryWrite8"/> instead.
+    /// </para>
+    /// </remarks>
     void Write8(in BusAccess access, byte value);
 
     /// <summary>
@@ -78,6 +98,11 @@ public interface IMemoryBus
     /// <returns>The 16-bit value at the specified address (little-endian).</returns>
     /// <remarks>
     /// <para>
+    /// <b>Hot-path method:</b> This method assumes the caller has already validated
+    /// the access via <see cref="TryRead16"/> or knows all affected pages are mapped.
+    /// Calling this method on unmapped pages will result in undefined behavior.
+    /// </para>
+    /// <para>
     /// The bus determines whether to use atomic or decomposed access based on:
     /// </para>
     /// <list type="bullet">
@@ -86,6 +111,9 @@ public interface IMemoryBus
     /// <item><description>The target's <see cref="TargetCaps.SupportsWide"/> capability</description></item>
     /// <item><description>The <see cref="AccessFlags.Atomic"/> flag and CPU mode defaults</description></item>
     /// </list>
+    /// <para>
+    /// For safe access with fault detection, use <see cref="TryRead16"/> instead.
+    /// </para>
     /// </remarks>
     Word Read16(in BusAccess access);
 
@@ -96,6 +124,11 @@ public interface IMemoryBus
     /// <param name="value">The 16-bit value to write (little-endian).</param>
     /// <remarks>
     /// <para>
+    /// <b>Hot-path method:</b> This method assumes the caller has already validated
+    /// the access via <see cref="TryWrite16"/> or knows all affected pages are mapped and writable.
+    /// Calling this method on unmapped or read-only pages will result in undefined behavior.
+    /// </para>
+    /// <para>
     /// The bus determines whether to use atomic or decomposed access based on:
     /// </para>
     /// <list type="bullet">
@@ -104,6 +137,9 @@ public interface IMemoryBus
     /// <item><description>The target's <see cref="TargetCaps.SupportsWide"/> capability</description></item>
     /// <item><description>The <see cref="AccessFlags.Atomic"/> flag and CPU mode defaults</description></item>
     /// </list>
+    /// <para>
+    /// For safe access with fault detection, use <see cref="TryWrite16"/> instead.
+    /// </para>
     /// </remarks>
     void Write16(in BusAccess access, Word value);
 
@@ -114,6 +150,11 @@ public interface IMemoryBus
     /// <returns>The 32-bit value at the specified address (little-endian).</returns>
     /// <remarks>
     /// <para>
+    /// <b>Hot-path method:</b> This method assumes the caller has already validated
+    /// the access via <see cref="TryRead32"/> or knows all affected pages are mapped.
+    /// Calling this method on unmapped pages will result in undefined behavior.
+    /// </para>
+    /// <para>
     /// The bus determines whether to use atomic or decomposed access based on:
     /// </para>
     /// <list type="bullet">
@@ -122,6 +163,9 @@ public interface IMemoryBus
     /// <item><description>The target's <see cref="TargetCaps.SupportsWide"/> capability</description></item>
     /// <item><description>The <see cref="AccessFlags.Atomic"/> flag and CPU mode defaults</description></item>
     /// </list>
+    /// <para>
+    /// For safe access with fault detection, use <see cref="TryRead32"/> instead.
+    /// </para>
     /// </remarks>
     DWord Read32(in BusAccess access);
 
@@ -132,6 +176,11 @@ public interface IMemoryBus
     /// <param name="value">The 32-bit value to write (little-endian).</param>
     /// <remarks>
     /// <para>
+    /// <b>Hot-path method:</b> This method assumes the caller has already validated
+    /// the access via <see cref="TryWrite32"/> or knows all affected pages are mapped and writable.
+    /// Calling this method on unmapped or read-only pages will result in undefined behavior.
+    /// </para>
+    /// <para>
     /// The bus determines whether to use atomic or decomposed access based on:
     /// </para>
     /// <list type="bullet">
@@ -140,6 +189,9 @@ public interface IMemoryBus
     /// <item><description>The target's <see cref="TargetCaps.SupportsWide"/> capability</description></item>
     /// <item><description>The <see cref="AccessFlags.Atomic"/> flag and CPU mode defaults</description></item>
     /// </list>
+    /// <para>
+    /// For safe access with fault detection, use <see cref="TryWrite32"/> instead.
+    /// </para>
     /// </remarks>
     void Write32(in BusAccess access, DWord value);
 
@@ -168,12 +220,12 @@ public interface IMemoryBus
     /// </summary>
     /// <param name="access">The access context describing the operation.</param>
     /// <param name="value">The byte value to write.</param>
-    /// <returns>A fault if the operation failed, or success with <see cref="FaultKind.None"/>.</returns>
+    /// <returns>A result indicating success or containing fault information.</returns>
     /// <remarks>
     /// This try-style API performs write permission checks before touching the device
     /// and returns faults as first-class values rather than throwing exceptions.
     /// </remarks>
-    BusFault TryWrite8(in BusAccess access, byte value);
+    BusResult TryWrite8(in BusAccess access, byte value);
 
     /// <summary>
     /// Attempts to read a 16-bit word from the specified address.
@@ -193,8 +245,8 @@ public interface IMemoryBus
     /// </summary>
     /// <param name="access">The access context describing the operation.</param>
     /// <param name="value">The 16-bit value to write.</param>
-    /// <returns>A fault if the operation failed, or success with <see cref="FaultKind.None"/>.</returns>
-    BusFault TryWrite16(in BusAccess access, Word value);
+    /// <returns>A result indicating success or containing fault information.</returns>
+    BusResult TryWrite16(in BusAccess access, Word value);
 
     /// <summary>
     /// Attempts to read a 32-bit double word from the specified address.
@@ -214,8 +266,8 @@ public interface IMemoryBus
     /// </summary>
     /// <param name="access">The access context describing the operation.</param>
     /// <param name="value">The 32-bit value to write.</param>
-    /// <returns>A fault if the operation failed, or success with <see cref="FaultKind.None"/>.</returns>
-    BusFault TryWrite32(in BusAccess access, DWord value);
+    /// <returns>A result indicating success or containing fault information.</returns>
+    BusResult TryWrite32(in BusAccess access, DWord value);
 
     /// <summary>
     /// Gets the page entry for the specified address.
@@ -261,4 +313,73 @@ public interface IMemoryBus
         TargetCaps caps,
         IBusTarget target,
         Addr physicalBase);
+
+    /// <summary>
+    /// Gets the page entry by index for direct inspection.
+    /// </summary>
+    /// <param name="pageIndex">The page index.</param>
+    /// <returns>A reference to the page entry.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown when <paramref name="pageIndex"/> is out of range.
+    /// </exception>
+    ref readonly PageEntry GetPageEntryByIndex(int pageIndex);
+
+    /// <summary>
+    /// Atomically remaps a page to a different target.
+    /// </summary>
+    /// <param name="pageIndex">The page index to remap.</param>
+    /// <param name="newTarget">The new target device.</param>
+    /// <param name="newPhysBase">The new physical base within the target.</param>
+    /// <remarks>
+    /// <para>
+    /// This method is used for language card and auxiliary memory bank switching
+    /// in Apple II-compatible machines. It preserves the page's device ID, region tag,
+    /// permissions, and capabilities while changing only the target and physical base.
+    /// </para>
+    /// </remarks>
+    void RemapPage(int pageIndex, IBusTarget newTarget, Addr newPhysBase);
+
+    /// <summary>
+    /// Atomically remaps a page with full entry replacement.
+    /// </summary>
+    /// <param name="pageIndex">The page index to remap.</param>
+    /// <param name="newEntry">The complete new page entry.</param>
+    /// <remarks>
+    /// This method replaces all page entry fields, including device ID, region tag,
+    /// permissions, capabilities, target, and physical base.
+    /// </remarks>
+    void RemapPage(int pageIndex, PageEntry newEntry);
+
+    /// <summary>
+    /// Remaps a contiguous range of pages.
+    /// </summary>
+    /// <param name="startPage">The first page index to remap.</param>
+    /// <param name="pageCount">The number of consecutive pages to remap.</param>
+    /// <param name="newTarget">The new target device for all pages.</param>
+    /// <param name="newPhysBase">The new physical base address for the first page.</param>
+    /// <remarks>
+    /// <para>
+    /// This method preserves each page's device ID, region tag, permissions, and
+    /// capabilities while changing the target and physical base. Physical addresses
+    /// are computed as newPhysBase + (pageIndex - startPage) * pageSize.
+    /// </para>
+    /// </remarks>
+    void RemapPageRange(int startPage, int pageCount, IBusTarget newTarget, Addr newPhysBase);
+
+    /// <summary>
+    /// Clears all mapped memory targets.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This method iterates through all unique targets mapped in the page table
+    /// and calls their <see cref="IBusTarget.Clear"/> method. Each target is
+    /// responsible for its own clearing behavior, allowing efficient implementations
+    /// (e.g., <c>Array.Clear</c> for RAM).
+    /// </para>
+    /// <para>
+    /// This operation is intended for testing scenarios and system reset. It should
+    /// NEVER cause side effects. Read-only targets (ROM) will not be affected.
+    /// </para>
+    /// </remarks>
+    void Clear();
 }
