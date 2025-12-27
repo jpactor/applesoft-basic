@@ -76,9 +76,15 @@ public interface IDebugContext : ICommandContext
     /// Gets the memory bus for bus-aware debugging.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// When non-null, provides access to the page-based memory system
     /// including page table inspection and bus-level tracing.
-    /// Legacy systems may have Memory but not Bus.
+    /// </para>
+    /// <para>
+    /// Legacy systems may have Memory but not Bus. New systems using the
+    /// bus architecture will have both - Memory may be a <see cref="MemoryBusAdapter"/>
+    /// wrapping the Bus for backward compatibility with existing debug commands.
+    /// </para>
     /// </remarks>
     IMemoryBus? Bus { get; }
 

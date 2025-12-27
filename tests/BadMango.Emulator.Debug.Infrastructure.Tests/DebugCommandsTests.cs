@@ -6,11 +6,13 @@ namespace BadMango.Emulator.Debug.Infrastructure.Tests;
 
 using BadMango.Emulator.Bus;
 using BadMango.Emulator.Core;
+using BadMango.Emulator.Core.Configuration;
 using BadMango.Emulator.Emulation.Cpu;
 using BadMango.Emulator.Emulation.Debugging;
 using BadMango.Emulator.Emulation.Memory;
-
 using Moq;
+
+using Bus = BadMango.Emulator.Bus;
 
 /// <summary>
 /// Unit tests for the debug command handlers.
@@ -1084,6 +1086,170 @@ public class DebugCommandsTests
     }
 
     // =====================
+    // DebugContext Bus Adapter Tests (Phase D2)
+    // =====================
+
+    /// <summary>
+    /// Verifies that AttachBus creates MemoryBusAdapter as Memory property for backward compatibility.
+    /// </summary>
+    [Test]
+    public void DebugContext_AttachBus_CreatesMemoryAdapter()
+    {
+        var bus = CreateBusWithRam();
+        debugContext.AttachBus(bus);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(debugContext.Memory, Is.Not.Null);
+            Assert.That(debugContext.Memory, Is.InstanceOf<Bus.MemoryBusAdapter>());
+        });
+    }
+
+    /// <summary>
+    /// Verifies that AttachSystem with bus creates correct adapter.
+    /// </summary>
+    [Test]
+    public void DebugContext_AttachSystemWithBus_CreatesAdapter()
+    {
+        var bus = CreateBusWithRam();
+        var context = new DebugContext(dispatcher, outputWriter, errorWriter);
+
+        context.AttachSystem(cpu, bus, disassembler);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(context.Cpu, Is.SameAs(cpu));
+            Assert.That(context.Bus, Is.SameAs(bus));
+            Assert.That(context.Disassembler, Is.SameAs(disassembler));
+            Assert.That(context.Memory, Is.InstanceOf<Bus.MemoryBusAdapter>());
+            Assert.That(context.IsSystemAttached, Is.True);
+            Assert.That(context.IsBusAttached, Is.True);
+        });
+    }
+
+    /// <summary>
+    /// Verifies that AttachSystem with bus and machine info works correctly.
+    /// </summary>
+    [Test]
+    public void DebugContext_AttachSystemWithBusAndMachineInfo_WorksCorrectly()
+    {
+        var bus = CreateBusWithRam();
+        var machineInfo = new MachineInfo("TestMachine", "Test Machine", "65C02", 65536);
+        var context = new DebugContext(dispatcher, outputWriter, errorWriter);
+
+        context.AttachSystem(cpu, bus, disassembler, machineInfo);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(context.Cpu, Is.SameAs(cpu));
+            Assert.That(context.Bus, Is.SameAs(bus));
+            Assert.That(context.Disassembler, Is.SameAs(disassembler));
+            Assert.That(context.MachineInfo, Is.SameAs(machineInfo));
+            Assert.That(context.Memory, Is.InstanceOf<Bus.MemoryBusAdapter>());
+            Assert.That(context.IsSystemAttached, Is.True);
+            Assert.That(context.IsBusAttached, Is.True);
+        });
+    }
+
+    /// <summary>
+    /// Verifies that AttachSystem with bus, machine info, and tracing listener works correctly.
+    /// </summary>
+    [Test]
+    public void DebugContext_AttachSystemWithBusAndTracingListener_WorksCorrectly()
+    {
+        var bus = CreateBusWithRam();
+        var machineInfo = new MachineInfo("TestMachine", "Test Machine", "65C02", 65536);
+        var tracingListener = new TracingDebugListener();
+        var context = new DebugContext(dispatcher, outputWriter, errorWriter);
+
+        context.AttachSystem(cpu, bus, disassembler, machineInfo, tracingListener);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(context.Cpu, Is.SameAs(cpu));
+            Assert.That(context.Bus, Is.SameAs(bus));
+            Assert.That(context.Disassembler, Is.SameAs(disassembler));
+            Assert.That(context.MachineInfo, Is.SameAs(machineInfo));
+            Assert.That(context.TracingListener, Is.SameAs(tracingListener));
+            Assert.That(context.Memory, Is.InstanceOf<Bus.MemoryBusAdapter>());
+            Assert.That(context.IsSystemAttached, Is.True);
+            Assert.That(context.IsBusAttached, Is.True);
+        });
+    }
+
+    /// <summary>
+    /// Verifies that legacy memory access patterns work through MemoryBusAdapter.
+    /// </summary>
+    [Test]
+    public void DebugContext_WithBus_LegacyMemoryAccessPatternWorks()
+    {
+        // Write to physical memory
+        var bus = CreateBusWithRam(out var physicalMemory);
+        physicalMemory.AsSpan()[0x100] = 0x42;
+
+        var context = new DebugContext(dispatcher, outputWriter, errorWriter);
+        context.AttachSystem(cpu, bus, disassembler);
+
+        // Read through the Memory interface (which is now MemoryBusAdapter)
+        byte value = context.Memory!.Read(0x100);
+        Assert.That(value, Is.EqualTo(0x42));
+
+        // Write through the Memory interface
+        context.Memory.Write(0x200, 0xAB);
+        Assert.That(physicalMemory.AsSpan()[0x200], Is.EqualTo(0xAB));
+    }
+
+    /// <summary>
+    /// Verifies that MemCommand works with bus-based system.
+    /// </summary>
+    [Test]
+    public void MemCommand_WorksWithBusBasedSystem()
+    {
+        var bus = CreateBusWithRam(out var physicalMemory);
+        physicalMemory.AsSpan()[0x200] = 0x41; // 'A'
+        physicalMemory.AsSpan()[0x201] = 0x42; // 'B'
+        physicalMemory.AsSpan()[0x202] = 0x43; // 'C'
+
+        var context = new DebugContext(dispatcher, outputWriter, errorWriter);
+        context.AttachSystem(cpu, bus, disassembler);
+
+        var command = new MemCommand();
+        var result = command.Execute(context, ["$0200", "16"]);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.True);
+            Assert.That(outputWriter.ToString(), Does.Contain("41"));
+            Assert.That(outputWriter.ToString(), Does.Contain("42"));
+            Assert.That(outputWriter.ToString(), Does.Contain("43"));
+            Assert.That(outputWriter.ToString(), Does.Contain("ABC")); // ASCII
+        });
+    }
+
+    /// <summary>
+    /// Verifies that PokeCommand works with bus-based system.
+    /// </summary>
+    [Test]
+    public void PokeCommand_WorksWithBusBasedSystem()
+    {
+        var bus = CreateBusWithRam(out var physicalMemory);
+
+        var context = new DebugContext(dispatcher, outputWriter, errorWriter);
+        context.AttachSystem(cpu, bus, disassembler);
+
+        var command = new PokeCommand();
+        var result = command.Execute(context, ["$0300", "$AB", "$CD", "$EF"]);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.True);
+            Assert.That(physicalMemory.AsSpan()[0x300], Is.EqualTo(0xAB));
+            Assert.That(physicalMemory.AsSpan()[0x301], Is.EqualTo(0xCD));
+            Assert.That(physicalMemory.AsSpan()[0x302], Is.EqualTo(0xEF));
+        });
+    }
+
+    // =====================
     // Non-Debug Context Tests
     // =====================
 
@@ -1117,5 +1283,43 @@ public class DebugCommandsTests
             Assert.That(result.Success, Is.False, $"Command {command.Name} should fail with non-debug context");
             Assert.That(result.Message, Does.Contain("Debug context required"), $"Command {command.Name} should mention debug context");
         }
+    }
+
+    /// <summary>
+    /// Helper method to create a bus with full RAM mapping.
+    /// </summary>
+    private static Bus.MainBus CreateBusWithRam()
+    {
+        return CreateBusWithRam(out _);
+    }
+
+    /// <summary>
+    /// Helper method to create a bus with full RAM mapping and access to physical memory.
+    /// </summary>
+    /// <remarks>
+    /// Creates a 64KB address space (16-bit addressing) with 16 pages of 4KB each,
+    /// all mapped to RAM with full read/write permissions.
+    /// </remarks>
+    private static Bus.MainBus CreateBusWithRam(out Bus.PhysicalMemory physicalMemory)
+    {
+        // 64KB address space: 16 pages × 4KB = 65536 bytes
+        const int TestMemorySize = 65536;
+        const int PageCount = 16; // 64KB / 4KB per page
+
+        var bus = new Bus.MainBus(addressSpaceBits: 16);
+        physicalMemory = new Bus.PhysicalMemory(TestMemorySize, "TestRAM");
+        var target = new Bus.RamTarget(physicalMemory.Slice(0, TestMemorySize));
+
+        bus.MapPageRange(
+            startPage: 0,
+            pageCount: PageCount,
+            deviceId: 1,
+            regionTag: Bus.RegionTag.Ram,
+            perms: Bus.PagePerms.ReadWrite,
+            caps: Bus.TargetCaps.SupportsPeek | Bus.TargetCaps.SupportsPoke | Bus.TargetCaps.SupportsWide,
+            target: target,
+            physicalBase: 0);
+
+        return bus;
     }
 }
