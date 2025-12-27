@@ -15,9 +15,11 @@ namespace BadMango.Emulator.Bus;
 /// requiring direct constructor injection of all dependencies.
 /// </para>
 /// <para>
-/// Devices should not cache these references beyond the lifetime of a single
-/// callback or initialization call, as the underlying services may be replaced
-/// during system reset.
+/// Devices are expected to cache this context (and its underlying services)
+/// for use across their lifecycle, including multiple scheduled callbacks.
+/// However, the owning system may recreate or replace these services during a
+/// full system reset or reinitialization, at which point devices must obtain
+/// a fresh context instead of reusing a previously cached instance.
 /// </para>
 /// </remarks>
 public interface IEventContext
