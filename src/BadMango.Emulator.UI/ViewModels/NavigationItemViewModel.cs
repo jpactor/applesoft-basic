@@ -11,12 +11,21 @@ using CommunityToolkit.Mvvm.ComponentModel;
 /// </summary>
 public partial class NavigationItemViewModel : ViewModelBase
 {
+    /// <summary>
+    /// Gets or sets the display name of the navigation item.
+    /// </summary>
     [ObservableProperty]
     private string name;
 
+    /// <summary>
+    /// Gets or sets the SVG path data for the icon.
+    /// </summary>
     [ObservableProperty]
     private string iconPath;
 
+    /// <summary>
+    /// Gets or sets a value indicating whether this item is selected.
+    /// </summary>
     [ObservableProperty]
     private bool isSelected;
 

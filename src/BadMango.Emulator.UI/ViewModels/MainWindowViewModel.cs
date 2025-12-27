@@ -20,15 +20,27 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IThemeService themeService;
     private readonly INavigationService navigationService;
 
+    /// <summary>
+    /// Gets or sets the window title.
+    /// </summary>
     [ObservableProperty]
     private string title = "BackPocket Emulator";
 
+    /// <summary>
+    /// Gets or sets the current view displayed in the content area.
+    /// </summary>
     [ObservableProperty]
     private ViewModelBase? currentView;
 
+    /// <summary>
+    /// Gets or sets a value indicating whether dark theme is currently active.
+    /// </summary>
     [ObservableProperty]
     private bool isDarkTheme = true;
 
+    /// <summary>
+    /// Gets or sets the name of the currently selected navigation item.
+    /// </summary>
     [ObservableProperty]
     private string selectedNavigationItem = "Machine Manager";
 

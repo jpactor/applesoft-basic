@@ -11,9 +11,15 @@ using CommunityToolkit.Mvvm.ComponentModel;
 /// </summary>
 public partial class PlaceholderViewModel : ViewModelBase
 {
+    /// <summary>
+    /// Gets or sets the title to display.
+    /// </summary>
     [ObservableProperty]
     private string title;
 
+    /// <summary>
+    /// Gets or sets the placeholder message to display.
+    /// </summary>
     [ObservableProperty]
     private string message;
 

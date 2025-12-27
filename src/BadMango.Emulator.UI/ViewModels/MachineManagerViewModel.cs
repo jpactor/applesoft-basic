@@ -15,12 +15,21 @@ using CommunityToolkit.Mvvm.Input;
 /// </summary>
 public partial class MachineManagerViewModel : ViewModelBase
 {
+    /// <summary>
+    /// Gets or sets the view title displayed in the header.
+    /// </summary>
     [ObservableProperty]
     private string viewTitle = "Machine Manager";
 
+    /// <summary>
+    /// Gets or sets the currently selected machine profile.
+    /// </summary>
     [ObservableProperty]
     private MachineProfileViewModel? selectedProfile;
 
+    /// <summary>
+    /// Gets or sets the currently selected machine instance.
+    /// </summary>
     [ObservableProperty]
     private MachineInstanceViewModel? selectedInstance;
 

@@ -54,13 +54,16 @@ public class ApplicationStartupTests
         var viewModel = new MainWindowViewModel(themeService, navigationService);
 
         // Act
-        var window = new MainWindow
+        _ = new MainWindow
         {
             DataContext = viewModel,
         };
 
         // Assert - Title is bound to ViewModel.Title
-        Assert.That(viewModel.Title, Is.EqualTo("BackPocket Emulator"));
+        Assert.Multiple(() =>
+        {
+            Assert.That(viewModel.Title, Is.EqualTo("BackPocket Emulator"));
+        });
     }
 
     /// <summary>
@@ -125,7 +128,7 @@ public class ApplicationStartupTests
         var viewModel = new MainWindowViewModel(themeService, navigationService);
 
         // Act
-        var window = new MainWindow
+        _ = new MainWindow
         {
             DataContext = viewModel,
         };
@@ -172,7 +175,7 @@ public class ApplicationStartupTests
         var viewModel = new MainWindowViewModel(themeService, navigationService);
 
         // Act
-        var window = new MainWindow
+        _ = new MainWindow
         {
             DataContext = viewModel,
         };
@@ -202,7 +205,7 @@ public class ApplicationStartupTests
         var viewModel = new MainWindowViewModel(themeService, navigationService);
 
         // Act
-        var window = new MainWindow
+        _ = new MainWindow
         {
             DataContext = viewModel,
         };
