@@ -15,8 +15,6 @@ using CommunityToolkit.Mvvm.Input;
 /// </summary>
 public partial class PopOutWindowViewModel : ViewModelBase
 {
-    private readonly IWindowManager? windowManager;
-
     /// <summary>
     /// Gets or sets the window title.
     /// </summary>
@@ -46,15 +44,18 @@ public partial class PopOutWindowViewModel : ViewModelBase
     /// </summary>
     /// <param name="componentType">The component type to display.</param>
     /// <param name="machineId">Optional machine ID for machine-specific windows.</param>
-    /// <param name="windowManager">Optional window manager for docking operations.</param>
-    public PopOutWindowViewModel(PopOutComponent componentType, string? machineId = null, IWindowManager? windowManager = null)
+    public PopOutWindowViewModel(PopOutComponent componentType, string? machineId = null)
     {
-        this.windowManager = windowManager;
         this.ComponentType = componentType;
         this.MachineId = machineId;
         this.Title = GetWindowTitle(componentType, machineId);
         this.ContentViewModel = CreateContentViewModel(componentType);
     }
+
+    /// <summary>
+    /// Event raised when the user requests to dock the window back to the main window.
+    /// </summary>
+    public event EventHandler? DockRequested;
 
     private static string GetWindowTitle(PopOutComponent componentType, string? machineId)
     {
@@ -89,11 +90,9 @@ public partial class PopOutWindowViewModel : ViewModelBase
     /// <summary>
     /// Command to dock the window back to the main window.
     /// </summary>
-    /// <returns>A task representing the asynchronous operation.</returns>
     [RelayCommand]
-    private Task DockToMainAsync()
+    private void DockToMain()
     {
-        // This would be handled by the window itself through IPopOutWindow.CloseAsync(true)
-        return Task.CompletedTask;
+        DockRequested?.Invoke(this, EventArgs.Empty);
     }
 }

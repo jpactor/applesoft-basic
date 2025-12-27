@@ -42,6 +42,7 @@ public partial class PopOutWindow : Window, IPopOutWindow
         DataContext = viewModel;
         ComponentType = viewModel.ComponentType;
         MachineId = viewModel.MachineId;
+        viewModel.DockRequested += OnDockRequested;
     }
 
     /// <inheritdoc />
@@ -130,6 +131,12 @@ public partial class PopOutWindow : Window, IPopOutWindow
             Close();
             e.Handled = true;
         }
+    }
+
+    private void OnDockRequested(object? sender, EventArgs e)
+    {
+        dockOnClose = true;
+        Close();
     }
 
     private string? GetCurrentMonitorId()

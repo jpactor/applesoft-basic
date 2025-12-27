@@ -38,7 +38,7 @@ public class WindowManagerTests
             IsPopOut = true,
         });
 
-        testLayoutPath = Path.Combine(Path.GetTempPath(), $"bpb-test-{Guid.NewGuid()}");
+        testLayoutPath = Path.Combine(Path.GetTempPath(), $"backpocket-ui-test-{Guid.NewGuid()}");
 
         windowManager = new WindowManager(
             (component, machineId) => mockWindow.Object,

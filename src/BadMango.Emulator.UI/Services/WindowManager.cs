@@ -16,6 +16,11 @@ using Microsoft.Extensions.Logging;
 /// </summary>
 public class WindowManager : IWindowManager
 {
+    /// <summary>
+    /// The application name used for storage paths.
+    /// </summary>
+    private const string ApplicationName = "BackPocket";
+
     private readonly ConcurrentDictionary<string, IPopOutWindow> windows = new();
     private readonly Func<PopOutComponent, string?, IPopOutWindow> windowFactory;
     private readonly ILogger<WindowManager>? logger;
@@ -181,7 +186,7 @@ public class WindowManager : IWindowManager
     private static string GetDefaultLayoutStoragePath()
     {
         var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-        return Path.Combine(appData, "BackPocket", "layouts");
+        return Path.Combine(appData, ApplicationName, "layouts");
     }
 
     private static JsonSerializerOptions GetJsonOptions()
