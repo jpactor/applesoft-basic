@@ -14,6 +14,8 @@ using Moq;
 
 using Bus = BadMango.Emulator.Bus;
 
+using Moq;
+
 /// <summary>
 /// Unit tests for the debug command handlers.
 /// </summary>
