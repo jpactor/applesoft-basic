@@ -35,6 +35,7 @@
     <PackageReference Include="Avalonia.Desktop" Version="11.2.7" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.2.7" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="11.2.7" />
+    <PackageReference Include="Avalonia.Skia" Version="11.2.7" />
 
     <!-- MVVM Framework -->
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
