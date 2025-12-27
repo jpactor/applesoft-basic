@@ -1,0 +1,43 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:BadMango.Emulator.UI.ViewModels"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
+        x:Class="BadMango.Emulator.UI.Views.PopOutWindow"
+        x:DataType="vm:PopOutWindowViewModel"
+        Title="{Binding Title}"
+        Width="800"
+        Height="600"
+        MinWidth="400"
+        MinHeight="300"
+        WindowStartupLocation="CenterScreen">
+
+    <Design.DataContext>
+        <vm:PopOutWindowViewModel />
+    </Design.DataContext>
+
+    <DockPanel>
+        <!-- Toolbar -->
+        <Border DockPanel.Dock="Top"
+                Background="{DynamicResource SystemChromeMediumColor}"
+                Padding="8,4">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right" 
+                            Orientation="Horizontal" 
+                            Spacing="4">
+                    <Button Content="Dock to Main"
+                            Command="{Binding DockToMainCommand}"
+                            ToolTip.Tip="Dock this window back to the main window (Ctrl+Shift+D)"
+                            Classes="accent" />
+                </StackPanel>
+                <TextBlock Text="{Binding Title}"
+                           VerticalAlignment="Center"
+                           FontWeight="SemiBold" />
+            </DockPanel>
+        </Border>
+
+        <!-- Content Area -->
+        <ContentControl Content="{Binding ContentViewModel}" />
+    </DockPanel>
+</Window>
