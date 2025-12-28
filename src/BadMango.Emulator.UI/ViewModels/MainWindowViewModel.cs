@@ -6,7 +6,9 @@ namespace BadMango.Emulator.UI.ViewModels;
 
 using System.Collections.ObjectModel;
 
+using BadMango.Emulator.Configuration.Events;
 using BadMango.Emulator.Configuration.Services;
+using BadMango.Emulator.UI.Abstractions;
 using BadMango.Emulator.UI.Services;
 using BadMango.Emulator.UI.ViewModels.Settings;
 
@@ -22,6 +24,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     private readonly IThemeService themeService;
     private readonly INavigationService navigationService;
     private readonly ISettingsService? settingsService;
+    private readonly IDisposable? settingsSubscription;
     private bool disposed;
 
     /// <summary>
@@ -54,19 +57,21 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// <param name="themeService">The theme service for managing application themes.</param>
     /// <param name="navigationService">The navigation service for view navigation.</param>
     /// <param name="settingsService">The settings service for managing application settings.</param>
+    /// <param name="eventAggregator">The event aggregator for pub/sub messaging.</param>
     public MainWindowViewModel(
         IThemeService themeService,
         INavigationService navigationService,
-        ISettingsService? settingsService = null)
+        ISettingsService? settingsService = null,
+        IEventAggregator? eventAggregator = null)
     {
         this.themeService = themeService;
         this.navigationService = navigationService;
         this.settingsService = settingsService;
 
-        // Subscribe to settings changes to update theme when theme setting changes
-        if (settingsService is not null)
+        // Subscribe to settings changes via event aggregator for loose coupling
+        if (eventAggregator is not null)
         {
-            settingsService.SettingsChanged += OnSettingsChanged;
+            settingsSubscription = eventAggregator.Subscribe<SettingsChangedEvent>(OnSettingsChanged);
         }
 
         // Initialize navigation items
@@ -88,6 +93,35 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// Gets the collection of navigation items displayed in the navigation panel.
     /// </summary>
     public ObservableCollection<NavigationItemViewModel> NavigationItems { get; }
+
+    /// <inheritdoc/>
+    public void Dispose()
+    {
+        Dispose(disposing: true);
+        GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// Releases the unmanaged resources used by the <see cref="MainWindowViewModel"/>
+    /// and optionally releases the managed resources.
+    /// </summary>
+    /// <param name="disposing">
+    /// <c>true</c> to release both managed and unmanaged resources;
+    /// <c>false</c> to release only unmanaged resources.
+    /// </param>
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!disposed)
+        {
+            if (disposing)
+            {
+                // Unsubscribe from event aggregator
+                settingsSubscription?.Dispose();
+            }
+
+            disposed = true;
+        }
+    }
 
     /// <summary>
     /// Toggles between dark and light themes.
@@ -130,9 +164,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// <summary>
     /// Handles settings changed events to synchronize theme with settings.
     /// </summary>
-    /// <param name="sender">The event sender.</param>
-    /// <param name="args">The settings changed event arguments.</param>
-    private void OnSettingsChanged(object? sender, SettingsChangedEventArgs args)
+    /// <param name="eventData">The settings changed event data.</param>
+    private void OnSettingsChanged(SettingsChangedEvent eventData)
     {
         if (settingsService is null)
         {
@@ -152,37 +185,5 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
                 themeService.SetTheme(shouldBeDark);
             });
         }
-    }
-
-    /// <summary>
-    /// Releases the unmanaged resources used by the <see cref="MainWindowViewModel"/>
-    /// and optionally releases the managed resources.
-    /// </summary>
-    /// <param name="disposing">
-    /// <c>true</c> to release both managed and unmanaged resources;
-    /// <c>false</c> to release only unmanaged resources.
-    /// </param>
-    protected virtual void Dispose(bool disposing)
-    {
-        if (!disposed)
-        {
-            if (disposing)
-            {
-                // Unsubscribe from settings service events
-                if (settingsService is not null)
-                {
-                    settingsService.SettingsChanged -= OnSettingsChanged;
-                }
-            }
-
-            disposed = true;
-        }
-    }
-
-    /// <inheritdoc/>
-    public void Dispose()
-    {
-        Dispose(disposing: true);
-        GC.SuppressFinalize(this);
     }
 }

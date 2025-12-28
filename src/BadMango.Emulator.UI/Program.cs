@@ -14,6 +14,7 @@ using Avalonia;
 
 using BadMango.Emulator.Configuration.IO;
 using BadMango.Emulator.Configuration.Services;
+using BadMango.Emulator.UI.Abstractions;
 using BadMango.Emulator.UI.Services;
 using BadMango.Emulator.UI.ViewModels;
 using BadMango.Emulator.UI.ViewModels.Settings;
@@ -96,6 +97,10 @@ internal sealed class Program
                 builder.RegisterType<SettingsService>().As<ISettingsService>().SingleInstance();
                 builder.RegisterType<SettingsMigrator>().As<ISettingsMigrator>().SingleInstance();
                 builder.RegisterType<PathValidator>().As<IPathValidator>().SingleInstance();
+                builder.RegisterType<EventAggregator>().As<IEventAggregator>().SingleInstance();
+
+                // Register settings event bridge to connect SettingsService to EventAggregator
+                builder.RegisterType<SettingsEventBridge>().AsSelf().SingleInstance().AutoActivate();
 
                 // Register ViewModels
                 builder.RegisterType<MainWindowViewModel>().AsSelf();

@@ -7,6 +7,9 @@ namespace BadMango.Emulator.UI.Services;
 using Avalonia;
 using Avalonia.Styling;
 
+using BadMango.Emulator.UI.Abstractions;
+using BadMango.Emulator.UI.Abstractions.Events;
+
 using Microsoft.Extensions.Logging;
 
 /// <summary>
@@ -15,15 +18,18 @@ using Microsoft.Extensions.Logging;
 public class ThemeService : IThemeService
 {
     private readonly ILogger<ThemeService>? logger;
+    private readonly IEventAggregator? eventAggregator;
     private bool isDarkTheme = true;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ThemeService"/> class.
     /// </summary>
     /// <param name="logger">Optional logger for theme operations.</param>
-    public ThemeService(ILogger<ThemeService>? logger = null)
+    /// <param name="eventAggregator">Optional event aggregator for pub/sub messaging.</param>
+    public ThemeService(ILogger<ThemeService>? logger = null, IEventAggregator? eventAggregator = null)
     {
         this.logger = logger;
+        this.eventAggregator = eventAggregator;
     }
 
     /// <inheritdoc />
@@ -50,6 +56,10 @@ public class ThemeService : IThemeService
                 : ThemeVariant.Light;
         }
 
+        // Raise the direct event
         ThemeChanged?.Invoke(this, isDark);
+
+        // Publish to the event aggregator for loose coupling
+        eventAggregator?.Publish(new ThemeChangedEvent(isDark));
     }
 }

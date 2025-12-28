@@ -11,6 +11,7 @@ using Avalonia.Threading;
 
 using BadMango.Emulator.Configuration.Models;
 using BadMango.Emulator.Configuration.Services;
+using BadMango.Emulator.UI.Abstractions;
 using BadMango.Emulator.UI.Services;
 using BadMango.Emulator.UI.ViewModels;
 using BadMango.Emulator.UI.ViewModels.Settings;
@@ -49,7 +50,7 @@ public class SettingsThemeIntegrationTests
 
     /// <summary>
     /// Integration test: User changes theme from Dark to Light via Settings panel.
-    /// Validates the complete flow: Settings panel -> Apply -> SettingsService event -> ThemeService -> UI.
+    /// Validates the complete flow: Settings panel -> Apply -> SettingsService event -> EventAggregator -> ThemeService -> UI.
     /// </summary>
     /// <returns>A task representing the asynchronous test operation.</returns>
     [AvaloniaTest]
@@ -64,6 +65,12 @@ public class SettingsThemeIntegrationTests
 
         var themeService = new ThemeService();
         Assert.That(themeService.IsDarkTheme, Is.True);
+
+        // Create event aggregator for pub/sub messaging
+        var eventAggregator = new EventAggregator();
+
+        // Create bridge to connect SettingsService events to EventAggregator
+        using var settingsEventBridge = new SettingsEventBridge(settingsService, eventAggregator);
 
         // Track event firing
         bool settingsChangedEventFired = false;
@@ -81,11 +88,11 @@ public class SettingsThemeIntegrationTests
             newThemeIsDark = isDark;
         };
 
-        // Create main window with services - binding is now built into MainWindowViewModel
+        // Create main window with services - uses event aggregator for loose coupling
         var navigationService = new NavigationService();
-        var mainViewModel = new MainWindowViewModel(themeService, navigationService, settingsService);
+        using var mainViewModel = new MainWindowViewModel(themeService, navigationService, settingsService, eventAggregator);
 
-        var window = new MainWindow
+        _ = new MainWindow
         {
             DataContext = mainViewModel,
         };
@@ -184,6 +191,10 @@ public class SettingsThemeIntegrationTests
 
         Assert.That(themeService.IsDarkTheme, Is.False);
 
+        // Create event aggregator and bridge
+        var eventAggregator = new EventAggregator();
+        using var settingsEventBridge = new SettingsEventBridge(settingsService, eventAggregator);
+
         bool themeChangedEventFired = false;
 
         themeService.ThemeChanged += (_, _) =>
@@ -192,7 +203,7 @@ public class SettingsThemeIntegrationTests
         };
 
         var navigationService = new NavigationService();
-        var mainViewModel = new MainWindowViewModel(themeService, navigationService, settingsService);
+        using var mainViewModel = new MainWindowViewModel(themeService, navigationService, settingsService, eventAggregator);
 
         // Sync the ViewModel's IsDarkTheme with the initial theme state
         mainViewModel.IsDarkTheme = false;
@@ -250,7 +261,9 @@ public class SettingsThemeIntegrationTests
 
         var themeService = new ThemeService();
         var navigationService = new NavigationService();
-        var mainViewModel = new MainWindowViewModel(themeService, navigationService, settingsService);
+        var eventAggregator = new EventAggregator();
+        using var settingsEventBridge = new SettingsEventBridge(settingsService, eventAggregator);
+        using var mainViewModel = new MainWindowViewModel(themeService, navigationService, settingsService, eventAggregator);
 
         _ = new MainWindow
         {
@@ -294,7 +307,9 @@ public class SettingsThemeIntegrationTests
         themeService.ThemeChanged += (_, _) => themeEventFired = true;
 
         var navigationService = new NavigationService();
-        var mainViewModel = new MainWindowViewModel(themeService, navigationService, settingsService);
+        var eventAggregator = new EventAggregator();
+        using var settingsEventBridge = new SettingsEventBridge(settingsService, eventAggregator);
+        using var mainViewModel = new MainWindowViewModel(themeService, navigationService, settingsService, eventAggregator);
 
         _ = new MainWindow
         {
