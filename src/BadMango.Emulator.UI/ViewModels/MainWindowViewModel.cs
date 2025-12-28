@@ -8,7 +8,7 @@ using System.Collections.ObjectModel;
 
 using BadMango.Emulator.Configuration.Events;
 using BadMango.Emulator.Configuration.Services;
-using BadMango.Emulator.UI.Abstractions;
+using BadMango.Emulator.Infrastructure.Events;
 using BadMango.Emulator.UI.Services;
 using BadMango.Emulator.UI.ViewModels.Settings;
 

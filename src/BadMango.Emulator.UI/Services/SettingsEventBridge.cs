@@ -6,7 +6,7 @@ namespace BadMango.Emulator.UI.Services;
 
 using BadMango.Emulator.Configuration.Events;
 using BadMango.Emulator.Configuration.Services;
-using BadMango.Emulator.UI.Abstractions;
+using BadMango.Emulator.Infrastructure.Events;
 
 /// <summary>
 /// Bridges settings service events to the event aggregator for loose coupling.

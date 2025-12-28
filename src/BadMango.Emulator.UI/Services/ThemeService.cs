@@ -7,7 +7,7 @@ namespace BadMango.Emulator.UI.Services;
 using Avalonia;
 using Avalonia.Styling;
 
-using BadMango.Emulator.UI.Abstractions;
+using BadMango.Emulator.Infrastructure.Events;
 using BadMango.Emulator.UI.Abstractions.Events;
 
 using Microsoft.Extensions.Logging;

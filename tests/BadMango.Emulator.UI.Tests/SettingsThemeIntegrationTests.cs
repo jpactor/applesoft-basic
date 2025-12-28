@@ -11,7 +11,7 @@ using Avalonia.Threading;
 
 using BadMango.Emulator.Configuration.Models;
 using BadMango.Emulator.Configuration.Services;
-using BadMango.Emulator.UI.Abstractions;
+using BadMango.Emulator.Infrastructure.Events;
 using BadMango.Emulator.UI.Services;
 using BadMango.Emulator.UI.ViewModels;
 using BadMango.Emulator.UI.ViewModels.Settings;
