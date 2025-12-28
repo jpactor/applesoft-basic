@@ -43,16 +43,16 @@ public sealed class SignalBus : ISignalBus
     }
 
     /// <inheritdoc />
-    public event Action<SignalLine, bool, int, ulong>? SignalChanged;
+    public event Action<SignalLine, bool, int, Cycle>? SignalChanged;
 
     /// <inheritdoc />
-    public void Assert(SignalLine line, int deviceId)
+    public void Assert(SignalLine line, int deviceId, Cycle cycle)
     {
         bool wasAsserted = IsAsserted(line);
         asserters[(int)line].Add(deviceId);
         bool nowAsserted = IsAsserted(line);
 
-        // NMI edge detection (low-to-high transition)
+        // NMI edge detection (deasserted-to-asserted transition)
         if (line == SignalLine.NMI && !wasAsserted && nowAsserted)
         {
             nmiEdgePending = true;
@@ -60,12 +60,12 @@ public sealed class SignalBus : ISignalBus
 
         if (wasAsserted != nowAsserted)
         {
-            SignalChanged?.Invoke(line, nowAsserted, deviceId, 0);
+            SignalChanged?.Invoke(line, nowAsserted, deviceId, cycle);
         }
     }
 
     /// <inheritdoc />
-    public void Deassert(SignalLine line, int deviceId)
+    public void Deassert(SignalLine line, int deviceId, Cycle cycle)
     {
         bool wasAsserted = IsAsserted(line);
         asserters[(int)line].Remove(deviceId);
@@ -73,7 +73,7 @@ public sealed class SignalBus : ISignalBus
 
         if (wasAsserted != nowAsserted)
         {
-            SignalChanged?.Invoke(line, nowAsserted, deviceId, 0);
+            SignalChanged?.Invoke(line, nowAsserted, deviceId, cycle);
         }
     }
 

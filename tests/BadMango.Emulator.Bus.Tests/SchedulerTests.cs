@@ -827,7 +827,7 @@ public class SchedulerTests
         var events = new List<string>();
 
         // Set up some signal line activity
-        signalBus.Assert(SignalLine.IRQ, deviceId: 1);
+        signalBus.Assert(SignalLine.IRQ, deviceId: 1, cycle: Cycle.Zero);
 
         // Schedule events
         scheduler.Schedule(new TestActor(() => events.Add("Event1")), 10ul);
@@ -835,7 +835,7 @@ public class SchedulerTests
             new TestActor(() =>
             {
                 events.Add("Event2");
-                signalBus.Deassert(SignalLine.IRQ, deviceId: 1);
+                signalBus.Deassert(SignalLine.IRQ, deviceId: 1, cycle: new Cycle(scheduler.CurrentCycle));
             }),
             30ul);
 

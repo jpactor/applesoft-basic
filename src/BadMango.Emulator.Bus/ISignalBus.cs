@@ -37,13 +37,14 @@ public interface ISignalBus
     /// already in that state.
     /// </para>
     /// </remarks>
-    event Action<SignalLine, bool, int, ulong>? SignalChanged;
+    event Action<SignalLine, bool, int, Cycle>? SignalChanged;
 
     /// <summary>
     /// Asserts a signal line.
     /// </summary>
     /// <param name="line">The signal line to assert.</param>
     /// <param name="deviceId">The structural ID of the device asserting the signal.</param>
+    /// <param name="cycle">The current machine cycle.</param>
     /// <remarks>
     /// <para>
     /// If the line is already asserted by another device, the assertion is
@@ -53,13 +54,14 @@ public interface ISignalBus
     /// Signal transitions are recorded for tracing when enabled.
     /// </para>
     /// </remarks>
-    void Assert(SignalLine line, int deviceId);
+    void Assert(SignalLine line, int deviceId, Cycle cycle);
 
     /// <summary>
     /// Deasserts a signal line.
     /// </summary>
     /// <param name="line">The signal line to deassert.</param>
     /// <param name="deviceId">The structural ID of the device deasserting the signal.</param>
+    /// <param name="cycle">The current machine cycle.</param>
     /// <remarks>
     /// <para>
     /// For lines that support multiple asserters (like IRQ), the line remains
@@ -69,7 +71,7 @@ public interface ISignalBus
     /// Signal transitions are recorded for tracing when enabled.
     /// </para>
     /// </remarks>
-    void Deassert(SignalLine line, int deviceId);
+    void Deassert(SignalLine line, int deviceId, Cycle cycle);
 
     /// <summary>
     /// Determines whether a signal line is currently asserted.

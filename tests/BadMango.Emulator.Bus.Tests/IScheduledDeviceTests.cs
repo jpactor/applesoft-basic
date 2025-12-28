@@ -182,7 +182,7 @@ public class IScheduledDeviceTests
 
         public ulong Execute(ulong currentCycle, IScheduler scheduler)
         {
-            context?.Signals.Assert(SignalLine.IRQ, 1);
+            context?.Signals.Assert(SignalLine.IRQ, 1, new Cycle(currentCycle));
             return 0;
         }
     }
