@@ -7,7 +7,7 @@ namespace BadMango.Emulator.Emulation.Cpu;
 
 using System.Runtime.CompilerServices;
 
-using Core;
+using Core.Cpu;
 
 /// <summary>
 /// Flag manipulation instructions (CLC, SEC, CLI, SEI, CLD, SED, CLV).

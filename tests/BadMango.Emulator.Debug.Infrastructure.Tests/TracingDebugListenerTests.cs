@@ -4,7 +4,8 @@
 
 namespace BadMango.Emulator.Debug.Infrastructure.Tests;
 
-using BadMango.Emulator.Core;
+using Core.Cpu;
+using Core.Debugger;
 
 /// <summary>
 /// Unit tests for the <see cref="TracingDebugListener"/> class.

@@ -7,7 +7,7 @@ namespace BadMango.Emulator.Emulation.Cpu;
 
 using System.Runtime.CompilerServices;
 
-using Core;
+using Core.Cpu;
 
 /// <summary>
 /// Comparison instructions (CMP, CPX, CPY).

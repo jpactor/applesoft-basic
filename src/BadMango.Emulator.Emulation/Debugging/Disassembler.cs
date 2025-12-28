@@ -5,6 +5,8 @@
 namespace BadMango.Emulator.Emulation.Debugging;
 
 using Core;
+using Core.Cpu;
+using Core.Interfaces;
 
 /// <summary>
 /// Disassembles machine code from memory into a list of structured instruction representations.

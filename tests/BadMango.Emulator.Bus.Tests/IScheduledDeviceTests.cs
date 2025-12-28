@@ -4,6 +4,12 @@
 
 namespace BadMango.Emulator.Bus.Tests;
 
+using BadMango.Emulator.Core;
+using BadMango.Emulator.Core.Interfaces.Signaling;
+using BadMango.Emulator.Core.Signaling;
+
+using Interfaces;
+
 using Moq;
 
 /// <summary>
@@ -126,11 +132,11 @@ public class IScheduledDeviceTests
         var device = new InterruptRaisingDevice();
         device.Initialize(context);
 
-        Assert.That(signals.IsIrqAsserted, Is.False);
+        Assert.That(signals.IsAsserted(SignalLine.IRQ), Is.False);
 
         scheduler.RunUntil(100ul);
 
-        Assert.That(signals.IsIrqAsserted, Is.True);
+        Assert.That(signals.IsAsserted(SignalLine.IRQ), Is.True);
     }
 
     /// <summary>
@@ -182,7 +188,7 @@ public class IScheduledDeviceTests
 
         public ulong Execute(ulong currentCycle, IScheduler scheduler)
         {
-            context?.Signals.Assert(SignalLine.Irq, 1, currentCycle);
+            context?.Signals.Assert(SignalLine.IRQ, 1, new Cycle(currentCycle));
             return 0;
         }
     }

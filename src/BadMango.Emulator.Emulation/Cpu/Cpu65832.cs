@@ -6,7 +6,9 @@ namespace BadMango.Emulator.Emulation.Cpu;
 
 using System.Diagnostics.CodeAnalysis;
 
-using Core;
+using Core.Cpu;
+using Core.Interfaces.Cpu;
+using Core.Interfaces.Debugging;
 
 /// <summary>
 /// Placeholder for hypothetical 65832 CPU emulator (32-bit extension).

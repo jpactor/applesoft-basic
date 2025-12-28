@@ -4,11 +4,14 @@
 
 namespace BadMango.Emulator.Debug.Infrastructure;
 
-using BadMango.Emulator.Core;
 using BadMango.Emulator.Core.Configuration;
 using BadMango.Emulator.Emulation.Cpu;
 using BadMango.Emulator.Emulation.Debugging;
 using BadMango.Emulator.Emulation.Memory;
+
+using Core.Cpu;
+using Core.Interfaces;
+using Core.Interfaces.Cpu;
 
 /// <summary>
 /// Factory for creating emulator components from machine profiles.

@@ -5,6 +5,7 @@
 #pragma warning disable SA1200 // Using directives should be placed correctly
 
 global using BadMango.Emulator.Bus;
+global using BadMango.Emulator.Core.Signaling;
 global using NUnit.Framework;
 
 // Global type aliases matching the Bus project
