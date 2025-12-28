@@ -95,8 +95,9 @@ public class AboutViewModel : ViewModelBase, ISettingsPage
     private static string GetBuildDate(Assembly assembly)
     {
         // Try to get build date from assembly metadata
-        var buildDateAttr = assembly.GetCustomAttribute<AssemblyMetadataAttribute>();
-        if (buildDateAttr?.Key == "BuildDate" && buildDateAttr.Value is not null)
+        var buildDateAttr = assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
+            .FirstOrDefault(attr => attr.Key == "BuildDate");
+        if (buildDateAttr?.Value is not null)
         {
             return buildDateAttr.Value;
         }
