@@ -2,14 +2,11 @@
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
-namespace BadMango.Emulator.Bus;
+namespace BadMango.Emulator.Core.Signaling;
 
 using System.Runtime.CompilerServices;
 
-using BadMango.Emulator.Core;
-using BadMango.Emulator.Core.Signaling;
-
-using Core.Interfaces.Signaling;
+using BadMango.Emulator.Core.Interfaces.Signaling;
 
 /// <summary>
 /// Implementation tracks multiple asserters per line.
