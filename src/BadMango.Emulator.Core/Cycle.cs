@@ -123,5 +123,5 @@ public readonly record struct Cycle(ulong Value) : IComparable<Cycle>
     /// Returns a string representation of the cycle count.
     /// </summary>
     /// <returns>A string containing the cycle count.</returns>
-    public override string ToString() => $"{Value} cycles";
+    public override string ToString() => $"{Value}";
 }

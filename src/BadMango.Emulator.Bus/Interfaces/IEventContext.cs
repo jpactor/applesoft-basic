@@ -6,6 +6,8 @@ namespace BadMango.Emulator.Bus.Interfaces;
 
 using BadMango.Emulator.Core.Interfaces.Signaling;
 
+using Core;
+
 /// <summary>
 /// Provides context for scheduled device event callbacks, giving access to system services.
 /// </summary>
@@ -31,9 +33,9 @@ public interface IEventContext
     /// </summary>
     /// <value>The current cycle in the timeline.</value>
     /// <remarks>
-    /// This is a convenience property equivalent to <c>Scheduler.CurrentCycle</c>.
+    /// This is a convenience property equivalent to <c>Scheduler.Now</c>.
     /// </remarks>
-    ulong CurrentCycle { get; }
+    Cycle Now { get; }
 
     /// <summary>
     /// Gets the cycle-accurate event scheduler.

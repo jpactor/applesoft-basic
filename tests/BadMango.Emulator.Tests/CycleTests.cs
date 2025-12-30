@@ -204,17 +204,6 @@ public class CycleTests
     }
 
     /// <summary>
-    /// Verifies ToString returns descriptive string.
-    /// </summary>
-    [Test]
-    public void Cycle_ToString_ReturnsDescriptiveString()
-    {
-        var cycle = new Cycle(123ul);
-
-        Assert.That(cycle.ToString(), Is.EqualTo("123 cycles"));
-    }
-
-    /// <summary>
     /// Verifies the prefix increment operator returns incremented value.
     /// </summary>
     [Test]

@@ -21,13 +21,13 @@ public class ISchedulerTests
     public void IScheduler_CanBeMocked()
     {
         var mockScheduler = new Mock<IScheduler>();
-        mockScheduler.Setup(s => s.CurrentCycle).Returns(1000ul);
+        mockScheduler.Setup(s => s.Now).Returns(1000ul);
 
-        Assert.That(mockScheduler.Object.CurrentCycle, Is.EqualTo(1000ul));
+        Assert.That((ulong)mockScheduler.Object.Now, Is.EqualTo(1000ul));
     }
 
     /// <summary>
-    /// Verifies that Schedule can be called.
+    /// Verifies that ScheduleAt can be called.
     /// </summary>
     [Test]
     public void IScheduler_Schedule_CanBeCalled()
@@ -35,9 +35,9 @@ public class ISchedulerTests
         var mockScheduler = new Mock<IScheduler>();
         var mockActor = new Mock<ISchedulable>();
 
-        mockScheduler.Object.Schedule(mockActor.Object, 500ul);
+        mockScheduler.Object.ScheduleAt(mockActor.Object, 500ul);
 
-        mockScheduler.Verify(s => s.Schedule(mockActor.Object, 500ul), Times.Once);
+        mockScheduler.Verify(s => s.ScheduleAt(mockActor.Object, 500ul), Times.Once);
     }
 
     /// <summary>
@@ -97,15 +97,15 @@ public class ISchedulerTests
     }
 
     /// <summary>
-    /// Verifies that AdvanceCycles can be called.
+    /// Verifies that Advance can be called.
     /// </summary>
     [Test]
     public void IScheduler_AdvanceCycles_CanBeCalled()
     {
         var mockScheduler = new Mock<IScheduler>();
 
-        mockScheduler.Object.AdvanceCycles(100ul);
+        mockScheduler.Object.Advance(100ul);
 
-        mockScheduler.Verify(s => s.AdvanceCycles(100ul), Times.Once);
+        mockScheduler.Verify(s => s.Advance(100ul), Times.Once);
     }
 }

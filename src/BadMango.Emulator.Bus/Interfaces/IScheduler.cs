@@ -4,6 +4,8 @@
 
 namespace BadMango.Emulator.Bus.Interfaces;
 
+using Core;
+
 /// <summary>
 /// Central authority for discrete-event scheduling with a single authoritative cycle counter.
 /// </summary>
@@ -29,7 +31,20 @@ public interface IScheduler
     /// Gets the current cycle in the timeline.
     /// </summary>
     /// <value>The current cycle, which only advances as actors consume cycles.</value>
-    ulong CurrentCycle { get; }
+    Cycle Now { get; }
+
+    /// <summary>
+    /// Retrieves the current cycle tracked by the scheduler.
+    /// </summary>
+    /// <returns>
+    /// The current <see cref="Cycle"/> representing the scheduler's authoritative cycle counter.
+    /// </returns>
+    /// <remarks>
+    /// The returned cycle is a monotonic value that represents the current point in the scheduler's
+    /// discrete-event timeline. It is deterministic and reproducible, ensuring consistent behavior
+    /// across executions with the same inputs.
+    /// </remarks>
+    Cycle GetCurrentCycle() => Now;
 
     /// <summary>
     /// Schedules an actor to run at an absolute cycle.
@@ -40,7 +55,7 @@ public interface IScheduler
     /// If the requested cycle is in the past or at the current cycle, the actor
     /// will be run on the next <see cref="Drain"/> or <see cref="RunUntil"/> call.
     /// </remarks>
-    void Schedule(ISchedulable actor, ulong cycle);
+    void ScheduleAt(ISchedulable actor, Cycle cycle);
 
     /// <summary>
     /// Schedules an actor to run relative to the current cycle.
@@ -48,9 +63,9 @@ public interface IScheduler
     /// <param name="actor">The actor to schedule.</param>
     /// <param name="deltaCycles">The number of cycles from now when the actor should run.</param>
     /// <remarks>
-    /// This is a convenience method equivalent to <c>Schedule(actor, CurrentCycle + deltaCycles)</c>.
+    /// This is a convenience method equivalent to <c>ScheduleAt(actor, Now + deltaCycles)</c>.
     /// </remarks>
-    void ScheduleAfter(ISchedulable actor, ulong deltaCycles);
+    void ScheduleAfter(ISchedulable actor, Cycle deltaCycles);
 
     /// <summary>
     /// Runs until no events remain at or before the current cycle.
@@ -82,7 +97,7 @@ public interface IScheduler
     /// not in this method.
     /// </para>
     /// </remarks>
-    void RunUntil(ulong targetCycle);
+    void RunUntil(Cycle targetCycle);
 
     /// <summary>
     /// Cancels all scheduled events for the specified actor.
@@ -109,5 +124,5 @@ public interface IScheduler
     /// signals instruction execution and the scheduler advances accordingly.
     /// </para>
     /// </remarks>
-    void AdvanceCycles(ulong cycles);
+    void Advance(Cycle cycles);
 }

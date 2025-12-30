@@ -161,7 +161,7 @@ public class IScheduledDeviceTests
         public void Initialize(IEventContext context)
         {
             this.context = context;
-            context.Scheduler.Schedule(this, scheduledCycle);
+            context.Scheduler.ScheduleAt(this, scheduledCycle);
         }
 
         public ulong Execute(ulong currentCycle, IScheduler scheduler)
@@ -183,7 +183,7 @@ public class IScheduledDeviceTests
         public void Initialize(IEventContext context)
         {
             this.context = context;
-            context.Scheduler.Schedule(this, 100ul);
+            context.Scheduler.ScheduleAt(this, 100ul);
         }
 
         public ulong Execute(ulong currentCycle, IScheduler scheduler)

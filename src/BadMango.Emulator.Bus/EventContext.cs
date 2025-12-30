@@ -4,7 +4,11 @@
 
 namespace BadMango.Emulator.Bus;
 
+using System.Runtime.CompilerServices;
+
 using BadMango.Emulator.Core.Interfaces.Signaling;
+
+using Core;
 
 using Interfaces;
 
@@ -52,7 +56,11 @@ public sealed class EventContext : IEventContext
     }
 
     /// <inheritdoc />
-    public ulong CurrentCycle => Scheduler.CurrentCycle;
+    public Cycle Now
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => Scheduler.Now;
+    }
 
     /// <inheritdoc />
     public IScheduler Scheduler { get; }

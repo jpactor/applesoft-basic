@@ -26,7 +26,7 @@ public class SchedulerTests
     {
         var scheduler = new Scheduler();
 
-        Assert.That(scheduler.CurrentCycle, Is.EqualTo(0ul));
+        Assert.That((ulong)scheduler.Now, Is.EqualTo(0ul));
     }
 
     /// <summary>
@@ -41,7 +41,7 @@ public class SchedulerTests
     }
 
     /// <summary>
-    /// Verifies that Schedule adds an event to the queue.
+    /// Verifies that ScheduleAt adds an event to the queue.
     /// </summary>
     [Test]
     public void Schedule_AddsEventToQueue()
@@ -49,20 +49,20 @@ public class SchedulerTests
         var scheduler = new Scheduler();
         var mockActor = new Mock<ISchedulable>();
 
-        scheduler.Schedule(mockActor.Object, 100ul);
+        scheduler.ScheduleAt(mockActor.Object, 100ul);
 
         Assert.That(scheduler.PendingEventCount, Is.EqualTo(1));
     }
 
     /// <summary>
-    /// Verifies that Schedule throws for null actor.
+    /// Verifies that ScheduleAt throws for null actor.
     /// </summary>
     [Test]
     public void Schedule_NullActor_ThrowsArgumentNullException()
     {
         var scheduler = new Scheduler();
 
-        Assert.Throws<ArgumentNullException>(() => scheduler.Schedule(null!, 100ul));
+        Assert.Throws<ArgumentNullException>(() => scheduler.ScheduleAt(null!, 100ul));
     }
 
     /// <summary>
@@ -73,7 +73,7 @@ public class SchedulerTests
     {
         var scheduler = new Scheduler();
         var executedAt = 0ul;
-        var actor = new TestActor(() => executedAt = scheduler.CurrentCycle);
+        var actor = new TestActor(() => executedAt = scheduler.Now);
 
         scheduler.ScheduleAfter(actor, 50ul);
         scheduler.RunUntil(50ul);
@@ -102,7 +102,7 @@ public class SchedulerTests
         bool executed = false;
         var actor = new TestActor(() => executed = true);
 
-        scheduler.Schedule(actor, 0ul); // Due at cycle 0
+        scheduler.ScheduleAt(actor, 0ul); // Due at cycle 0
         scheduler.Drain();
 
         Assert.That(executed, Is.True);
@@ -118,7 +118,7 @@ public class SchedulerTests
         bool executed = false;
         var actor = new TestActor(() => executed = true);
 
-        scheduler.Schedule(actor, 100ul); // Due at cycle 100
+        scheduler.ScheduleAt(actor, 100ul); // Due at cycle 100
         scheduler.Drain();
 
         Assert.That(executed, Is.False);
@@ -134,7 +134,7 @@ public class SchedulerTests
 
         scheduler.RunUntil(500ul);
 
-        Assert.That(scheduler.CurrentCycle, Is.EqualTo(500ul));
+        Assert.That((ulong)scheduler.Now, Is.EqualTo(500ul));
     }
 
     /// <summary>
@@ -149,9 +149,9 @@ public class SchedulerTests
         var actor2 = new TestActor(() => executionOrder.Add(2));
         var actor3 = new TestActor(() => executionOrder.Add(3));
 
-        scheduler.Schedule(actor1, 10ul);
-        scheduler.Schedule(actor2, 50ul);
-        scheduler.Schedule(actor3, 100ul);
+        scheduler.ScheduleAt(actor1, 10ul);
+        scheduler.ScheduleAt(actor2, 50ul);
+        scheduler.ScheduleAt(actor3, 100ul);
 
         scheduler.RunUntil(100ul);
 
@@ -170,8 +170,8 @@ public class SchedulerTests
         var earlyActor = new TestActor(() => executedEarly = true);
         var lateActor = new TestActor(() => executedLate = true);
 
-        scheduler.Schedule(earlyActor, 50ul);
-        scheduler.Schedule(lateActor, 150ul);
+        scheduler.ScheduleAt(earlyActor, 50ul);
+        scheduler.ScheduleAt(lateActor, 150ul);
 
         scheduler.RunUntil(100ul);
 
@@ -191,10 +191,10 @@ public class SchedulerTests
         var scheduler = new Scheduler();
         var executionOrder = new List<string>();
 
-        // Schedule out of order
-        scheduler.Schedule(new TestActor(() => executionOrder.Add("C")), 30ul);
-        scheduler.Schedule(new TestActor(() => executionOrder.Add("A")), 10ul);
-        scheduler.Schedule(new TestActor(() => executionOrder.Add("B")), 20ul);
+        // ScheduleAt out of order
+        scheduler.ScheduleAt(new TestActor(() => executionOrder.Add("C")), 30ul);
+        scheduler.ScheduleAt(new TestActor(() => executionOrder.Add("A")), 10ul);
+        scheduler.ScheduleAt(new TestActor(() => executionOrder.Add("B")), 20ul);
 
         scheduler.RunUntil(30ul);
 
@@ -211,9 +211,9 @@ public class SchedulerTests
         var executionOrder = new List<string>();
 
         // All scheduled for the same cycle
-        scheduler.Schedule(new TestActor(() => executionOrder.Add("First")), 100ul);
-        scheduler.Schedule(new TestActor(() => executionOrder.Add("Second")), 100ul);
-        scheduler.Schedule(new TestActor(() => executionOrder.Add("Third")), 100ul);
+        scheduler.ScheduleAt(new TestActor(() => executionOrder.Add("First")), 100ul);
+        scheduler.ScheduleAt(new TestActor(() => executionOrder.Add("Second")), 100ul);
+        scheduler.ScheduleAt(new TestActor(() => executionOrder.Add("Third")), 100ul);
 
         scheduler.RunUntil(100ul);
 
@@ -234,10 +234,10 @@ public class SchedulerTests
             var scheduler = new Scheduler();
             var executionOrder = new List<string>();
 
-            scheduler.Schedule(new TestActor(() => executionOrder.Add("C")), 30ul);
-            scheduler.Schedule(new TestActor(() => executionOrder.Add("A")), 10ul);
-            scheduler.Schedule(new TestActor(() => executionOrder.Add("D")), 30ul); // Same cycle as C
-            scheduler.Schedule(new TestActor(() => executionOrder.Add("B")), 20ul);
+            scheduler.ScheduleAt(new TestActor(() => executionOrder.Add("C")), 30ul);
+            scheduler.ScheduleAt(new TestActor(() => executionOrder.Add("A")), 10ul);
+            scheduler.ScheduleAt(new TestActor(() => executionOrder.Add("D")), 30ul); // Same cycle as C
+            scheduler.ScheduleAt(new TestActor(() => executionOrder.Add("B")), 20ul);
 
             scheduler.RunUntil(30ul);
             results.Add(new List<string>(executionOrder));
@@ -259,7 +259,7 @@ public class SchedulerTests
         bool executed = false;
         var actor = new TestActor(() => executed = true);
 
-        scheduler.Schedule(actor, 100ul);
+        scheduler.ScheduleAt(actor, 100ul);
         bool cancelled = scheduler.Cancel(actor);
         scheduler.RunUntil(200ul);
 
@@ -308,8 +308,8 @@ public class SchedulerTests
         var actor1 = new TestActor(() => actor1Executed = true);
         var actor2 = new TestActor(() => actor2Executed = true);
 
-        scheduler.Schedule(actor1, 100ul);
-        scheduler.Schedule(actor2, 100ul);
+        scheduler.ScheduleAt(actor1, 100ul);
+        scheduler.ScheduleAt(actor2, 100ul);
         scheduler.Cancel(actor1);
         scheduler.RunUntil(200ul);
 
@@ -329,8 +329,8 @@ public class SchedulerTests
         var scheduler = new Scheduler();
         var mockActor = new Mock<ISchedulable>();
 
-        scheduler.Schedule(mockActor.Object, 100ul);
-        scheduler.Schedule(mockActor.Object, 200ul);
+        scheduler.ScheduleAt(mockActor.Object, 100ul);
+        scheduler.ScheduleAt(mockActor.Object, 200ul);
         scheduler.Reset();
 
         Assert.That(scheduler.PendingEventCount, Is.EqualTo(0));
@@ -347,7 +347,7 @@ public class SchedulerTests
         scheduler.RunUntil(1000ul);
         scheduler.Reset();
 
-        Assert.That(scheduler.CurrentCycle, Is.EqualTo(0ul));
+        Assert.That((ulong)scheduler.Now, Is.EqualTo(0ul));
     }
 
     /// <summary>
@@ -360,8 +360,8 @@ public class SchedulerTests
         var executionOrder = new List<string>();
 
         // First run
-        scheduler.Schedule(new TestActor(() => executionOrder.Add("A")), 10ul);
-        scheduler.Schedule(new TestActor(() => executionOrder.Add("B")), 10ul);
+        scheduler.ScheduleAt(new TestActor(() => executionOrder.Add("A")), 10ul);
+        scheduler.ScheduleAt(new TestActor(() => executionOrder.Add("B")), 10ul);
         scheduler.RunUntil(10ul);
 
         // Reset
@@ -369,8 +369,8 @@ public class SchedulerTests
         executionOrder.Clear();
 
         // Second run - should produce same order
-        scheduler.Schedule(new TestActor(() => executionOrder.Add("A")), 10ul);
-        scheduler.Schedule(new TestActor(() => executionOrder.Add("B")), 10ul);
+        scheduler.ScheduleAt(new TestActor(() => executionOrder.Add("A")), 10ul);
+        scheduler.ScheduleAt(new TestActor(() => executionOrder.Add("B")), 10ul);
         scheduler.RunUntil(10ul);
 
         Assert.That(executionOrder, Is.EqualTo(new[] { "A", "B" }));
@@ -391,7 +391,7 @@ public class SchedulerTests
             scheduler.ScheduleAfter(new TestActor(() => executionOrder.Add("Second")), 10ul);
         });
 
-        scheduler.Schedule(firstActor, 10ul);
+        scheduler.ScheduleAt(firstActor, 10ul);
         scheduler.RunUntil(100ul);
 
         Assert.That(executionOrder, Is.EqualTo(new[] { "First", "Second" }));
@@ -406,10 +406,10 @@ public class SchedulerTests
         var scheduler = new Scheduler();
         var actor = new TestActor(() => { }, consumedCycles: 10ul);
 
-        scheduler.Schedule(actor, 0ul);
+        scheduler.ScheduleAt(actor, 0ul);
         scheduler.Drain();
 
-        Assert.That(scheduler.CurrentCycle, Is.EqualTo(10ul));
+        Assert.That((ulong)scheduler.Now, Is.EqualTo(10ul));
     }
 
     /// <summary>
@@ -421,10 +421,10 @@ public class SchedulerTests
         var scheduler = new Scheduler();
         var actor = new TestActor(() => { }, consumedCycles: 0ul);
 
-        scheduler.Schedule(actor, 0ul);
+        scheduler.ScheduleAt(actor, 0ul);
         scheduler.Drain();
 
-        Assert.That(scheduler.CurrentCycle, Is.EqualTo(0ul));
+        Assert.That((ulong)scheduler.Now, Is.EqualTo(0ul));
     }
 
     /// <summary>
@@ -435,9 +435,9 @@ public class SchedulerTests
     {
         var scheduler = new Scheduler();
         ulong cycleWhenExecuted = 0;
-        var actor = new TestActor(() => cycleWhenExecuted = scheduler.CurrentCycle, consumedCycles: 0ul);
+        var actor = new TestActor(() => cycleWhenExecuted = scheduler.Now, consumedCycles: 0ul);
 
-        scheduler.Schedule(actor, 50ul);
+        scheduler.ScheduleAt(actor, 50ul);
         scheduler.RunUntil(100ul);
 
         Assert.That(cycleWhenExecuted, Is.EqualTo(50ul));
@@ -454,7 +454,7 @@ public class SchedulerTests
         var actor = new TestActor(() => executed = true);
 
         scheduler.RunUntil(100ul); // Advance to cycle 100
-        scheduler.Schedule(actor, 50ul); // Schedule for cycle 50 (in the past)
+        scheduler.ScheduleAt(actor, 50ul); // ScheduleAt for cycle 50 (in the past)
         scheduler.Drain(); // Should execute immediately
 
         Assert.That(executed, Is.True);
@@ -472,10 +472,10 @@ public class SchedulerTests
 
         Assert.That(scheduler.PendingEventCount, Is.EqualTo(0));
 
-        scheduler.Schedule(mockActor.Object, 100ul);
+        scheduler.ScheduleAt(mockActor.Object, 100ul);
         Assert.That(scheduler.PendingEventCount, Is.EqualTo(1));
 
-        scheduler.Schedule(mockActor.Object, 200ul);
+        scheduler.ScheduleAt(mockActor.Object, 200ul);
         Assert.That(scheduler.PendingEventCount, Is.EqualTo(2));
 
         scheduler.RunUntil(100ul);
@@ -500,27 +500,27 @@ public class SchedulerTests
             () => tickCount++,
             () => scheduler.ScheduleAfter(periodicActor!, interval));
 
-        scheduler.Schedule(periodicActor, interval);
+        scheduler.ScheduleAt(periodicActor, interval);
         scheduler.RunUntil(350ul); // Should fire at 100, 200, 300
 
         Assert.That(tickCount, Is.EqualTo(3));
     }
 
     /// <summary>
-    /// Verifies that AdvanceCycles advances the current cycle.
+    /// Verifies that Advance advances the current cycle.
     /// </summary>
     [Test]
     public void AdvanceCycles_AdvancesCurrentCycle()
     {
         var scheduler = new Scheduler();
 
-        scheduler.AdvanceCycles(100ul);
+        scheduler.Advance(100ul);
 
-        Assert.That(scheduler.CurrentCycle, Is.EqualTo(100ul));
+        Assert.That((ulong)scheduler.Now, Is.EqualTo(100ul));
     }
 
     /// <summary>
-    /// Verifies that AdvanceCycles with zero does not change cycle.
+    /// Verifies that Advance with zero does not change cycle.
     /// </summary>
     [Test]
     public void AdvanceCycles_WithZero_DoesNotChange()
@@ -528,13 +528,13 @@ public class SchedulerTests
         var scheduler = new Scheduler();
         scheduler.RunUntil(50ul);
 
-        scheduler.AdvanceCycles(0ul);
+        scheduler.Advance(0ul);
 
-        Assert.That(scheduler.CurrentCycle, Is.EqualTo(50ul));
+        Assert.That((ulong)scheduler.Now, Is.EqualTo(50ul));
     }
 
     /// <summary>
-    /// Verifies that AdvanceCycles executes due events.
+    /// Verifies that Advance executes due events.
     /// </summary>
     [Test]
     public void AdvanceCycles_ExecutesDueEvents()
@@ -544,16 +544,16 @@ public class SchedulerTests
         var actor1 = new TestActor(() => executionOrder.Add(1));
         var actor2 = new TestActor(() => executionOrder.Add(2));
 
-        scheduler.Schedule(actor1, 50ul);
-        scheduler.Schedule(actor2, 75ul);
+        scheduler.ScheduleAt(actor1, 50ul);
+        scheduler.ScheduleAt(actor2, 75ul);
 
-        scheduler.AdvanceCycles(100ul);
+        scheduler.Advance(100ul);
 
         Assert.That(executionOrder, Is.EqualTo(new[] { 1, 2 }));
     }
 
     /// <summary>
-    /// Verifies that AdvanceCycles does not execute future events.
+    /// Verifies that Advance does not execute future events.
     /// </summary>
     [Test]
     public void AdvanceCycles_DoesNotExecuteFutureEvents()
@@ -562,33 +562,33 @@ public class SchedulerTests
         bool executed = false;
         var actor = new TestActor(() => executed = true);
 
-        scheduler.Schedule(actor, 200ul);
-        scheduler.AdvanceCycles(100ul);
+        scheduler.ScheduleAt(actor, 200ul);
+        scheduler.Advance(100ul);
 
         Assert.Multiple(() =>
         {
             Assert.That(executed, Is.False);
-            Assert.That(scheduler.CurrentCycle, Is.EqualTo(100ul));
+            Assert.That((ulong)scheduler.Now, Is.EqualTo(100ul));
         });
     }
 
     /// <summary>
-    /// Verifies that AdvanceCycles accumulates correctly.
+    /// Verifies that Advance accumulates correctly.
     /// </summary>
     [Test]
     public void AdvanceCycles_AccumulatesCorrectly()
     {
         var scheduler = new Scheduler();
 
-        scheduler.AdvanceCycles(50ul);
-        scheduler.AdvanceCycles(30ul);
-        scheduler.AdvanceCycles(20ul);
+        scheduler.Advance(50ul);
+        scheduler.Advance(30ul);
+        scheduler.Advance(20ul);
 
-        Assert.That(scheduler.CurrentCycle, Is.EqualTo(100ul));
+        Assert.That((ulong)scheduler.Now, Is.EqualTo(100ul));
     }
 
     /// <summary>
-    /// Verifies that AdvanceCycles works with events consuming cycles.
+    /// Verifies that Advance works with events consuming cycles.
     /// </summary>
     [Test]
     public void AdvanceCycles_WithEventConsumingCycles()
@@ -596,12 +596,12 @@ public class SchedulerTests
         var scheduler = new Scheduler();
         var actor = new TestActor(() => { }, consumedCycles: 10ul);
 
-        scheduler.Schedule(actor, 50ul);
-        scheduler.AdvanceCycles(100ul);
+        scheduler.ScheduleAt(actor, 50ul);
+        scheduler.Advance(100ul);
 
         // The event fires at 50 and consumes 10 cycles (current cycle becomes 60)
         // Then we advance to the target cycle 100
-        Assert.That(scheduler.CurrentCycle, Is.EqualTo(100ul));
+        Assert.That((ulong)scheduler.Now, Is.EqualTo(100ul));
     }
 
     /// <summary>
@@ -614,24 +614,24 @@ public class SchedulerTests
         var scheduler = new Scheduler();
         bool deviceTriggered = false;
 
-        // Schedule a device event at cycle 50
-        scheduler.Schedule(new TestActor(() => deviceTriggered = true), 50ul);
+        // ScheduleAt a device event at cycle 50
+        scheduler.ScheduleAt(new TestActor(() => deviceTriggered = true), 50ul);
 
         // Simulate CPU executing 10 instructions of 6 cycles each
         for (int i = 0; i < 10; i++)
         {
-            scheduler.AdvanceCycles(6);
+            scheduler.Advance(6);
         }
 
         Assert.Multiple(() =>
         {
-            Assert.That(scheduler.CurrentCycle, Is.EqualTo(60ul));
+            Assert.That((ulong)scheduler.Now, Is.EqualTo(60ul));
             Assert.That(deviceTriggered, Is.True, "Device event should have triggered at cycle 50");
         });
     }
 
     /// <summary>
-    /// Verifies that AdvanceCycles maintains deterministic event ordering.
+    /// Verifies that Advance maintains deterministic event ordering.
     /// </summary>
     [Test]
     public void AdvanceCycles_MaintainsDeterministicOrdering()
@@ -643,13 +643,13 @@ public class SchedulerTests
             var scheduler = new Scheduler();
             var executionOrder = new List<int>();
 
-            scheduler.Schedule(new TestActor(() => executionOrder.Add(1)), 25ul);
-            scheduler.Schedule(new TestActor(() => executionOrder.Add(2)), 25ul);
-            scheduler.Schedule(new TestActor(() => executionOrder.Add(3)), 50ul);
+            scheduler.ScheduleAt(new TestActor(() => executionOrder.Add(1)), 25ul);
+            scheduler.ScheduleAt(new TestActor(() => executionOrder.Add(2)), 25ul);
+            scheduler.ScheduleAt(new TestActor(() => executionOrder.Add(3)), 50ul);
 
             // Advance in increments
-            scheduler.AdvanceCycles(30ul);
-            scheduler.AdvanceCycles(30ul);
+            scheduler.Advance(30ul);
+            scheduler.Advance(30ul);
 
             results.Add(new List<int>(executionOrder));
         }
@@ -669,27 +669,27 @@ public class SchedulerTests
         var scheduler = new Scheduler();
         var events = new List<(string Name, ulong Cycle)>();
 
-        // Schedule multiple device events
-        scheduler.Schedule(new TestActor(() => events.Add(("Timer1", scheduler.CurrentCycle))), 10ul);
-        scheduler.Schedule(new TestActor(() => events.Add(("Timer2", scheduler.CurrentCycle))), 25ul);
-        scheduler.Schedule(new TestActor(() => events.Add(("Timer3", scheduler.CurrentCycle))), 50ul);
+        // ScheduleAt multiple device events
+        scheduler.ScheduleAt(new TestActor(() => events.Add(("Timer1", scheduler.Now))), 10ul);
+        scheduler.ScheduleAt(new TestActor(() => events.Add(("Timer2", scheduler.Now))), 25ul);
+        scheduler.ScheduleAt(new TestActor(() => events.Add(("Timer3", scheduler.Now))), 50ul);
 
         // Simulate CPU executing instructions with varying cycle counts
         // Instruction 1: 5 cycles
-        scheduler.AdvanceCycles(5);
+        scheduler.Advance(5);
 
         // Instruction 2: 7 cycles (total: 12)
-        scheduler.AdvanceCycles(7);
+        scheduler.Advance(7);
 
         // Instruction 3: 12 cycles (total: 24)
-        scheduler.AdvanceCycles(12);
+        scheduler.Advance(12);
 
         // Instruction 4: 26 cycles (total: 50)
-        scheduler.AdvanceCycles(26);
+        scheduler.Advance(26);
 
         Assert.Multiple(() =>
         {
-            Assert.That(scheduler.CurrentCycle, Is.EqualTo(50ul), "Scheduler should be at cycle 50");
+            Assert.That((ulong)scheduler.Now, Is.EqualTo(50ul), "Scheduler should be at cycle 50");
             Assert.That(events.Count, Is.EqualTo(3), "All three timer events should have fired");
             Assert.That(events[0].Name, Is.EqualTo("Timer1"));
             Assert.That(events[0].Cycle, Is.EqualTo(10ul));
@@ -709,13 +709,13 @@ public class SchedulerTests
         var scheduler = new Scheduler();
         var executionOrder = new List<string>();
 
-        // Schedule multiple events at the same cycle
-        scheduler.Schedule(new TestActor(() => executionOrder.Add("Event1")), 20ul);
-        scheduler.Schedule(new TestActor(() => executionOrder.Add("Event2")), 20ul);
-        scheduler.Schedule(new TestActor(() => executionOrder.Add("Event3")), 20ul);
+        // ScheduleAt multiple events at the same cycle
+        scheduler.ScheduleAt(new TestActor(() => executionOrder.Add("Event1")), 20ul);
+        scheduler.ScheduleAt(new TestActor(() => executionOrder.Add("Event2")), 20ul);
+        scheduler.ScheduleAt(new TestActor(() => executionOrder.Add("Event3")), 20ul);
 
         // Advance via scheduler cycles
-        scheduler.AdvanceCycles(20);
+        scheduler.Advance(20);
 
         Assert.Multiple(() =>
         {
@@ -739,23 +739,23 @@ public class SchedulerTests
         var actor1 = new TestActor(() => event1Fired = true);
         var actor2 = new TestActor(() => event2Fired = true);
 
-        scheduler.Schedule(actor1, 30ul);
-        scheduler.Schedule(actor2, 50ul);
+        scheduler.ScheduleAt(actor1, 30ul);
+        scheduler.ScheduleAt(actor2, 50ul);
 
         // Advance to cycle 20, then cancel actor2
-        scheduler.AdvanceCycles(20);
+        scheduler.Advance(20);
 
         bool cancelled = scheduler.Cancel(actor2);
 
         // Advance to cycle 60
-        scheduler.AdvanceCycles(40);
+        scheduler.Advance(40);
 
         Assert.Multiple(() =>
         {
             Assert.That(cancelled, Is.True, "Cancel should return true");
             Assert.That(event1Fired, Is.True, "Event1 should have fired");
             Assert.That(event2Fired, Is.False, "Event2 should NOT have fired (cancelled)");
-            Assert.That(scheduler.CurrentCycle, Is.EqualTo(60ul));
+            Assert.That((ulong)scheduler.Now, Is.EqualTo(60ul));
         });
     }
 
@@ -768,21 +768,21 @@ public class SchedulerTests
         var scheduler = new Scheduler();
         bool eventFired = false;
 
-        scheduler.Schedule(new TestActor(() => eventFired = true), 100ul);
+        scheduler.ScheduleAt(new TestActor(() => eventFired = true), 100ul);
 
         // Advance partially
-        scheduler.AdvanceCycles(50);
+        scheduler.Advance(50);
 
         // Reset scheduler
         scheduler.Reset();
 
         // Advance past where the event was scheduled
-        scheduler.AdvanceCycles(150);
+        scheduler.Advance(150);
 
         Assert.Multiple(() =>
         {
             Assert.That(eventFired, Is.False, "Event should NOT fire after reset");
-            Assert.That(scheduler.CurrentCycle, Is.EqualTo(150ul));
+            Assert.That((ulong)scheduler.Now, Is.EqualTo(150ul));
             Assert.That(scheduler.PendingEventCount, Is.EqualTo(0));
         });
     }
@@ -799,15 +799,15 @@ public class SchedulerTests
 
         PeriodicActor? timerActor = null;
         timerActor = new PeriodicActor(
-            () => tickCycles.Add(scheduler.CurrentCycle),
+            () => tickCycles.Add(scheduler.Now),
             () => scheduler.ScheduleAfter(timerActor!, timerInterval));
 
-        scheduler.Schedule(timerActor, timerInterval);
+        scheduler.ScheduleAt(timerActor, timerInterval);
 
         // Simulate CPU executing instructions to advance time
         for (int i = 0; i < 20; i++)
         {
-            scheduler.AdvanceCycles(5);
+            scheduler.Advance(5);
         }
 
         // Should have ticks at cycles 25, 50, 75, 100
@@ -818,7 +818,7 @@ public class SchedulerTests
             Assert.That(tickCycles[1], Is.EqualTo(50ul));
             Assert.That(tickCycles[2], Is.EqualTo(75ul));
             Assert.That(tickCycles[3], Is.EqualTo(100ul));
-            Assert.That(scheduler.CurrentCycle, Is.EqualTo(100ul));
+            Assert.That((ulong)scheduler.Now, Is.EqualTo(100ul));
         });
     }
 
@@ -835,13 +835,13 @@ public class SchedulerTests
         // Set up some signal line activity
         signalBus.Assert(SignalLine.IRQ, deviceId: 1, cycle: Cycle.Zero);
 
-        // Schedule events
-        scheduler.Schedule(new TestActor(() => events.Add("Event1")), 10ul);
-        scheduler.Schedule(
+        // ScheduleAt events
+        scheduler.ScheduleAt(new TestActor(() => events.Add("Event1")), 10ul);
+        scheduler.ScheduleAt(
             new TestActor(() =>
             {
                 events.Add("Event2");
-                signalBus.Deassert(SignalLine.IRQ, deviceId: 1, cycle: new Cycle(scheduler.CurrentCycle));
+                signalBus.Deassert(SignalLine.IRQ, deviceId: 1, cycle: new Cycle(scheduler.Now));
             }),
             30ul);
 
@@ -849,7 +849,7 @@ public class SchedulerTests
         Assert.That(signalBus.IsAsserted(SignalLine.IRQ), Is.True);
 
         // Execute some CPU instructions
-        scheduler.AdvanceCycles(15);
+        scheduler.Advance(15);
 
         Assert.Multiple(() =>
         {
@@ -858,7 +858,7 @@ public class SchedulerTests
         });
 
         // Execute more instructions
-        scheduler.AdvanceCycles(20);
+        scheduler.Advance(20);
 
         Assert.Multiple(() =>
         {

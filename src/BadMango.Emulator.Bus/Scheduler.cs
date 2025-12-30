@@ -8,6 +8,8 @@ using System.Runtime.CompilerServices;
 
 using BadMango.Emulator.Core.Interfaces.Signaling;
 
+using Core;
+
 using Interfaces;
 
 /// <summary>
@@ -46,9 +48,9 @@ public sealed class Scheduler : IScheduler
     private long nextSequence;
 
     /// <summary>
-    /// Backing field for <see cref="CurrentCycle"/>.
+    /// Backing field for <see cref="Now"/>.
     /// </summary>
-    private ulong currentCycle;
+    private Cycle now;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Scheduler"/> class.
@@ -63,11 +65,10 @@ public sealed class Scheduler : IScheduler
     /// Gets the current cycle in the timeline.
     /// </summary>
     /// <value>The current cycle, which only advances as actors consume cycles.</value>
-    public ulong CurrentCycle
+    public Cycle Now
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => currentCycle;
-        private set => currentCycle = value;
+        get => now;
     }
 
     /// <summary>
@@ -97,7 +98,7 @@ public sealed class Scheduler : IScheduler
     /// </para>
     /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void Schedule(ISchedulable actor, ulong cycle)
+    public void ScheduleAt(ISchedulable actor, Cycle cycle)
     {
         ArgumentNullException.ThrowIfNull(actor, nameof(actor));
 
@@ -112,14 +113,14 @@ public sealed class Scheduler : IScheduler
     /// <param name="deltaCycles">The number of cycles from now when the actor should run.</param>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="actor"/> is <see langword="null"/>.</exception>
     /// <remarks>
-    /// This is a convenience method equivalent to <c>Schedule(actor, CurrentCycle + deltaCycles)</c>.
+    /// This is a convenience method equivalent to <c>ScheduleAt(actor, Now + deltaCycles)</c>.
     /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void ScheduleAfter(ISchedulable actor, ulong deltaCycles)
+    public void ScheduleAfter(ISchedulable actor, Cycle deltaCycles)
     {
-        ArgumentNullException.ThrowIfNull(actor, nameof(actor));
+        ArgumentNullException.ThrowIfNull(actor);
 
-        Schedule(actor, currentCycle + deltaCycles);
+        ScheduleAt(actor, now + deltaCycles);
     }
 
     /// <summary>
@@ -142,15 +143,15 @@ public sealed class Scheduler : IScheduler
     /// </remarks>
     public void Drain()
     {
-        while (eventQueue.TryPeek(out var nextEvent, out _) && nextEvent.Cycle <= currentCycle)
+        while (eventQueue.TryPeek(out var nextEvent, out _) && nextEvent.Cycle <= now)
         {
             eventQueue.Dequeue();
-            ulong consumedCycles = nextEvent.Actor.Execute(currentCycle, this);
+            ulong consumedCycles = nextEvent.Actor.Execute(now, this);
 
-            // Time advances based on consumed cycles (but CurrentCycle can never decrease)
+            // Time advances based on consumed cycles (but Now can never decrease)
             if (consumedCycles > 0)
             {
-                currentCycle += consumedCycles;
+                now += consumedCycles;
             }
         }
     }
@@ -174,7 +175,7 @@ public sealed class Scheduler : IScheduler
     /// the current cycle is advanced directly to the target.
     /// </para>
     /// </remarks>
-    public void RunUntil(ulong targetCycle)
+    public void RunUntil(Cycle targetCycle)
     {
         // Process all events due at or before the target cycle
         while (eventQueue.TryPeek(out var nextEvent, out _) && nextEvent.Cycle <= targetCycle)
@@ -182,24 +183,24 @@ public sealed class Scheduler : IScheduler
             eventQueue.Dequeue();
 
             // Advance current cycle to the event's due time if it's in the future
-            if (nextEvent.Cycle > currentCycle)
+            if (nextEvent.Cycle > now)
             {
-                currentCycle = nextEvent.Cycle;
+                now = nextEvent.Cycle;
             }
 
-            ulong consumedCycles = nextEvent.Actor.Execute(currentCycle, this);
+            ulong consumedCycles = nextEvent.Actor.Execute(now, this);
 
             // Time advances based on consumed cycles
             if (consumedCycles > 0)
             {
-                currentCycle += consumedCycles;
+                now += consumedCycles;
             }
         }
 
         // Ensure we reach the target cycle even if no events or all events were earlier
-        if (currentCycle < targetCycle)
+        if (now < targetCycle)
         {
-            currentCycle = targetCycle;
+            now = targetCycle;
         }
     }
 
@@ -219,14 +220,14 @@ public sealed class Scheduler : IScheduler
     /// </para>
     /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void AdvanceCycles(ulong cycles)
+    public void Advance(Cycle cycles)
     {
         if (cycles == 0)
         {
             return;
         }
 
-        ulong targetCycle = currentCycle + cycles;
+        Cycle targetCycle = now + cycles;
 
         // Process any events that are now due
         while (eventQueue.TryPeek(out var nextEvent, out _) && nextEvent.Cycle <= targetCycle)
@@ -234,21 +235,21 @@ public sealed class Scheduler : IScheduler
             eventQueue.Dequeue();
 
             // Advance to the event's cycle
-            if (nextEvent.Cycle > currentCycle)
+            if (nextEvent.Cycle > now)
             {
-                currentCycle = nextEvent.Cycle;
+                now = nextEvent.Cycle;
             }
 
-            ulong consumedCycles = nextEvent.Actor.Execute(currentCycle, this);
+            ulong consumedCycles = nextEvent.Actor.Execute(now, this);
 
             if (consumedCycles > 0)
             {
-                currentCycle += consumedCycles;
+                now += consumedCycles;
             }
         }
 
         // Advance to the target cycle
-        currentCycle = targetCycle;
+        now = targetCycle;
     }
 
     /// <summary>
@@ -315,7 +316,7 @@ public sealed class Scheduler : IScheduler
     public void Reset()
     {
         eventQueue.Clear();
-        currentCycle = 0;
+        now = 0;
         nextSequence = 0;
     }
 }
