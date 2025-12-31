@@ -22,6 +22,12 @@ using Core.Interfaces.Debugging;
 public class Cpu65832 : ICpu
 {
     /// <inheritdoc/>
+    public CpuCapabilities Capabilities => CpuCapabilities.Base6502 |
+                                           CpuCapabilities.SupportsEmulationFlag |
+                                           CpuCapabilities.Supports16BitRegisters |
+                                           CpuCapabilities.Supports65C02Instructions;
+
+    /// <inheritdoc/>
     public bool Halted => throw new NotImplementedException();
 
     /// <inheritdoc/>

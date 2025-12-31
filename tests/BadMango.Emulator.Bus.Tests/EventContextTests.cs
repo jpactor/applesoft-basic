@@ -5,6 +5,7 @@
 namespace BadMango.Emulator.Bus.Tests;
 
 using BadMango.Emulator.Core.Interfaces.Signaling;
+using BadMango.Emulator.Core.Signaling;
 
 using Interfaces;
 
@@ -73,23 +74,23 @@ public class EventContextTests
     }
 
     /// <summary>
-    /// Verifies that CurrentCycle returns the scheduler's current cycle.
+    /// Verifies that Now returns the scheduler's current cycle.
     /// </summary>
     [Test]
     public void CurrentCycle_ReturnsSchedulerCurrentCycle()
     {
         var mockScheduler = new Mock<IScheduler>();
-        mockScheduler.Setup(s => s.CurrentCycle).Returns(12345ul);
+        mockScheduler.Setup(s => s.Now).Returns(12345ul);
         var mockSignals = new Mock<ISignalBus>();
         var mockBus = new Mock<IMemoryBus>();
 
         var context = new EventContext(mockScheduler.Object, mockSignals.Object, mockBus.Object);
 
-        Assert.That(context.CurrentCycle, Is.EqualTo(12345ul));
+        Assert.That((ulong)context.Now, Is.EqualTo(12345ul));
     }
 
     /// <summary>
-    /// Verifies that CurrentCycle reflects scheduler changes.
+    /// Verifies that Now reflects scheduler changes.
     /// </summary>
     [Test]
     public void CurrentCycle_ReflectsSchedulerChanges()
@@ -100,11 +101,11 @@ public class EventContextTests
 
         var context = new EventContext(scheduler, mockSignals.Object, mockBus.Object);
 
-        Assert.That(context.CurrentCycle, Is.EqualTo(0ul));
+        Assert.That((ulong)context.Now, Is.EqualTo(0ul));
 
-        scheduler.RunUntil(500ul);
+        scheduler.Advance(500ul);
 
-        Assert.That(context.CurrentCycle, Is.EqualTo(500ul));
+        Assert.That((ulong)context.Now, Is.EqualTo(500ul));
     }
 
     /// <summary>
@@ -124,7 +125,7 @@ public class EventContextTests
             Assert.That(context.Scheduler, Is.SameAs(scheduler));
             Assert.That(context.Signals, Is.SameAs(signals));
             Assert.That(context.Bus, Is.SameAs(mockBus.Object));
-            Assert.That(context.CurrentCycle, Is.EqualTo(0ul));
+            Assert.That((ulong)context.Now, Is.EqualTo(0ul));
         });
     }
 }

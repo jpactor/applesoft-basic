@@ -42,7 +42,7 @@ public interface IScheduledDevice
     /// </para>
     /// <list type="bullet">
     /// <item><description>Store a reference to the event context for later use</description></item>
-    /// <item><description>Schedule initial events (e.g., first timer tick)</description></item>
+    /// <item><description>ScheduleAt initial events (e.g., first timer tick)</description></item>
     /// <item><description>Register for signal callbacks</description></item>
     /// <item><description>Perform any other initialization that requires system services</description></item>
     /// </list>

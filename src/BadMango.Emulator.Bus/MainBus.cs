@@ -163,13 +163,13 @@ public sealed class MainBus : IMemoryBus
             return page.Target!.Read16(physicalAddress, access);
         }
 
-        // Compat mode default: decompose (Apple II expects byte-visible cycles)
-        if (access.Mode == CpuMode.Compat)
+        // Decomposed mode default: decompose (Apple II expects byte-visible cycles)
+        if (access.Mode == BusAccessMode.Decomposed)
         {
             return DecomposeRead16(access);
         }
 
-        // Native mode: use wide if available
+        // Atomic mode: use wide if available
         if (page.SupportsWide)
         {
             Addr physicalAddress = page.PhysicalBase + (access.Address & PageMask);
@@ -207,14 +207,14 @@ public sealed class MainBus : IMemoryBus
             return;
         }
 
-        // Compat mode default: decompose (Apple II expects byte-visible cycles)
-        if (access.Mode == CpuMode.Compat)
+        // Decomposed mode default: decompose (Apple II expects byte-visible cycles)
+        if (access.Mode == BusAccessMode.Decomposed)
         {
             DecomposeWrite16(access, value);
             return;
         }
 
-        // Native mode: use wide if available
+        // Atomic mode: use wide if available
         if (page.SupportsWide)
         {
             Addr physicalAddress = page.PhysicalBase + (access.Address & PageMask);
@@ -250,13 +250,13 @@ public sealed class MainBus : IMemoryBus
             return page.Target!.Read32(physicalAddress, access);
         }
 
-        // Compat mode default: decompose (Apple II expects byte-visible cycles)
-        if (access.Mode == CpuMode.Compat)
+        // Decomposed mode default: decompose (Apple II expects byte-visible cycles)
+        if (access.Mode == BusAccessMode.Decomposed)
         {
             return DecomposeRead32(access);
         }
 
-        // Native mode: use wide if available
+        // Atomic mode: use wide if available
         if (page.SupportsWide)
         {
             Addr physicalAddress = page.PhysicalBase + (access.Address & PageMask);
@@ -294,14 +294,14 @@ public sealed class MainBus : IMemoryBus
             return;
         }
 
-        // Compat mode default: decompose (Apple II expects byte-visible cycles)
-        if (access.Mode == CpuMode.Compat)
+        // Decomposed mode default: decompose (Apple II expects byte-visible cycles)
+        if (access.Mode == BusAccessMode.Decomposed)
         {
             DecomposeWrite32(access, value);
             return;
         }
 
-        // Native mode: use wide if available
+        // Atomic mode: use wide if available
         if (page.SupportsWide)
         {
             Addr physicalAddress = page.PhysicalBase + (access.Address & PageMask);
@@ -335,9 +335,9 @@ public sealed class MainBus : IMemoryBus
             return BusFault.PermissionDenied(access, page.DeviceId, page.RegionTag);
         }
 
-        // Check NX on instruction fetch (Native mode only)
+        // Check NX on instruction fetch (Atomic mode only)
         if (access.Intent == AccessIntent.InstructionFetch &&
-            access.Mode == CpuMode.Native &&
+            access.Mode == BusAccessMode.Atomic &&
             !page.CanExecute)
         {
             return BusFault.NoExecute(access, page.DeviceId, page.RegionTag);
@@ -453,13 +453,13 @@ public sealed class MainBus : IMemoryBus
             return BusResult<Word>.Success(value, access, page.DeviceId, page.RegionTag, cycles: 1);
         }
 
-        // Compat mode default: decompose (Apple II expects byte-visible cycles)
-        if (access.Mode == CpuMode.Compat)
+        // Decomposed mode default: decompose (Apple II expects byte-visible cycles)
+        if (access.Mode == BusAccessMode.Decomposed)
         {
             return DecomposeTryRead16(access);
         }
 
-        // Native mode: use wide if available
+        // Atomic mode: use wide if available
         if (page.SupportsWide)
         {
             Addr physicalAddress = page.PhysicalBase + (access.Address & PageMask);
@@ -513,13 +513,13 @@ public sealed class MainBus : IMemoryBus
             return BusResult.Success(access, page.DeviceId, page.RegionTag, cycles: 1);
         }
 
-        // Compat mode default: decompose (Apple II expects byte-visible cycles)
-        if (access.Mode == CpuMode.Compat)
+        // Decomposed mode default: decompose (Apple II expects byte-visible cycles)
+        if (access.Mode == BusAccessMode.Decomposed)
         {
             return DecomposeTryWrite16(access, value);
         }
 
-        // Native mode: use wide if available
+        // Atomic mode: use wide if available
         if (page.SupportsWide)
         {
             Addr physicalAddress = page.PhysicalBase + (access.Address & PageMask);
@@ -573,13 +573,13 @@ public sealed class MainBus : IMemoryBus
             return BusResult<DWord>.Success(value, access, page.DeviceId, page.RegionTag, cycles: 1);
         }
 
-        // Compat mode default: decompose (Apple II expects byte-visible cycles)
-        if (access.Mode == CpuMode.Compat)
+        // Decomposed mode default: decompose (Apple II expects byte-visible cycles)
+        if (access.Mode == BusAccessMode.Decomposed)
         {
             return DecomposeTryRead32(access);
         }
 
-        // Native mode: use wide if available
+        // Atomic mode: use wide if available
         if (page.SupportsWide)
         {
             Addr physicalAddress = page.PhysicalBase + (access.Address & PageMask);
@@ -633,13 +633,13 @@ public sealed class MainBus : IMemoryBus
             return BusResult.Success(access, page.DeviceId, page.RegionTag, cycles: 1);
         }
 
-        // Compat mode default: decompose (Apple II expects byte-visible cycles)
-        if (access.Mode == CpuMode.Compat)
+        // Decomposed mode default: decompose (Apple II expects byte-visible cycles)
+        if (access.Mode == BusAccessMode.Decomposed)
         {
             return DecomposeTryWrite32(access, value);
         }
 
-        // Native mode: use wide if available
+        // Atomic mode: use wide if available
         if (page.SupportsWide)
         {
             Addr physicalAddress = page.PhysicalBase + (access.Address & PageMask);

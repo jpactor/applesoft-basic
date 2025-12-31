@@ -21,7 +21,7 @@ public class BusFaultTests
             Address: 0x1000u,
             WidthBits: 8,
             Intent: AccessIntent.DataWrite,
-            Mode: CpuMode.Native,
+            Mode: BusAccessMode.Atomic,
             SourceId: 1,
             DeviceId: 5,
             RegionTag: RegionTag.Io,
@@ -33,7 +33,7 @@ public class BusFaultTests
             Assert.That(fault.Address, Is.EqualTo(0x1000u));
             Assert.That(fault.WidthBits, Is.EqualTo(8));
             Assert.That(fault.Intent, Is.EqualTo(AccessIntent.DataWrite));
-            Assert.That(fault.Mode, Is.EqualTo(CpuMode.Native));
+            Assert.That(fault.Mode, Is.EqualTo(BusAccessMode.Atomic));
             Assert.That(fault.SourceId, Is.EqualTo(1));
             Assert.That(fault.DeviceId, Is.EqualTo(5));
             Assert.That(fault.RegionTag, Is.EqualTo(RegionTag.Io));
@@ -184,7 +184,7 @@ public class BusFaultTests
             Address: 0x1000u,
             Value: 0,
             WidthBits: 8,
-            Mode: CpuMode.Native,
+            Mode: BusAccessMode.Atomic,
             EmulationFlag: false,
             Intent: intent,
             SourceId: 1,

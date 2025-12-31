@@ -20,6 +20,21 @@ using Debugging;
 public interface ICpu
 {
     /// <summary>
+    /// Gets the capabilities supported by the CPU.
+    /// </summary>
+    /// <value>
+    /// A combination of <see cref="CpuCapabilities"/> flags indicating the features
+    /// and instruction sets supported by the CPU implementation.
+    /// </value>
+    /// <remarks>
+    /// This property provides information about the specific capabilities of the CPU,
+    /// such as support for extended instruction sets (e.g., 65C02, 65816, 65832) and
+    /// register widths (e.g., 16-bit, 32-bit, 64-bit). It can be used to determine
+    /// compatibility with software or to enable/disable features dynamically.
+    /// </remarks>
+    CpuCapabilities Capabilities { get; }
+
+    /// <summary>
     /// Gets a value indicating whether the CPU is halted.
     /// </summary>
     bool Halted { get; }

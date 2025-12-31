@@ -280,7 +280,7 @@ public class RamTargetTests
         Address: 0,
         Value: 0,
         WidthBits: 8,
-        Mode: CpuMode.Compat,
+        Mode: BusAccessMode.Decomposed,
         EmulationFlag: true,
         Intent: AccessIntent.DataRead,
         SourceId: 0,

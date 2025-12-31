@@ -61,7 +61,7 @@ public static partial class Instructions
                 if (state.AddressingMode == CpuAddressingModes.Immediate)
                 {
                     state.OperandSize = (byte)(size / 8);
-                    state.Operands[0] = (byte)(value & 0xff);
+                    state.SetOperand(0, (byte)(value & 0xff));
                 }
 
                 state.InstructionCycles += opCycles;
@@ -96,7 +96,7 @@ public static partial class Instructions
                 if (state.AddressingMode == CpuAddressingModes.Immediate)
                 {
                     state.OperandSize = (byte)(size / 8);
-                    state.Operands[0] = (byte)(value & 0xff);
+                    state.SetOperand(0, (byte)(value & 0xff));
                 }
 
                 state.InstructionCycles += opCycles;
@@ -131,7 +131,7 @@ public static partial class Instructions
                 if (state.AddressingMode == CpuAddressingModes.Immediate)
                 {
                     state.OperandSize = (byte)(size / 8);
-                    state.Operands[0] = (byte)(value & 0xff);
+                    state.SetOperand(0, (byte)(value & 0xff));
                 }
 
                 state.InstructionCycles += opCycles;

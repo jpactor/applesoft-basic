@@ -32,7 +32,7 @@ using Interfaces;
 public sealed class MemoryBusAdapter : IMemory
 {
     private readonly IMemoryBus bus;
-    private readonly CpuMode mode;
+    private readonly BusAccessMode mode;
     private readonly int sourceId;
     private ulong cycleCount;
 
@@ -40,10 +40,10 @@ public sealed class MemoryBusAdapter : IMemory
     /// Initializes a new instance of the <see cref="MemoryBusAdapter"/> class.
     /// </summary>
     /// <param name="bus">The memory bus to wrap.</param>
-    /// <param name="mode">The CPU mode for bus access operations. Defaults to <see cref="CpuMode.Compat"/>.</param>
+    /// <param name="mode">The bus access mode for operations. Defaults to <see cref="BusAccessMode.Decomposed"/>.</param>
     /// <param name="sourceId">The source identifier for tracing. Defaults to 0 (CPU).</param>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="bus"/> is null.</exception>
-    public MemoryBusAdapter(IMemoryBus bus, CpuMode mode = CpuMode.Compat, int sourceId = 0)
+    public MemoryBusAdapter(IMemoryBus bus, BusAccessMode mode = BusAccessMode.Decomposed, int sourceId = 0)
     {
         ArgumentNullException.ThrowIfNull(bus);
         this.bus = bus;
@@ -238,7 +238,7 @@ public sealed class MemoryBusAdapter : IMemory
             Value: 0,
             WidthBits: widthBits,
             Mode: mode,
-            EmulationFlag: mode == CpuMode.Compat,
+            EmulationFlag: mode == BusAccessMode.Decomposed,
             Intent: intent,
             SourceId: sourceId,
             Cycle: cycleCount,

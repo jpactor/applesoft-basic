@@ -115,7 +115,7 @@ public static class AddressingModes
             state.AddressingMode = CpuAddressingModes.ZeroPage;
             state.EffectiveAddress = effectiveAddr;
             state.OperandSize = 1;
-            state.Operands[0] = zpOffset;
+            state.SetOperand(0, zpOffset);
             state.InstructionCycles += addrCycles;
         }
 
@@ -166,7 +166,7 @@ public static class AddressingModes
             state.AddressingMode = CpuAddressingModes.ZeroPageX;
             state.EffectiveAddress = effectiveAddr;
             state.OperandSize = 1;
-            state.Operands[0] = zpOffset;
+            state.SetOperand(0, zpOffset);
             state.InstructionCycles += addrCycles;
         }
 
@@ -214,7 +214,7 @@ public static class AddressingModes
             state.AddressingMode = CpuAddressingModes.ZeroPageY;
             state.EffectiveAddress = effectiveAddr;
             state.OperandSize = 1;
-            state.Operands[0] = zpOffset;
+            state.SetOperand(0, zpOffset);
             state.InstructionCycles += addrCycles;
         }
 
@@ -254,8 +254,8 @@ public static class AddressingModes
             state.AddressingMode = CpuAddressingModes.Absolute;
             state.EffectiveAddress = effectiveAddr;
             state.OperandSize = 2;
-            state.Operands[0] = (byte)(address & 0xFF);
-            state.Operands[1] = (byte)((address >> 8) & 0xFF);
+            state.SetOperand(0, (byte)(address & 0xFF));
+            state.SetOperand(1, (byte)((address >> 8) & 0xFF));
             state.InstructionCycles += addrCycles;
         }
 
@@ -301,8 +301,8 @@ public static class AddressingModes
             state.AddressingMode = CpuAddressingModes.AbsoluteX;
             state.EffectiveAddress = effectiveAddr;
             state.OperandSize = 2;
-            state.Operands[0] = (byte)(baseAddr & 0xFF);
-            state.Operands[1] = (byte)((baseAddr >> 8) & 0xFF);
+            state.SetOperand(0, (byte)(baseAddr & 0xFF));
+            state.SetOperand(1, (byte)((baseAddr >> 8) & 0xFF));
             state.InstructionCycles += addrCycles;
         }
 
@@ -343,8 +343,8 @@ public static class AddressingModes
             state.AddressingMode = CpuAddressingModes.AbsoluteY;
             state.EffectiveAddress = effectiveAddr;
             state.OperandSize = 2;
-            state.Operands[0] = (byte)(baseAddr & 0xFF);
-            state.Operands[1] = (byte)((baseAddr >> 8) & 0xFF);
+            state.SetOperand(0, (byte)(baseAddr & 0xFF));
+            state.SetOperand(1, (byte)((baseAddr >> 8) & 0xFF));
             state.InstructionCycles += addrCycles;
         }
 
@@ -400,7 +400,7 @@ public static class AddressingModes
             state.AddressingMode = CpuAddressingModes.IndirectX;
             state.EffectiveAddress = address;
             state.OperandSize = 1;
-            state.Operands[0] = zpOffset;
+            state.SetOperand(0, zpOffset);
             state.InstructionCycles += addrCycles;
         }
 
@@ -460,7 +460,7 @@ public static class AddressingModes
             state.AddressingMode = CpuAddressingModes.IndirectY;
             state.EffectiveAddress = effectiveAddr;
             state.OperandSize = 1;
-            state.Operands[0] = zpOffset;
+            state.SetOperand(0, zpOffset);
             state.InstructionCycles += addrCycles;
         }
 
@@ -500,8 +500,8 @@ public static class AddressingModes
             state.AddressingMode = CpuAddressingModes.AbsoluteX;
             state.EffectiveAddress = effectiveAddr;
             state.OperandSize = 2;
-            state.Operands[0] = (byte)(baseAddr & 0xFF);
-            state.Operands[1] = (byte)((baseAddr >> 8) & 0xFF);
+            state.SetOperand(0, (byte)(baseAddr & 0xFF));
+            state.SetOperand(1, (byte)((baseAddr >> 8) & 0xFF));
             state.InstructionCycles += addrCycles;
         }
 
@@ -535,8 +535,8 @@ public static class AddressingModes
             state.AddressingMode = CpuAddressingModes.AbsoluteY;
             state.EffectiveAddress = effectiveAddr;
             state.OperandSize = 2;
-            state.Operands[0] = (byte)(baseAddr & 0xFF);
-            state.Operands[1] = (byte)((baseAddr >> 8) & 0xFF);
+            state.SetOperand(0, (byte)(baseAddr & 0xFF));
+            state.SetOperand(1, (byte)((baseAddr >> 8) & 0xFF));
             state.InstructionCycles += addrCycles;
         }
 
@@ -591,7 +591,7 @@ public static class AddressingModes
             state.AddressingMode = CpuAddressingModes.IndirectY;
             state.EffectiveAddress = effectiveAddr;
             state.OperandSize = 1;
-            state.Operands[0] = zpOffset;
+            state.SetOperand(0, zpOffset);
             state.InstructionCycles += addrCycles;
         }
 
@@ -660,7 +660,7 @@ public static class AddressingModes
             state.AddressingMode = CpuAddressingModes.Relative;
             state.EffectiveAddress = targetAddr;
             state.OperandSize = 1;
-            state.Operands[0] = (byte)offset;
+            state.SetOperand(0, (byte)offset);
             state.InstructionCycles += addrCycles;
         }
 
@@ -704,8 +704,8 @@ public static class AddressingModes
             state.AddressingMode = CpuAddressingModes.Indirect;
             state.EffectiveAddress = targetAddr;
             state.OperandSize = 2;
-            state.Operands[0] = (byte)(pointerAddr & 0xFF);
-            state.Operands[1] = (byte)((pointerAddr >> 8) & 0xFF);
+            state.SetOperand(0, (byte)(pointerAddr & 0xFF));
+            state.SetOperand(1, (byte)((pointerAddr >> 8) & 0xFF));
             state.InstructionCycles += addrCycles;
         }
 

@@ -97,7 +97,7 @@ public static partial class Instructions
                 if (state.AddressingMode == CpuAddressingModes.Immediate)
                 {
                     state.OperandSize = 1;
-                    state.Operands[0] = value;
+                    state.SetOperand(0, value);
                 }
 
                 state.InstructionCycles += opCycles;
@@ -190,7 +190,7 @@ public static partial class Instructions
                 if (state.AddressingMode == CpuAddressingModes.Immediate)
                 {
                     state.OperandSize = 1;
-                    state.Operands[0] = value;
+                    state.SetOperand(0, value);
                 }
 
                 state.InstructionCycles += opCycles;
