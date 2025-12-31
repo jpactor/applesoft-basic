@@ -32,6 +32,11 @@ using Interfaces;
 public sealed class Scheduler : IScheduler
 {
     /// <summary>
+    /// Maximum number of cancelled handles to accumulate before forcing cleanup.
+    /// </summary>
+    private const int CancelledHandlesCleanupThreshold = 1000;
+
+    /// <summary>
     /// Priority queue of scheduled events, ordered by cycle, priority, then sequence.
     /// </summary>
     private readonly PriorityQueue<ScheduledEvent, ScheduledEvent> eventQueue;
@@ -238,8 +243,8 @@ public sealed class Scheduler : IScheduler
         // Clean up the cancelled handles set periodically to prevent unbounded growth
         // Clear when we have a significant number of cancelled handles and either:
         // 1. The queue is empty, or
-        // 2. The number of cancelled handles exceeds a threshold (1000)
-        if (cancelledHandles.Count > 0 && (eventQueue.Count == 0 || cancelledHandles.Count > 1000))
+        // 2. The number of cancelled handles exceeds a threshold
+        if (cancelledHandles.Count > 0 && (eventQueue.Count == 0 || cancelledHandles.Count > CancelledHandlesCleanupThreshold))
         {
             cancelledHandles.Clear();
         }
