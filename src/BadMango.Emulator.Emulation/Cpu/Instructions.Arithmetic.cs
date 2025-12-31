@@ -8,6 +8,7 @@ namespace BadMango.Emulator.Emulation.Cpu;
 using System.Runtime.CompilerServices;
 
 using Core.Cpu;
+using Core.Interfaces.Cpu;
 
 /// <summary>
 /// Arithmetic instructions (ADC, SBC, INC, DEC, INX, INY, DEX, DEY).
@@ -22,17 +23,17 @@ public static partial class Instructions
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler ADC(AddressingModeHandler<CpuState> addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            Addr address = addressingMode(memory, ref state);
-            byte value = memory.Read(address);
+            Addr address = addressingMode(cpu);
+            byte value = cpu.Read8(address);
             opCycles++; // Memory read
 
-            byte a = state.Registers.A.GetByte();
-            byte carry = state.Registers.P.HasFlag(ProcessorStatusFlags.C) ? (byte)1 : (byte)0;
+            byte a = cpu.State.Registers.A.GetByte();
+            byte carry = cpu.State.Registers.P.HasFlag(ProcessorStatusFlags.C) ? (byte)1 : (byte)0;
 
-            if (state.Registers.P.HasFlag(ProcessorStatusFlags.D))
+            if (cpu.State.Registers.P.HasFlag(ProcessorStatusFlags.D))
             {
                 // Decimal mode
                 int al = (a & 0x0F) + (value & 0x0F) + carry;
@@ -51,15 +52,15 @@ public static partial class Instructions
 
                 if (ah > 15)
                 {
-                    state.Registers.P |= ProcessorStatusFlags.C;
+                    cpu.State.Registers.P |= ProcessorStatusFlags.C;
                 }
                 else
                 {
-                    state.Registers.P &= ~ProcessorStatusFlags.C;
+                    cpu.State.Registers.P &= ~ProcessorStatusFlags.C;
                 }
 
-                state.Registers.P.SetZeroAndNegative(result);
-                state.Registers.A.SetByte(result);
+                cpu.State.Registers.P.SetZeroAndNegative(result);
+                cpu.State.Registers.A.SetByte(result);
             }
             else
             {
@@ -69,41 +70,41 @@ public static partial class Instructions
 
                 if (result > 0xFF)
                 {
-                    state.Registers.P |= ProcessorStatusFlags.C;
+                    cpu.State.Registers.P |= ProcessorStatusFlags.C;
                 }
                 else
                 {
-                    state.Registers.P &= ~ProcessorStatusFlags.C;
+                    cpu.State.Registers.P &= ~ProcessorStatusFlags.C;
                 }
 
                 // Set overflow: (A^result) & (value^result) & 0x80
                 if (((a ^ result8) & (value ^ result8) & 0x80) != 0)
                 {
-                    state.Registers.P |= ProcessorStatusFlags.V;
+                    cpu.State.Registers.P |= ProcessorStatusFlags.V;
                 }
                 else
                 {
-                    state.Registers.P &= ~ProcessorStatusFlags.V;
+                    cpu.State.Registers.P &= ~ProcessorStatusFlags.V;
                 }
 
-                state.Registers.P.SetZeroAndNegative(result8);
-                state.Registers.A.SetByte(result8);
+                cpu.State.Registers.P.SetZeroAndNegative(result8);
+                cpu.State.Registers.A.SetByte(result8);
             }
 
-            if (state.IsDebuggerAttached)
+            if (cpu.State.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.ADC;
+                cpu.State.Instruction = CpuInstructions.ADC;
 
-                if (state.AddressingMode == CpuAddressingModes.Immediate)
+                if (cpu.State.AddressingMode == CpuAddressingModes.Immediate)
                 {
-                    state.OperandSize = 1;
-                    state.SetOperand(0, value);
+                    cpu.State.OperandSize = 1;
+                    cpu.State.SetOperand(0, value);
                 }
 
-                state.InstructionCycles += opCycles;
+                cpu.State.InstructionCycles += opCycles;
             }
 
-            state.Cycles += opCycles;
+            cpu.State.Cycles += opCycles;
         };
     }
 
@@ -115,17 +116,17 @@ public static partial class Instructions
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler SBC(AddressingModeHandler<CpuState> addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            Addr address = addressingMode(memory, ref state);
-            byte value = memory.Read(address);
+            Addr address = addressingMode(cpu);
+            byte value = cpu.Read8(address);
             opCycles++; // Memory read
 
-            byte a = state.Registers.A.GetByte();
-            byte borrow = state.Registers.P.HasFlag(ProcessorStatusFlags.C) ? (byte)0 : (byte)1;
+            byte a = cpu.State.Registers.A.GetByte();
+            byte borrow = cpu.State.Registers.P.HasFlag(ProcessorStatusFlags.C) ? (byte)0 : (byte)1;
 
-            if (state.Registers.P.HasFlag(ProcessorStatusFlags.D))
+            if (cpu.State.Registers.P.HasFlag(ProcessorStatusFlags.D))
             {
                 // Decimal mode
                 int al = (a & 0x0F) - (value & 0x0F) - borrow;
@@ -144,15 +145,15 @@ public static partial class Instructions
 
                 if (ah >= 0)
                 {
-                    state.Registers.P |= ProcessorStatusFlags.C;
+                    cpu.State.Registers.P |= ProcessorStatusFlags.C;
                 }
                 else
                 {
-                    state.Registers.P &= ~ProcessorStatusFlags.C;
+                    cpu.State.Registers.P &= ~ProcessorStatusFlags.C;
                 }
 
-                state.Registers.P.SetZeroAndNegative(result);
-                state.Registers.A.SetByte(result);
+                cpu.State.Registers.P.SetZeroAndNegative(result);
+                cpu.State.Registers.A.SetByte(result);
             }
             else
             {
@@ -162,41 +163,41 @@ public static partial class Instructions
 
                 if (result >= 0)
                 {
-                    state.Registers.P |= ProcessorStatusFlags.C;
+                    cpu.State.Registers.P |= ProcessorStatusFlags.C;
                 }
                 else
                 {
-                    state.Registers.P &= ~ProcessorStatusFlags.C;
+                    cpu.State.Registers.P &= ~ProcessorStatusFlags.C;
                 }
 
                 // Set overflow: (A^value) & (A^result) & 0x80
                 if (((a ^ value) & (a ^ result8) & 0x80) != 0)
                 {
-                    state.Registers.P |= ProcessorStatusFlags.V;
+                    cpu.State.Registers.P |= ProcessorStatusFlags.V;
                 }
                 else
                 {
-                    state.Registers.P &= ~ProcessorStatusFlags.V;
+                    cpu.State.Registers.P &= ~ProcessorStatusFlags.V;
                 }
 
-                state.Registers.P.SetZeroAndNegative(result8);
-                state.Registers.A.SetByte(result8);
+                cpu.State.Registers.P.SetZeroAndNegative(result8);
+                cpu.State.Registers.A.SetByte(result8);
             }
 
-            if (state.IsDebuggerAttached)
+            if (cpu.State.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.SBC;
+                cpu.State.Instruction = CpuInstructions.SBC;
 
-                if (state.AddressingMode == CpuAddressingModes.Immediate)
+                if (cpu.State.AddressingMode == CpuAddressingModes.Immediate)
                 {
-                    state.OperandSize = 1;
-                    state.SetOperand(0, value);
+                    cpu.State.OperandSize = 1;
+                    cpu.State.SetOperand(0, value);
                 }
 
-                state.InstructionCycles += opCycles;
+                cpu.State.InstructionCycles += opCycles;
             }
 
-            state.Cycles += opCycles;
+            cpu.State.Cycles += opCycles;
         };
     }
 
@@ -208,27 +209,27 @@ public static partial class Instructions
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler INC(AddressingModeHandler<CpuState> addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            Addr address = addressingMode(memory, ref state);
-            byte value = memory.Read(address);
+            Addr address = addressingMode(cpu);
+            byte value = cpu.Read8(address);
             opCycles++; // Memory read
 
             value++;
-            memory.Write(address, value);
+            cpu.Write8(address, value);
             opCycles++; // Memory write
 
-            state.Registers.P.SetZeroAndNegative(value);
+            cpu.State.Registers.P.SetZeroAndNegative(value);
             opCycles++; // Internal operation
 
-            if (state.IsDebuggerAttached)
+            if (cpu.State.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.INC;
-                state.InstructionCycles += opCycles;
+                cpu.State.Instruction = CpuInstructions.INC;
+                cpu.State.InstructionCycles += opCycles;
             }
 
-            state.Cycles += opCycles;
+            cpu.State.Cycles += opCycles;
         };
     }
 
@@ -240,27 +241,27 @@ public static partial class Instructions
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler DEC(AddressingModeHandler<CpuState> addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            Addr address = addressingMode(memory, ref state);
-            byte value = memory.Read(address);
+            Addr address = addressingMode(cpu);
+            byte value = cpu.Read8(address);
             opCycles++; // Memory read
 
             value--;
-            memory.Write(address, value);
+            cpu.Write8(address, value);
             opCycles++; // Memory write
 
-            state.Registers.P.SetZeroAndNegative(value);
+            cpu.State.Registers.P.SetZeroAndNegative(value);
             opCycles++; // Internal operation
 
-            if (state.IsDebuggerAttached)
+            if (cpu.State.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.DEC;
-                state.InstructionCycles += opCycles;
+                cpu.State.Instruction = CpuInstructions.DEC;
+                cpu.State.InstructionCycles += opCycles;
             }
 
-            state.Cycles += opCycles;
+            cpu.State.Cycles += opCycles;
         };
     }
 
@@ -272,22 +273,22 @@ public static partial class Instructions
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler INX(AddressingModeHandler<CpuState> addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            addressingMode(memory, ref state);
-            byte value = (byte)(state.Registers.X.GetByte() + 1);
-            state.Registers.X.SetByte(value);
-            state.Registers.P.SetZeroAndNegative(value);
+            addressingMode(cpu);
+            byte value = (byte)(cpu.State.Registers.X.GetByte() + 1);
+            cpu.State.Registers.X.SetByte(value);
+            cpu.State.Registers.P.SetZeroAndNegative(value);
             opCycles++;
 
-            if (state.IsDebuggerAttached)
+            if (cpu.State.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.INX;
-                state.InstructionCycles += opCycles;
+                cpu.State.Instruction = CpuInstructions.INX;
+                cpu.State.InstructionCycles += opCycles;
             }
 
-            state.Cycles += opCycles;
+            cpu.State.Cycles += opCycles;
         };
     }
 
@@ -299,22 +300,22 @@ public static partial class Instructions
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler INY(AddressingModeHandler<CpuState> addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            addressingMode(memory, ref state);
-            byte value = (byte)(state.Registers.Y.GetByte() + 1);
-            state.Registers.Y.SetByte(value);
-            state.Registers.P.SetZeroAndNegative(value);
+            addressingMode(cpu);
+            byte value = (byte)(cpu.State.Registers.Y.GetByte() + 1);
+            cpu.State.Registers.Y.SetByte(value);
+            cpu.State.Registers.P.SetZeroAndNegative(value);
             opCycles++;
 
-            if (state.IsDebuggerAttached)
+            if (cpu.State.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.INY;
-                state.InstructionCycles += opCycles;
+                cpu.State.Instruction = CpuInstructions.INY;
+                cpu.State.InstructionCycles += opCycles;
             }
 
-            state.Cycles += opCycles;
+            cpu.State.Cycles += opCycles;
         };
     }
 
@@ -326,22 +327,22 @@ public static partial class Instructions
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler DEX(AddressingModeHandler<CpuState> addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            addressingMode(memory, ref state);
-            byte value = (byte)(state.Registers.X.GetByte() - 1);
-            state.Registers.X.SetByte(value);
-            state.Registers.P.SetZeroAndNegative(value);
+            addressingMode(cpu);
+            byte value = (byte)(cpu.State.Registers.X.GetByte() - 1);
+            cpu.State.Registers.X.SetByte(value);
+            cpu.State.Registers.P.SetZeroAndNegative(value);
             opCycles++;
 
-            if (state.IsDebuggerAttached)
+            if (cpu.State.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.DEX;
-                state.InstructionCycles += opCycles;
+                cpu.State.Instruction = CpuInstructions.DEX;
+                cpu.State.InstructionCycles += opCycles;
             }
 
-            state.Cycles += opCycles;
+            cpu.State.Cycles += opCycles;
         };
     }
 
@@ -353,22 +354,22 @@ public static partial class Instructions
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler DEY(AddressingModeHandler<CpuState> addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            addressingMode(memory, ref state);
-            byte value = (byte)(state.Registers.Y.GetByte() - 1);
-            state.Registers.Y.SetByte(value);
-            state.Registers.P.SetZeroAndNegative(value);
+            addressingMode(cpu);
+            byte value = (byte)(cpu.State.Registers.Y.GetByte() - 1);
+            cpu.State.Registers.Y.SetByte(value);
+            cpu.State.Registers.P.SetZeroAndNegative(value);
             opCycles++;
 
-            if (state.IsDebuggerAttached)
+            if (cpu.State.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.DEY;
-                state.InstructionCycles += opCycles;
+                cpu.State.Instruction = CpuInstructions.DEY;
+                cpu.State.InstructionCycles += opCycles;
             }
 
-            state.Cycles += opCycles;
+            cpu.State.Cycles += opCycles;
         };
     }
 }

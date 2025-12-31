@@ -6,6 +6,11 @@ namespace BadMango.Emulator.Emulation.Cpu;
 
 using System.Runtime.CompilerServices;
 
+using BadMango.Emulator.Bus;
+using BadMango.Emulator.Bus.Interfaces;
+using BadMango.Emulator.Core.Interfaces.Signaling;
+using BadMango.Emulator.Core.Signaling;
+
 using Core;
 using Core.Cpu;
 using Core.Debugger;
@@ -14,37 +19,98 @@ using Core.Interfaces.Cpu;
 using Core.Interfaces.Debugging;
 
 /// <summary>
-/// WDC 65C02 CPU emulator with cycle-accurate execution.
+/// WDC 65C02 CPU emulator with cycle-accurate execution using bus-based memory access.
 /// </summary>
 /// <remarks>
+/// <para>
 /// The 65C02 is an enhanced version of the 6502 with additional instructions,
 /// addressing modes, and bug fixes. This implementation provides a minimal but
 /// functional CPU core with basic instruction support.
+/// </para>
+/// <para>
+/// This CPU implementation uses the bus architecture for all memory operations.
+/// The CPU computes intent; the bus enforces consequences (permissions, faults,
+/// cycle counting for decomposed access).
+/// </para>
+/// <para>
 /// Optimized with aggressive inlining for maximum performance.
+/// </para>
 /// </remarks>
 public class Cpu65C02 : ICpu
 {
-    private readonly IMemory memory;
+    /// <summary>
+    /// The source ID used for bus access tracing.
+    /// </summary>
+    private const int CpuSourceId = 0;
+
+    private readonly IEventContext context;
+    private readonly IMemoryBus bus;
+    private readonly ISignalBus signals;
     private readonly OpcodeTable opcodeTable;
 
     private CpuState state; // CPU state including all registers, cycles, and halt state
-    private bool irqPending;
-    private bool nmiPending;
     private bool stopRequested;
     private IDebugStepListener? debugListener;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="Cpu65C02"/> class.
+    /// Initializes a new instance of the <see cref="Cpu65C02"/> class with an event context.
     /// </summary>
-    /// <param name="memory">The memory interface for the CPU.</param>
-    public Cpu65C02(IMemory memory)
+    /// <param name="context">The event context providing access to the memory bus, signal bus, and scheduler.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="context"/> is null.</exception>
+    public Cpu65C02(IEventContext context)
     {
-        this.memory = memory ?? throw new ArgumentNullException(nameof(memory));
+        ArgumentNullException.ThrowIfNull(context, nameof(context));
+        this.context = context;
+        bus = context.Bus;
+        signals = context.Signals;
         opcodeTable = Cpu65C02OpcodeTableBuilder.Build();
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Cpu65C02"/> class with an IMemory interface.
+    /// </summary>
+    /// <param name="memory">The memory interface for the CPU.</param>
+    /// <remarks>
+    /// This constructor is provided for backward compatibility with existing code that uses IMemory.
+    /// It creates a MemoryBusAdapter internally to route memory operations through the bus architecture.
+    /// For new code, prefer using the <see cref="Cpu65C02(IEventContext)"/> constructor.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="memory"/> is null.</exception>
+    [Obsolete("Use the constructor that accepts IEventContext for bus-based memory access.")]
+    public Cpu65C02(IMemory memory)
+    {
+        ArgumentNullException.ThrowIfNull(memory, nameof(memory));
+
+        // Create a minimal bus infrastructure for backward compatibility
+        var mainBus = new MainBus();
+        var scheduler = new Scheduler();
+        var signalBus = new SignalBus();
+
+        // Map the entire 64KB address space to a RAM target that wraps the IMemory
+        var adapter = new MemoryToTargetAdapter(memory);
+        mainBus.MapPageRange(0, 16, 0, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.None, adapter, 0);
+
+        context = new EventContext(scheduler, signalBus, mainBus);
+        bus = mainBus;
+        signals = signalBus;
+        opcodeTable = Cpu65C02OpcodeTableBuilder.Build();
+    }
+
+    /// <summary>
+    /// Gets the event context providing access to bus, signals, and scheduler.
+    /// </summary>
+    /// <value>The event context for this CPU.</value>
+    public IEventContext EventContext => context;
+
     /// <inheritdoc />
     public CpuCapabilities Capabilities => CpuCapabilities.Base6502 | CpuCapabilities.Supports65C02Instructions;
+
+    /// <inheritdoc />
+    public ref CpuState State
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => ref state;
+    }
 
     /// <inheritdoc/>
     public bool Halted
@@ -72,12 +138,10 @@ public class Cpu65C02 : ICpu
     {
         state = new()
         {
-            Registers = new(true, memory.ReadWord(Cpu65C02Constants.ResetVector)),
+            Registers = new(true, Read16(Cpu65C02Constants.ResetVector)),
             Cycles = 0,
             HaltReason = HaltState.None,
         };
-        irqPending = false;
-        nmiPending = false;
         stopRequested = false;
     }
 
@@ -87,8 +151,7 @@ public class Cpu65C02 : ICpu
     {
         ulong cyclesBefore = state.Cycles;
 
-        // Check for pending interrupts at instruction boundary
-        // Note: We check even when halted because WAI can resume on interrupts
+        // Check for pending interrupts at instruction boundary using the signal bus
         bool interruptProcessed = CheckInterrupts();
         if (interruptProcessed)
         {
@@ -127,8 +190,8 @@ public class Cpu65C02 : ICpu
             debugListener.OnBeforeStep(in beforeArgs);
         }
 
-        // Execute opcode with state
-        opcodeTable.Execute(opcode, memory, ref state);
+        // Execute opcode - handlers now access memory through this CPU instance
+        opcodeTable.Execute(opcode, this);
 
         // Notify debug listener after execution
         if (debugListener is not null)
@@ -199,13 +262,13 @@ public class Cpu65C02 : ICpu
     /// <inheritdoc/>
     public void SignalIRQ()
     {
-        irqPending = true;
+        signals.Assert(SignalLine.IRQ, CpuSourceId, new Cycle(state.Cycles));
     }
 
     /// <inheritdoc/>
     public void SignalNMI()
     {
-        nmiPending = true;
+        signals.Assert(SignalLine.NMI, CpuSourceId, new Cycle(state.Cycles));
     }
 
     /// <inheritdoc/>
@@ -249,18 +312,119 @@ public class Cpu65C02 : ICpu
         stopRequested = false;
     }
 
+    // ─── Memory Access Methods (Bus-based) ──────────────────────────────
+
+    /// <inheritdoc/>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public byte Read8(Addr address)
+    {
+        var access = CreateReadAccess(address, 8);
+        var result = bus.TryRead8(access);
+
+        if (result.Failed)
+        {
+            // Handle bus fault - for now, return 0xFF (floating bus) and halt on unmapped
+            if (result.Fault.Kind == FaultKind.Unmapped)
+            {
+                state.HaltReason = HaltState.Stp;
+            }
+
+            return 0xFF;
+        }
+
+        return result.Value;
+    }
+
+    /// <inheritdoc/>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void Write8(Addr address, byte value)
+    {
+        var access = CreateWriteAccess(address, 8);
+        var result = bus.TryWrite8(access, value);
+
+        if (result.Failed && result.Fault.Kind == FaultKind.Unmapped)
+        {
+            // Write to unmapped page - silently ignore for write operations
+            // (some systems have write-only regions or ignore writes to ROM)
+        }
+    }
+
+    /// <inheritdoc/>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Word Read16(Addr address)
+    {
+        var access = CreateReadAccess(address, 16);
+        var result = bus.TryRead16(access);
+
+        if (result.Failed)
+        {
+            if (result.Fault.Kind == FaultKind.Unmapped)
+            {
+                state.HaltReason = HaltState.Stp;
+            }
+
+            return 0xFFFF;
+        }
+
+        return result.Value;
+    }
+
+    /// <inheritdoc/>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void Write16(Addr address, Word value)
+    {
+        var access = CreateWriteAccess(address, 16);
+        bus.TryWrite16(access, value);
+    }
+
+    /// <inheritdoc/>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public DWord ReadValue(Addr address, byte sizeInBits)
+    {
+        return sizeInBits switch
+        {
+            8 => Read8(address),
+            16 => Read16(address),
+            32 => Read32(address),
+            _ => throw new ArgumentException($"Invalid size: {sizeInBits}. Must be 8, 16, or 32.", nameof(sizeInBits)),
+        };
+    }
+
+    /// <inheritdoc/>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void WriteValue(Addr address, DWord value, byte sizeInBits)
+    {
+        switch (sizeInBits)
+        {
+            case 8:
+                Write8(address, (byte)(value & 0xFF));
+                break;
+            case 16:
+                Write16(address, (Word)(value & 0xFFFF));
+                break;
+            case 32:
+                Write32(address, value);
+                break;
+            default:
+                throw new ArgumentException($"Invalid size: {sizeInBits}. Must be 8, 16, or 32.", nameof(sizeInBits));
+        }
+    }
+
+    // ─── Private Helper Methods ─────────────────────────────────────────
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private byte FetchByte()
     {
         var pc = state.Registers.PC.GetAddr();
         state.Registers.PC.Advance();
-        byte value = memory.Read(pc);
+        byte value = Read8(pc);
         state.Cycles++;
         return value;
     }
 
     /// <summary>
     /// Checks for pending interrupts and processes them if applicable.
+    /// Uses the signal bus to poll interrupt lines.
     /// </summary>
     /// <returns>True if an interrupt was processed, false otherwise.</returns>
     /// <remarks>
@@ -277,11 +441,9 @@ public class Cpu65C02 : ICpu
             return false;
         }
 
-        // Check for NMI (non-maskable, highest priority)
-        if (nmiPending)
+        // Check for NMI (non-maskable, highest priority, edge-triggered)
+        if (signals.ConsumeNmiEdge())
         {
-            nmiPending = false;
-
             // Resume from WAI if halted
             if (state.HaltReason == HaltState.Wai)
             {
@@ -292,19 +454,20 @@ public class Cpu65C02 : ICpu
             return true;
         }
 
-        // Check for IRQ (maskable by I flag)
-        if (!irqPending || state.Registers.P.IsInterruptDisabled()) { return false; }
-
-        irqPending = false;
-
-        // Resume from WAI if halted
-        if (state.HaltReason == HaltState.Wai)
+        // Check for IRQ (maskable by I flag, level-triggered)
+        if (signals.IsAsserted(SignalLine.IRQ) && !state.Registers.P.IsInterruptDisabled())
         {
-            state.HaltReason = HaltState.None;
+            // Resume from WAI if halted
+            if (state.HaltReason == HaltState.Wai)
+            {
+                state.HaltReason = HaltState.None;
+            }
+
+            ProcessInterrupt(Cpu65C02Constants.IrqVector);
+            return true;
         }
 
-        ProcessInterrupt(Cpu65C02Constants.IrqVector);
-        return true;
+        return false;
     }
 
     /// <summary>
@@ -326,19 +489,138 @@ public class Cpu65C02 : ICpu
         var pc = state.Registers.PC.GetWord();
 
         // Push PC to stack (high byte first)
-        memory.Write(state.PushByte(Cpu65C02Constants.StackBase), pc.HighByte());
-        memory.Write(state.PushByte(Cpu65C02Constants.StackBase), pc.LowByte());
+        Write8(state.PushByte(Cpu65C02Constants.StackBase), pc.HighByte());
+        Write8(state.PushByte(Cpu65C02Constants.StackBase), pc.LowByte());
 
         // Push processor status (with B flag clear for hardware interrupts)
-        memory.Write(state.PushByte(Cpu65C02Constants.StackBase), (byte)(state.Registers.P & ~ProcessorStatusFlags.B));
+        Write8(state.PushByte(Cpu65C02Constants.StackBase), (byte)(state.Registers.P & ~ProcessorStatusFlags.B));
 
         // Set I flag to disable further IRQs
         state.Registers.P.SetInterruptDisable(true);
 
         // Load PC from interrupt vector
-        state.Registers.PC.SetAddr(memory.ReadWord(vector));
+        state.Registers.PC.SetAddr(Read16(vector));
 
         // Account for 7 cycles for interrupt processing
         state.Cycles += 7;
+    }
+
+    /// <summary>
+    /// Reads a 32-bit value from memory.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private DWord Read32(Addr address)
+    {
+        var access = CreateReadAccess(address, 32);
+        var result = bus.TryRead32(access);
+
+        if (result.Failed)
+        {
+            if (result.Fault.Kind == FaultKind.Unmapped)
+            {
+                state.HaltReason = HaltState.Stp;
+            }
+
+            return 0xFFFFFFFF;
+        }
+
+        return result.Value;
+    }
+
+    /// <summary>
+    /// Writes a 32-bit value to memory.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void Write32(Addr address, DWord value)
+    {
+        var access = CreateWriteAccess(address, 32);
+        bus.TryWrite32(access, value);
+    }
+
+    /// <summary>
+    /// Creates a bus access context for read operations.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private BusAccess CreateReadAccess(Addr address, byte widthBits)
+    {
+        return new BusAccess(
+            Address: address,
+            Value: 0,
+            WidthBits: widthBits,
+            Mode: BusAccessMode.Decomposed, // 65C02 uses decomposed mode for accurate cycle counting
+            EmulationFlag: true, // 65C02 is always in emulation mode
+            Intent: AccessIntent.DataRead,
+            SourceId: CpuSourceId,
+            Cycle: state.Cycles,
+            Flags: AccessFlags.None);
+    }
+
+    /// <summary>
+    /// Creates a bus access context for write operations.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private BusAccess CreateWriteAccess(Addr address, byte widthBits)
+    {
+        return new BusAccess(
+            Address: address,
+            Value: 0,
+            WidthBits: widthBits,
+            Mode: BusAccessMode.Decomposed,
+            EmulationFlag: true,
+            Intent: AccessIntent.DataWrite,
+            SourceId: CpuSourceId,
+            Cycle: state.Cycles,
+            Flags: AccessFlags.None);
+    }
+
+    /// <summary>
+    /// Adapter that wraps an IMemory interface as an IBusTarget.
+    /// Used for backward compatibility when constructing a Cpu65C02 with IMemory.
+    /// </summary>
+    private sealed class MemoryToTargetAdapter : IBusTarget
+    {
+        private readonly IMemory memory;
+
+        public MemoryToTargetAdapter(IMemory memory)
+        {
+            this.memory = memory;
+        }
+
+        public TargetCaps Capabilities => TargetCaps.None;
+
+        public byte Read8(Addr physicalAddress, in BusAccess access)
+        {
+            return memory.Read(physicalAddress);
+        }
+
+        public void Write8(Addr physicalAddress, byte value, in BusAccess access)
+        {
+            memory.Write(physicalAddress, value);
+        }
+
+        public Word Read16(Addr physicalAddress, in BusAccess access)
+        {
+            return memory.ReadWord(physicalAddress);
+        }
+
+        public void Write16(Addr physicalAddress, Word value, in BusAccess access)
+        {
+            memory.WriteWord(physicalAddress, value);
+        }
+
+        public DWord Read32(Addr physicalAddress, in BusAccess access)
+        {
+            return memory.ReadDWord(physicalAddress);
+        }
+
+        public void Write32(Addr physicalAddress, DWord value, in BusAccess access)
+        {
+            memory.WriteDWord(physicalAddress, value);
+        }
+
+        public void Clear()
+        {
+            memory.Clear();
+        }
     }
 }

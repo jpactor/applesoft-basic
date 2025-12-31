@@ -6,7 +6,7 @@ namespace BadMango.Emulator.Core.Cpu;
 
 using System.Runtime.CompilerServices;
 
-using Interfaces;
+using Interfaces.Cpu;
 
 /// <summary>
 /// Represents an opcode lookup table for 6502-family CPUs.
@@ -14,7 +14,7 @@ using Interfaces;
 /// <remarks>
 /// This class encapsulates the opcode table, providing O(1) opcode dispatch.
 /// The table maps 8-bit opcodes (0x00-0xFF) to instruction handlers.
-/// Handlers receive the CPU state structure and memory interface for direct manipulation.
+/// Handlers receive the CPU instance for accessing state and memory through the bus.
 /// </remarks>
 public class OpcodeTable
 {
@@ -39,15 +39,14 @@ public class OpcodeTable
     }
 
     /// <summary>
-    /// Executes the handler for the specified opcode with machine state.
+    /// Executes the handler for the specified opcode.
     /// </summary>
     /// <param name="opcode">The opcode to execute (0x00-0xFF).</param>
-    /// <param name="memory">The memory interface.</param>
-    /// <param name="state">Reference to the CPU state structure.</param>
+    /// <param name="cpu">The CPU instance providing state and memory access.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void Execute(byte opcode, IMemory memory, ref CpuState state)
+    public void Execute(byte opcode, ICpu cpu)
     {
-        handlers[opcode](memory, ref state);
+        handlers[opcode](cpu);
     }
 
     /// <summary>

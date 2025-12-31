@@ -35,6 +35,17 @@ public interface ICpu
     CpuCapabilities Capabilities { get; }
 
     /// <summary>
+    /// Gets a reference to the current CPU state including registers and execution state.
+    /// </summary>
+    /// <value>A reference to the CPU state structure.</value>
+    /// <remarks>
+    /// This property provides direct access to the CPU state for instruction handlers
+    /// and addressing modes. The state includes registers, cycle count, halt state,
+    /// and debug information. Modifications to the returned reference affect the CPU directly.
+    /// </remarks>
+    ref CpuState State { get; }
+
+    /// <summary>
     /// Gets a value indicating whether the CPU is halted.
     /// </summary>
     bool Halted { get; }
@@ -48,6 +59,62 @@ public interface ICpu
     /// Gets a value indicating whether a stop has been requested.
     /// </summary>
     bool IsStopRequested { get; }
+
+    // ─── Memory Access Methods ──────────────────────────────────────────
+
+    /// <summary>
+    /// Reads a byte from memory at the specified address.
+    /// </summary>
+    /// <param name="address">The memory address to read from.</param>
+    /// <returns>The byte value at the specified address.</returns>
+    /// <remarks>
+    /// This method provides bus-based memory access for instruction handlers.
+    /// The implementation routes through the memory bus with appropriate
+    /// cycle counting and fault handling.
+    /// </remarks>
+    byte Read8(Addr address);
+
+    /// <summary>
+    /// Writes a byte to memory at the specified address.
+    /// </summary>
+    /// <param name="address">The memory address to write to.</param>
+    /// <param name="value">The byte value to write.</param>
+    /// <remarks>
+    /// This method provides bus-based memory access for instruction handlers.
+    /// The implementation routes through the memory bus with appropriate
+    /// cycle counting and fault handling.
+    /// </remarks>
+    void Write8(Addr address, byte value);
+
+    /// <summary>
+    /// Reads a 16-bit word from memory at the specified address.
+    /// </summary>
+    /// <param name="address">The memory address to read from.</param>
+    /// <returns>The 16-bit word value at the specified address (little-endian).</returns>
+    Word Read16(Addr address);
+
+    /// <summary>
+    /// Writes a 16-bit word to memory at the specified address.
+    /// </summary>
+    /// <param name="address">The memory address to write to.</param>
+    /// <param name="value">The 16-bit word value to write (little-endian).</param>
+    void Write16(Addr address, Word value);
+
+    /// <summary>
+    /// Reads a value from memory based on the specified size.
+    /// </summary>
+    /// <param name="address">The memory address to read from.</param>
+    /// <param name="sizeInBits">The size to read (8, 16, or 32 bits).</param>
+    /// <returns>The value read from memory, zero-extended to 32 bits.</returns>
+    DWord ReadValue(Addr address, byte sizeInBits);
+
+    /// <summary>
+    /// Writes a value to memory based on the specified size.
+    /// </summary>
+    /// <param name="address">The memory address to write to.</param>
+    /// <param name="value">The value to write.</param>
+    /// <param name="sizeInBits">The size to write (8, 16, or 32 bits).</param>
+    void WriteValue(Addr address, DWord value, byte sizeInBits);
 
     /// <summary>
     /// Executes a single instruction.

@@ -17,6 +17,7 @@ using Emulation.Memory;
 public class AddressingModesTests
 {
     private IMemory memory = null!;
+    private Cpu65C02 cpu = null!;
 
     /// <summary>
     /// Sets up test environment.
@@ -25,6 +26,7 @@ public class AddressingModesTests
     public void Setup()
     {
         memory = new BasicMemory();
+        cpu = new Cpu65C02(memory);
     }
 
     /// <summary>
@@ -37,7 +39,7 @@ public class AddressingModesTests
         var state = CreateState(pc: 0x1000, cycles: 10);
 
         // Act
-        Addr address = AddressingModes.Implied(memory, ref state);
+        cpu.SetState(state); Addr address = AddressingModes.Implied(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(address, Is.EqualTo(0));
@@ -55,7 +57,7 @@ public class AddressingModesTests
         var state = CreateState(pc: 0x1000, cycles: 10);
 
         // Act
-        Addr address = AddressingModes.Immediate(memory, ref state);
+        cpu.SetState(state); Addr address = AddressingModes.Immediate(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(address, Is.EqualTo(0x1000));
@@ -74,7 +76,7 @@ public class AddressingModesTests
         var state = CreateState(pc: 0x1000, cycles: 10);
 
         // Act
-        Addr address = AddressingModes.ZeroPage(memory, ref state);
+        cpu.SetState(state); Addr address = AddressingModes.ZeroPage(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(address, Is.EqualTo(0x0042));
@@ -93,7 +95,7 @@ public class AddressingModesTests
         var state = CreateState(pc: 0x1000, x: 0x20, cycles: 10);
 
         // Act
-        Addr address = AddressingModes.ZeroPageX(memory, ref state);
+        cpu.SetState(state); Addr address = AddressingModes.ZeroPageX(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(address, Is.EqualTo(0x0010)); // 0xF0 + 0x20 = 0x110, wrapped to 0x10
@@ -112,7 +114,7 @@ public class AddressingModesTests
         var state = CreateState(pc: 0x1000, y: 0x90, cycles: 10);
 
         // Act
-        Addr address = AddressingModes.ZeroPageY(memory, ref state);
+        cpu.SetState(state); Addr address = AddressingModes.ZeroPageY(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(address, Is.EqualTo(0x0010)); // 0x80 + 0x90 = 0x110, wrapped to 0x10
@@ -131,7 +133,7 @@ public class AddressingModesTests
         var state = CreateState(pc: 0x1000, cycles: 10);
 
         // Act
-        Addr address = AddressingModes.Absolute(memory, ref state);
+        cpu.SetState(state); Addr address = AddressingModes.Absolute(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(address, Is.EqualTo(0x5678));
@@ -150,7 +152,7 @@ public class AddressingModesTests
         var state = CreateState(pc: 0x1000, x: 0x10, cycles: 10);
 
         // Act
-        Addr address = AddressingModes.AbsoluteX(memory, ref state);
+        cpu.SetState(state); Addr address = AddressingModes.AbsoluteX(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(address, Is.EqualTo(0x1244)); // 0x1234 + 0x10
@@ -169,7 +171,7 @@ public class AddressingModesTests
         var state = CreateState(pc: 0x1000, x: 0x02, cycles: 10);
 
         // Act
-        Addr address = AddressingModes.AbsoluteX(memory, ref state);
+        cpu.SetState(state); Addr address = AddressingModes.AbsoluteX(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(address, Is.EqualTo(0x1301)); // 0x12FF + 0x02
@@ -188,7 +190,7 @@ public class AddressingModesTests
         var state = CreateState(pc: 0x1000, y: 0x50, cycles: 10);
 
         // Act
-        Addr address = AddressingModes.AbsoluteY(memory, ref state);
+        cpu.SetState(state); Addr address = AddressingModes.AbsoluteY(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(address, Is.EqualTo(0x2050)); // 0x2000 + 0x50
@@ -207,7 +209,7 @@ public class AddressingModesTests
         var state = CreateState(pc: 0x1000, y: 0x20, cycles: 10);
 
         // Act
-        Addr address = AddressingModes.AbsoluteY(memory, ref state);
+        cpu.SetState(state); Addr address = AddressingModes.AbsoluteY(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(address, Is.EqualTo(0x2110)); // 0x20F0 + 0x20
@@ -227,7 +229,7 @@ public class AddressingModesTests
         var state = CreateState(pc: 0x1000, x: 0x05, cycles: 10);
 
         // Act
-        Addr address = AddressingModes.IndirectX(memory, ref state);
+        cpu.SetState(state); Addr address = AddressingModes.IndirectX(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(address, Is.EqualTo(0x3000));
@@ -247,7 +249,7 @@ public class AddressingModesTests
         var state = CreateState(pc: 0x1000, y: 0x10, cycles: 10);
 
         // Act
-        Addr address = AddressingModes.IndirectY(memory, ref state);
+        cpu.SetState(state); Addr address = AddressingModes.IndirectY(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(address, Is.EqualTo(0x4010)); // 0x4000 + 0x10
@@ -267,7 +269,7 @@ public class AddressingModesTests
         var state = CreateState(pc: 0x1000, y: 0x02, cycles: 10);
 
         // Act
-        Addr address = AddressingModes.IndirectY(memory, ref state);
+        cpu.SetState(state); Addr address = AddressingModes.IndirectY(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(address, Is.EqualTo(0x4101)); // 0x40FF + 0x02
@@ -286,7 +288,7 @@ public class AddressingModesTests
         var state = CreateState(pc: 0x1000, x: 0x10, cycles: 10);
 
         // Act
-        Addr address = AddressingModes.AbsoluteXWrite(memory, ref state);
+        cpu.SetState(state); Addr address = AddressingModes.AbsoluteXWrite(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(address, Is.EqualTo(0x2010));
@@ -305,7 +307,7 @@ public class AddressingModesTests
         var state = CreateState(pc: 0x1000, y: 0x20, cycles: 10);
 
         // Act
-        Addr address = AddressingModes.AbsoluteYWrite(memory, ref state);
+        cpu.SetState(state); Addr address = AddressingModes.AbsoluteYWrite(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(address, Is.EqualTo(0x3020));
@@ -325,7 +327,7 @@ public class AddressingModesTests
         var state = CreateState(pc: 0x1000, y: 0x30, cycles: 10);
 
         // Act
-        Addr address = AddressingModes.IndirectYWrite(memory, ref state);
+        cpu.SetState(state); Addr address = AddressingModes.IndirectYWrite(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(address, Is.EqualTo(0x5030));

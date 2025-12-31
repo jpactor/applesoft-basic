@@ -8,6 +8,7 @@ namespace BadMango.Emulator.Emulation.Cpu;
 using System.Runtime.CompilerServices;
 
 using Core.Cpu;
+using Core.Interfaces.Cpu;
 
 /// <summary>
 /// Branch instructions (BCC, BCS, BEQ, BNE, BMI, BPL, BVC, BVS, BRA).
@@ -22,15 +23,15 @@ public static partial class Instructions
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler BCC(AddressingModeHandler<CpuState> addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            Addr targetAddr = addressingMode(memory, ref state);
+            Addr targetAddr = addressingMode(cpu);
 
-            if (!state.Registers.P.HasFlag(ProcessorStatusFlags.C))
+            if (!cpu.State.Registers.P.HasFlag(ProcessorStatusFlags.C))
             {
-                Word oldPC = state.Registers.PC.GetWord();
-                state.Registers.PC.SetWord((Word)targetAddr);
+                Word oldPC = cpu.State.Registers.PC.GetWord();
+                cpu.State.Registers.PC.SetWord((Word)targetAddr);
                 opCycles++; // Branch taken
 
                 if ((oldPC & 0xFF00) != (targetAddr & 0xFF00))
@@ -39,13 +40,13 @@ public static partial class Instructions
                 }
             }
 
-            if (state.IsDebuggerAttached)
+            if (cpu.State.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.BCC;
-                state.InstructionCycles += opCycles;
+                cpu.State.Instruction = CpuInstructions.BCC;
+                cpu.State.InstructionCycles += opCycles;
             }
 
-            state.Cycles += opCycles;
+            cpu.State.Cycles += opCycles;
         };
     }
 
@@ -57,15 +58,15 @@ public static partial class Instructions
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler BCS(AddressingModeHandler<CpuState> addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            Addr targetAddr = addressingMode(memory, ref state);
+            Addr targetAddr = addressingMode(cpu);
 
-            if (state.Registers.P.HasFlag(ProcessorStatusFlags.C))
+            if (cpu.State.Registers.P.HasFlag(ProcessorStatusFlags.C))
             {
-                Word oldPC = state.Registers.PC.GetWord();
-                state.Registers.PC.SetWord((Word)targetAddr);
+                Word oldPC = cpu.State.Registers.PC.GetWord();
+                cpu.State.Registers.PC.SetWord((Word)targetAddr);
                 opCycles++; // Branch taken
 
                 if ((oldPC & 0xFF00) != (targetAddr & 0xFF00))
@@ -74,13 +75,13 @@ public static partial class Instructions
                 }
             }
 
-            if (state.IsDebuggerAttached)
+            if (cpu.State.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.BCS;
-                state.InstructionCycles += opCycles;
+                cpu.State.Instruction = CpuInstructions.BCS;
+                cpu.State.InstructionCycles += opCycles;
             }
 
-            state.Cycles += opCycles;
+            cpu.State.Cycles += opCycles;
         };
     }
 
@@ -92,15 +93,15 @@ public static partial class Instructions
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler BEQ(AddressingModeHandler<CpuState> addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            Addr targetAddr = addressingMode(memory, ref state);
+            Addr targetAddr = addressingMode(cpu);
 
-            if (state.Registers.P.HasFlag(ProcessorStatusFlags.Z))
+            if (cpu.State.Registers.P.HasFlag(ProcessorStatusFlags.Z))
             {
-                Word oldPC = state.Registers.PC.GetWord();
-                state.Registers.PC.SetWord((Word)targetAddr);
+                Word oldPC = cpu.State.Registers.PC.GetWord();
+                cpu.State.Registers.PC.SetWord((Word)targetAddr);
                 opCycles++; // Branch taken
 
                 if ((oldPC & 0xFF00) != (targetAddr & 0xFF00))
@@ -109,13 +110,13 @@ public static partial class Instructions
                 }
             }
 
-            if (state.IsDebuggerAttached)
+            if (cpu.State.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.BEQ;
-                state.InstructionCycles += opCycles;
+                cpu.State.Instruction = CpuInstructions.BEQ;
+                cpu.State.InstructionCycles += opCycles;
             }
 
-            state.Cycles += opCycles;
+            cpu.State.Cycles += opCycles;
         };
     }
 
@@ -127,15 +128,15 @@ public static partial class Instructions
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler BNE(AddressingModeHandler<CpuState> addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            Addr targetAddr = addressingMode(memory, ref state);
+            Addr targetAddr = addressingMode(cpu);
 
-            if (!state.Registers.P.HasFlag(ProcessorStatusFlags.Z))
+            if (!cpu.State.Registers.P.HasFlag(ProcessorStatusFlags.Z))
             {
-                Word oldPC = state.Registers.PC.GetWord();
-                state.Registers.PC.SetWord((Word)targetAddr);
+                Word oldPC = cpu.State.Registers.PC.GetWord();
+                cpu.State.Registers.PC.SetWord((Word)targetAddr);
                 opCycles++; // Branch taken
 
                 if ((oldPC & 0xFF00) != (targetAddr & 0xFF00))
@@ -144,13 +145,13 @@ public static partial class Instructions
                 }
             }
 
-            if (state.IsDebuggerAttached)
+            if (cpu.State.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.BNE;
-                state.InstructionCycles += opCycles;
+                cpu.State.Instruction = CpuInstructions.BNE;
+                cpu.State.InstructionCycles += opCycles;
             }
 
-            state.Cycles += opCycles;
+            cpu.State.Cycles += opCycles;
         };
     }
 
@@ -162,15 +163,15 @@ public static partial class Instructions
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler BMI(AddressingModeHandler<CpuState> addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            Addr targetAddr = addressingMode(memory, ref state);
+            Addr targetAddr = addressingMode(cpu);
 
-            if (state.Registers.P.HasFlag(ProcessorStatusFlags.N))
+            if (cpu.State.Registers.P.HasFlag(ProcessorStatusFlags.N))
             {
-                Word oldPC = state.Registers.PC.GetWord();
-                state.Registers.PC.SetWord((Word)targetAddr);
+                Word oldPC = cpu.State.Registers.PC.GetWord();
+                cpu.State.Registers.PC.SetWord((Word)targetAddr);
                 opCycles++; // Branch taken
 
                 if ((oldPC & 0xFF00) != (targetAddr & 0xFF00))
@@ -179,13 +180,13 @@ public static partial class Instructions
                 }
             }
 
-            if (state.IsDebuggerAttached)
+            if (cpu.State.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.BMI;
-                state.InstructionCycles += opCycles;
+                cpu.State.Instruction = CpuInstructions.BMI;
+                cpu.State.InstructionCycles += opCycles;
             }
 
-            state.Cycles += opCycles;
+            cpu.State.Cycles += opCycles;
         };
     }
 
@@ -197,15 +198,15 @@ public static partial class Instructions
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler BPL(AddressingModeHandler<CpuState> addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            Addr targetAddr = addressingMode(memory, ref state);
+            Addr targetAddr = addressingMode(cpu);
 
-            if (!state.Registers.P.HasFlag(ProcessorStatusFlags.N))
+            if (!cpu.State.Registers.P.HasFlag(ProcessorStatusFlags.N))
             {
-                Word oldPC = state.Registers.PC.GetWord();
-                state.Registers.PC.SetWord((Word)targetAddr);
+                Word oldPC = cpu.State.Registers.PC.GetWord();
+                cpu.State.Registers.PC.SetWord((Word)targetAddr);
                 opCycles++; // Branch taken
 
                 if ((oldPC & 0xFF00) != (targetAddr & 0xFF00))
@@ -214,13 +215,13 @@ public static partial class Instructions
                 }
             }
 
-            if (state.IsDebuggerAttached)
+            if (cpu.State.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.BPL;
-                state.InstructionCycles += opCycles;
+                cpu.State.Instruction = CpuInstructions.BPL;
+                cpu.State.InstructionCycles += opCycles;
             }
 
-            state.Cycles += opCycles;
+            cpu.State.Cycles += opCycles;
         };
     }
 
@@ -232,15 +233,15 @@ public static partial class Instructions
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler BVC(AddressingModeHandler<CpuState> addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            Addr targetAddr = addressingMode(memory, ref state);
+            Addr targetAddr = addressingMode(cpu);
 
-            if (!state.Registers.P.HasFlag(ProcessorStatusFlags.V))
+            if (!cpu.State.Registers.P.HasFlag(ProcessorStatusFlags.V))
             {
-                Word oldPC = state.Registers.PC.GetWord();
-                state.Registers.PC.SetWord((Word)targetAddr);
+                Word oldPC = cpu.State.Registers.PC.GetWord();
+                cpu.State.Registers.PC.SetWord((Word)targetAddr);
                 opCycles++; // Branch taken
 
                 if ((oldPC & 0xFF00) != (targetAddr & 0xFF00))
@@ -249,13 +250,13 @@ public static partial class Instructions
                 }
             }
 
-            if (state.IsDebuggerAttached)
+            if (cpu.State.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.BVC;
-                state.InstructionCycles += opCycles;
+                cpu.State.Instruction = CpuInstructions.BVC;
+                cpu.State.InstructionCycles += opCycles;
             }
 
-            state.Cycles += opCycles;
+            cpu.State.Cycles += opCycles;
         };
     }
 
@@ -267,15 +268,15 @@ public static partial class Instructions
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler BVS(AddressingModeHandler<CpuState> addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            Addr targetAddr = addressingMode(memory, ref state);
+            Addr targetAddr = addressingMode(cpu);
 
-            if (state.Registers.P.HasFlag(ProcessorStatusFlags.V))
+            if (cpu.State.Registers.P.HasFlag(ProcessorStatusFlags.V))
             {
-                Word oldPC = state.Registers.PC.GetWord();
-                state.Registers.PC.SetWord((Word)targetAddr);
+                Word oldPC = cpu.State.Registers.PC.GetWord();
+                cpu.State.Registers.PC.SetWord((Word)targetAddr);
                 opCycles++; // Branch taken
 
                 if ((oldPC & 0xFF00) != (targetAddr & 0xFF00))
@@ -284,13 +285,13 @@ public static partial class Instructions
                 }
             }
 
-            if (state.IsDebuggerAttached)
+            if (cpu.State.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.BVS;
-                state.InstructionCycles += opCycles;
+                cpu.State.Instruction = CpuInstructions.BVS;
+                cpu.State.InstructionCycles += opCycles;
             }
 
-            state.Cycles += opCycles;
+            cpu.State.Cycles += opCycles;
         };
     }
 
@@ -306,12 +307,12 @@ public static partial class Instructions
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler BRA(AddressingModeHandler<CpuState> addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            Addr targetAddr = addressingMode(memory, ref state);
-            Word oldPC = state.Registers.PC.GetWord();
-            state.Registers.PC.SetWord((Word)targetAddr);
+            Addr targetAddr = addressingMode(cpu);
+            Word oldPC = cpu.State.Registers.PC.GetWord();
+            cpu.State.Registers.PC.SetWord((Word)targetAddr);
             opCycles++; // Branch always taken
 
             if ((oldPC & 0xFF00) != (targetAddr & 0xFF00))
@@ -319,13 +320,13 @@ public static partial class Instructions
                 opCycles++; // Page boundary crossed
             }
 
-            if (state.IsDebuggerAttached)
+            if (cpu.State.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.BRA;
-                state.InstructionCycles += opCycles;
+                cpu.State.Instruction = CpuInstructions.BRA;
+                cpu.State.InstructionCycles += opCycles;
             }
 
-            state.Cycles += opCycles;
+            cpu.State.Cycles += opCycles;
         };
     }
 }

@@ -119,4 +119,43 @@ public class Cpu65832 : ICpu
     {
         throw new NotImplementedException();
     }
+
+    /// <inheritdoc/>
+    public ref CpuState State => throw new NotImplementedException();
+
+    /// <inheritdoc/>
+    public byte Read8(Addr address)
+    {
+        throw new NotImplementedException();
+    }
+
+    /// <inheritdoc/>
+    public void Write8(Addr address, byte value)
+    {
+        throw new NotImplementedException();
+    }
+
+    /// <inheritdoc/>
+    public Word Read16(Addr address)
+    {
+        throw new NotImplementedException();
+    }
+
+    /// <inheritdoc/>
+    public void Write16(Addr address, Word value)
+    {
+        throw new NotImplementedException();
+    }
+
+    /// <inheritdoc/>
+    public DWord ReadValue(Addr address, byte sizeInBits)
+    {
+        throw new NotImplementedException();
+    }
+
+    /// <inheritdoc/>
+    public void WriteValue(Addr address, DWord value, byte sizeInBits)
+    {
+        throw new NotImplementedException();
+    }
 }

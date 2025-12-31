@@ -17,6 +17,7 @@ using Emulation.Memory;
 public class Cpu65C02GenericBuilderIntegrationTests
 {
     private IMemory memory = null!;
+    private Cpu65C02 cpu = null!;
 
     /// <summary>
     /// Sets up test environment.
@@ -25,6 +26,7 @@ public class Cpu65C02GenericBuilderIntegrationTests
     public void Setup()
     {
         memory = new BasicMemory();
+        cpu = new Cpu65C02(memory);
     }
 
     /// <summary>
@@ -60,7 +62,7 @@ public class Cpu65C02GenericBuilderIntegrationTests
 
         // Act - Execute LDA Immediate (opcode 0xA9)
         var handler = opcodeTable.GetHandler(0xA9);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0x42), "LDA should load the value");
@@ -83,7 +85,7 @@ public class Cpu65C02GenericBuilderIntegrationTests
 
         // Act
         var handler = opcodeTable.GetHandler(0xA5);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0x99), "LDA ZP should load from zero page");
@@ -102,7 +104,7 @@ public class Cpu65C02GenericBuilderIntegrationTests
 
         // Act - Execute STA Zero Page (0x85)
         var handler = opcodeTable.GetHandler(0x85);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(memory.Read(0x0050), Is.EqualTo(0x42), "STA should store accumulator value");
@@ -142,11 +144,11 @@ public class Cpu65C02GenericBuilderIntegrationTests
 
         // Act - Execute LDA #$42 (opcode 0xA9)
         var ldaHandler = opcodeTable.GetHandler(0xA9);
-        ldaHandler(memory, ref state);
+        cpu.SetState(state); ldaHandler(cpu); state = cpu.GetState();
 
         // Then execute STA $50 (opcode 0x85)
         var staHandler = opcodeTable.GetHandler(0x85);
-        staHandler(memory, ref state);
+        cpu.SetState(state); staHandler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0x42), "Accumulator should contain loaded value");

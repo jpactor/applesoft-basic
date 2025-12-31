@@ -404,8 +404,14 @@ public class InterruptAndHaltTests
 
         // Act
         cpu.Step(); // Execute CLI
-        cpu.SignalIRQ(); // Signal IRQ
-        cpu.Step(); // Process IRQ
+        cpu.SignalIRQ(); // Signal IRQ (asserts on signal bus)
+        cpu.Step(); // Process IRQ (pushes PC and P, jumps to IRQ vector)
+
+        // Deassert IRQ before executing RTI, simulating device acknowledgment
+        // In a real system, the interrupt handler would read the device's status
+        // register which clears the interrupt. For this test, we manually deassert.
+        cpu.EventContext.Signals.Deassert(Core.Signaling.SignalLine.IRQ, 0, new Core.Cycle(cpu.GetState().Cycles));
+
         cpu.Step(); // Execute RTI
 
         // Assert

@@ -8,6 +8,7 @@ namespace BadMango.Emulator.Emulation.Cpu;
 using System.Runtime.CompilerServices;
 
 using Core.Cpu;
+using Core.Interfaces.Cpu;
 
 /// <summary>
 /// Flag manipulation instructions (CLC, SEC, CLI, SEI, CLD, SED, CLV).
@@ -22,20 +23,20 @@ public static partial class Instructions
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler CLC(AddressingModeHandler<CpuState> addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            addressingMode(memory, ref state);
-            state.Registers.P &= ~ProcessorStatusFlags.C;
+            addressingMode(cpu);
+            cpu.State.Registers.P &= ~ProcessorStatusFlags.C;
             opCycles++;
 
-            if (state.IsDebuggerAttached)
+            if (cpu.State.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.CLC;
-                state.InstructionCycles += opCycles;
+                cpu.State.Instruction = CpuInstructions.CLC;
+                cpu.State.InstructionCycles += opCycles;
             }
 
-            state.Cycles += opCycles;
+            cpu.State.Cycles += opCycles;
         };
     }
 
@@ -47,20 +48,20 @@ public static partial class Instructions
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler SEC(AddressingModeHandler<CpuState> addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            addressingMode(memory, ref state);
-            state.Registers.P |= ProcessorStatusFlags.C;
+            addressingMode(cpu);
+            cpu.State.Registers.P |= ProcessorStatusFlags.C;
             opCycles++;
 
-            if (state.IsDebuggerAttached)
+            if (cpu.State.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.SEC;
-                state.InstructionCycles += opCycles;
+                cpu.State.Instruction = CpuInstructions.SEC;
+                cpu.State.InstructionCycles += opCycles;
             }
 
-            state.Cycles += opCycles;
+            cpu.State.Cycles += opCycles;
         };
     }
 
@@ -72,20 +73,20 @@ public static partial class Instructions
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler CLI(AddressingModeHandler<CpuState> addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            addressingMode(memory, ref state);
-            state.Registers.P &= ~ProcessorStatusFlags.I;
+            addressingMode(cpu);
+            cpu.State.Registers.P &= ~ProcessorStatusFlags.I;
             opCycles++;
 
-            if (state.IsDebuggerAttached)
+            if (cpu.State.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.CLI;
-                state.InstructionCycles += opCycles;
+                cpu.State.Instruction = CpuInstructions.CLI;
+                cpu.State.InstructionCycles += opCycles;
             }
 
-            state.Cycles += opCycles;
+            cpu.State.Cycles += opCycles;
         };
     }
 
@@ -97,20 +98,20 @@ public static partial class Instructions
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler SEI(AddressingModeHandler<CpuState> addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            addressingMode(memory, ref state);
-            state.Registers.P |= ProcessorStatusFlags.I;
+            addressingMode(cpu);
+            cpu.State.Registers.P |= ProcessorStatusFlags.I;
             opCycles++;
 
-            if (state.IsDebuggerAttached)
+            if (cpu.State.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.SEI;
-                state.InstructionCycles += opCycles;
+                cpu.State.Instruction = CpuInstructions.SEI;
+                cpu.State.InstructionCycles += opCycles;
             }
 
-            state.Cycles += opCycles;
+            cpu.State.Cycles += opCycles;
         };
     }
 
@@ -122,20 +123,20 @@ public static partial class Instructions
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler CLD(AddressingModeHandler<CpuState> addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            addressingMode(memory, ref state);
-            state.Registers.P &= ~ProcessorStatusFlags.D;
+            addressingMode(cpu);
+            cpu.State.Registers.P &= ~ProcessorStatusFlags.D;
             opCycles++;
 
-            if (state.IsDebuggerAttached)
+            if (cpu.State.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.CLD;
-                state.InstructionCycles += opCycles;
+                cpu.State.Instruction = CpuInstructions.CLD;
+                cpu.State.InstructionCycles += opCycles;
             }
 
-            state.Cycles += opCycles;
+            cpu.State.Cycles += opCycles;
         };
     }
 
@@ -147,20 +148,20 @@ public static partial class Instructions
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler SED(AddressingModeHandler<CpuState> addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            addressingMode(memory, ref state);
-            state.Registers.P |= ProcessorStatusFlags.D;
+            addressingMode(cpu);
+            cpu.State.Registers.P |= ProcessorStatusFlags.D;
             opCycles++;
 
-            if (state.IsDebuggerAttached)
+            if (cpu.State.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.SED;
-                state.InstructionCycles += opCycles;
+                cpu.State.Instruction = CpuInstructions.SED;
+                cpu.State.InstructionCycles += opCycles;
             }
 
-            state.Cycles += opCycles;
+            cpu.State.Cycles += opCycles;
         };
     }
 
@@ -172,20 +173,20 @@ public static partial class Instructions
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler CLV(AddressingModeHandler<CpuState> addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            addressingMode(memory, ref state);
-            state.Registers.P &= ~ProcessorStatusFlags.V;
+            addressingMode(cpu);
+            cpu.State.Registers.P &= ~ProcessorStatusFlags.V;
             opCycles++;
 
-            if (state.IsDebuggerAttached)
+            if (cpu.State.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.CLV;
-                state.InstructionCycles += opCycles;
+                cpu.State.Instruction = CpuInstructions.CLV;
+                cpu.State.InstructionCycles += opCycles;
             }
 
-            state.Cycles += opCycles;
+            cpu.State.Cycles += opCycles;
         };
     }
 }

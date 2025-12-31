@@ -8,6 +8,7 @@ namespace BadMango.Emulator.Emulation.Cpu;
 using System.Runtime.CompilerServices;
 
 using Core.Cpu;
+using Core.Interfaces.Cpu;
 
 /// <summary>
 /// Logical operations (AND, ORA, EOR, BIT).
@@ -22,31 +23,31 @@ public static partial class Instructions
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler AND(AddressingModeHandler<CpuState> addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            Addr address = addressingMode(memory, ref state);
-            byte value = memory.Read(address);
+            Addr address = addressingMode(cpu);
+            byte value = cpu.Read8(address);
             opCycles++; // Memory read
 
-            byte result = (byte)(state.Registers.A.GetByte() & value);
-            state.Registers.A.SetByte(result);
-            state.Registers.P.SetZeroAndNegative(result);
+            byte result = (byte)(cpu.State.Registers.A.GetByte() & value);
+            cpu.State.Registers.A.SetByte(result);
+            cpu.State.Registers.P.SetZeroAndNegative(result);
 
-            if (state.IsDebuggerAttached)
+            if (cpu.State.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.AND;
+                cpu.State.Instruction = CpuInstructions.AND;
 
-                if (state.AddressingMode == CpuAddressingModes.Immediate)
+                if (cpu.State.AddressingMode == CpuAddressingModes.Immediate)
                 {
-                    state.OperandSize = 1;
-                    state.SetOperand(0, value);
+                    cpu.State.OperandSize = 1;
+                    cpu.State.SetOperand(0, value);
                 }
 
-                state.InstructionCycles += opCycles;
+                cpu.State.InstructionCycles += opCycles;
             }
 
-            state.Cycles += opCycles;
+            cpu.State.Cycles += opCycles;
         };
     }
 
@@ -58,31 +59,31 @@ public static partial class Instructions
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler ORA(AddressingModeHandler<CpuState> addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            Addr address = addressingMode(memory, ref state);
-            byte value = memory.Read(address);
+            Addr address = addressingMode(cpu);
+            byte value = cpu.Read8(address);
             opCycles++; // Memory read
 
-            byte result = (byte)(state.Registers.A.GetByte() | value);
-            state.Registers.A.SetByte(result);
-            state.Registers.P.SetZeroAndNegative(result);
+            byte result = (byte)(cpu.State.Registers.A.GetByte() | value);
+            cpu.State.Registers.A.SetByte(result);
+            cpu.State.Registers.P.SetZeroAndNegative(result);
 
-            if (state.IsDebuggerAttached)
+            if (cpu.State.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.ORA;
+                cpu.State.Instruction = CpuInstructions.ORA;
 
-                if (state.AddressingMode == CpuAddressingModes.Immediate)
+                if (cpu.State.AddressingMode == CpuAddressingModes.Immediate)
                 {
-                    state.OperandSize = 1;
-                    state.SetOperand(0, value);
+                    cpu.State.OperandSize = 1;
+                    cpu.State.SetOperand(0, value);
                 }
 
-                state.InstructionCycles += opCycles;
+                cpu.State.InstructionCycles += opCycles;
             }
 
-            state.Cycles += opCycles;
+            cpu.State.Cycles += opCycles;
         };
     }
 
@@ -94,31 +95,31 @@ public static partial class Instructions
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler EOR(AddressingModeHandler<CpuState> addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            Addr address = addressingMode(memory, ref state);
-            byte value = memory.Read(address);
+            Addr address = addressingMode(cpu);
+            byte value = cpu.Read8(address);
             opCycles++; // Memory read
 
-            byte result = (byte)(state.Registers.A.GetByte() ^ value);
-            state.Registers.A.SetByte(result);
-            state.Registers.P.SetZeroAndNegative(result);
+            byte result = (byte)(cpu.State.Registers.A.GetByte() ^ value);
+            cpu.State.Registers.A.SetByte(result);
+            cpu.State.Registers.P.SetZeroAndNegative(result);
 
-            if (state.IsDebuggerAttached)
+            if (cpu.State.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.EOR;
+                cpu.State.Instruction = CpuInstructions.EOR;
 
-                if (state.AddressingMode == CpuAddressingModes.Immediate)
+                if (cpu.State.AddressingMode == CpuAddressingModes.Immediate)
                 {
-                    state.OperandSize = 1;
-                    state.SetOperand(0, value);
+                    cpu.State.OperandSize = 1;
+                    cpu.State.SetOperand(0, value);
                 }
 
-                state.InstructionCycles += opCycles;
+                cpu.State.InstructionCycles += opCycles;
             }
 
-            state.Cycles += opCycles;
+            cpu.State.Cycles += opCycles;
         };
     }
 
@@ -130,52 +131,52 @@ public static partial class Instructions
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler BIT(AddressingModeHandler<CpuState> addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            Addr address = addressingMode(memory, ref state);
-            byte value = memory.Read(address);
+            Addr address = addressingMode(cpu);
+            byte value = cpu.Read8(address);
             opCycles++; // Memory read
 
-            byte result = (byte)(state.Registers.A.GetByte() & value);
+            byte result = (byte)(cpu.State.Registers.A.GetByte() & value);
 
             // Set Z flag based on result
             if (result == 0)
             {
-                state.Registers.P |= ProcessorStatusFlags.Z;
+                cpu.State.Registers.P |= ProcessorStatusFlags.Z;
             }
             else
             {
-                state.Registers.P &= ~ProcessorStatusFlags.Z;
+                cpu.State.Registers.P &= ~ProcessorStatusFlags.Z;
             }
 
             // Set N flag from bit 7 of memory value
             if ((value & 0x80) != 0)
             {
-                state.Registers.P |= ProcessorStatusFlags.N;
+                cpu.State.Registers.P |= ProcessorStatusFlags.N;
             }
             else
             {
-                state.Registers.P &= ~ProcessorStatusFlags.N;
+                cpu.State.Registers.P &= ~ProcessorStatusFlags.N;
             }
 
             // Set V flag from bit 6 of memory value
             if ((value & 0x40) != 0)
             {
-                state.Registers.P |= ProcessorStatusFlags.V;
+                cpu.State.Registers.P |= ProcessorStatusFlags.V;
             }
             else
             {
-                state.Registers.P &= ~ProcessorStatusFlags.V;
+                cpu.State.Registers.P &= ~ProcessorStatusFlags.V;
             }
 
-            if (state.IsDebuggerAttached)
+            if (cpu.State.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.BIT;
-                state.InstructionCycles += opCycles;
+                cpu.State.Instruction = CpuInstructions.BIT;
+                cpu.State.InstructionCycles += opCycles;
             }
 
-            state.Cycles += opCycles;
+            cpu.State.Cycles += opCycles;
         };
     }
 }

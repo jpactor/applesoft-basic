@@ -49,7 +49,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.TAX(AddressingModes.Implied);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(state.Registers.X.GetByte(), Is.EqualTo(0x42));
@@ -68,7 +68,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.TAY(AddressingModes.Implied);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(state.Registers.Y.GetByte(), Is.EqualTo(0x00));
@@ -86,7 +86,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.TXA(AddressingModes.Implied);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0x80));
@@ -104,7 +104,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.TYA(AddressingModes.Implied);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0x55));
@@ -121,7 +121,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.TXS(AddressingModes.Implied);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(state.Registers.SP.GetByte(), Is.EqualTo(0xAB));
@@ -139,7 +139,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.TSX(AddressingModes.Implied);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(state.Registers.X.GetByte(), Is.EqualTo(0x00));
@@ -161,7 +161,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.PHA(AddressingModes.Implied);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(state.Registers.SP.GetByte(), Is.EqualTo(0xFE));
@@ -180,7 +180,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.PLA(AddressingModes.Implied);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(state.Registers.SP.GetByte(), Is.EqualTo(0xFF));
@@ -198,7 +198,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.PHP(AddressingModes.Implied);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(state.Registers.SP.GetByte(), Is.EqualTo(0xFE));
@@ -217,7 +217,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.PLP(AddressingModes.Implied);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(state.Registers.SP.GetByte(), Is.EqualTo(0xFF));
@@ -240,7 +240,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.CMP(AddressingModes.Immediate);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(state.Registers.P & FlagC, Is.EqualTo(FlagC), "Carry should be set");
@@ -259,7 +259,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.CMP(AddressingModes.Immediate);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(state.Registers.P & FlagC, Is.EqualTo((ProcessorStatusFlags)0), "Carry should be clear");
@@ -278,7 +278,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.CPX(AddressingModes.Immediate);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(state.Registers.P & FlagC, Is.EqualTo(FlagC), "Carry should be set");
@@ -296,7 +296,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.CPY(AddressingModes.Immediate);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(state.Registers.P & FlagC, Is.EqualTo(FlagC), "Carry should be set");
@@ -319,7 +319,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.BCC(AddressingModes.Relative);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1011)); // 0x1001 + 0x10
@@ -338,7 +338,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.BCC(AddressingModes.Relative);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert - PC should only advance by the addressing mode (1 byte for relative)
         Assert.That(state.Registers.PC.GetWord(), Is.EqualTo((ushort)(originalPC + 1)));
@@ -356,7 +356,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.BEQ(AddressingModes.Relative);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1006)); // 0x1001 + 0x05
@@ -374,7 +374,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.BNE(AddressingModes.Relative);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x0FFF)); // 0x1001 + (-2)
@@ -392,7 +392,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.BRA(AddressingModes.Relative);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1021)); // 0x1001 + 0x20
@@ -410,7 +410,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.BRA(AddressingModes.Relative);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x0FF1)); // 0x1001 + (-16)
@@ -432,7 +432,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.ADC(AddressingModes.Immediate);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0x53)); // 0x10 + 0x42 + 1
@@ -450,7 +450,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.ADC(AddressingModes.Immediate);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0x80));
@@ -469,7 +469,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.SBC(AddressingModes.Immediate);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0x40)); // 0x50 - 0x10 - 0
@@ -486,7 +486,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.INX(AddressingModes.Implied);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(state.Registers.X.GetByte(), Is.EqualTo(0x43));
@@ -503,7 +503,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.INY(AddressingModes.Implied);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(state.Registers.Y.GetByte(), Is.EqualTo(0x00));
@@ -521,7 +521,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.DEX(AddressingModes.Implied);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(state.Registers.X.GetByte(), Is.EqualTo(0x00));
@@ -541,7 +541,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.INC(AddressingModes.ZeroPage);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(memory.Read(0x50), Is.EqualTo(0x43));
@@ -560,7 +560,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.DEC(AddressingModes.ZeroPage);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(memory.Read(0x50), Is.EqualTo(0x00));
@@ -583,7 +583,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.AND(AddressingModes.Immediate);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0x0F));
@@ -601,7 +601,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.ORA(AddressingModes.Immediate);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0xFF));
@@ -619,7 +619,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.EOR(AddressingModes.Immediate);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0x00));
@@ -639,7 +639,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.BIT(AddressingModes.ZeroPage);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(state.Registers.P & FlagN, Is.EqualTo(FlagN), "Negative flag should be set from bit 7");
@@ -662,7 +662,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.ASLa(AddressingModes.Accumulator);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0x84));
@@ -680,7 +680,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.ASLa(AddressingModes.Accumulator);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0x00));
@@ -699,7 +699,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.LSRa(AddressingModes.Accumulator);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0x21));
@@ -717,7 +717,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.ROLa(AddressingModes.Accumulator);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0x85)); // 0x42 << 1 | 1
@@ -735,7 +735,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.RORa(AddressingModes.Accumulator);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0xA1)); // 0x80 | (0x42 >> 1)
@@ -758,7 +758,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.JMP(AddressingModes.Absolute);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x2000));
@@ -776,7 +776,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.JSR(AddressingModes.Absolute);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x2000));
@@ -798,7 +798,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.RTS(AddressingModes.Implied);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x2001)); // Return address + 1
@@ -819,7 +819,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.RTI(AddressingModes.Implied);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x2000));
@@ -843,7 +843,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.STX(AddressingModes.ZeroPage);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(memory.Read(0x50), Is.EqualTo(0x42));
@@ -861,7 +861,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.STY(AddressingModes.ZeroPage);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(memory.Read(0x50), Is.EqualTo(0x55));
@@ -884,7 +884,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.STZ(AddressingModes.ZeroPage);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(memory.Read(0x50), Is.EqualTo(0x00));
@@ -901,7 +901,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.PHX(AddressingModes.Implied);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(state.Registers.SP.GetByte(), Is.EqualTo(0xFE));
@@ -920,7 +920,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.PLX(AddressingModes.Implied);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(state.Registers.SP.GetByte(), Is.EqualTo(0xFF));
@@ -938,7 +938,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.PHY(AddressingModes.Implied);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(state.Registers.SP.GetByte(), Is.EqualTo(0xFE));
@@ -957,7 +957,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.PLY(AddressingModes.Implied);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(state.Registers.SP.GetByte(), Is.EqualTo(0xFF));
@@ -977,7 +977,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.TSB(AddressingModes.ZeroPage);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(memory.Read(0x50), Is.EqualTo(0xFF)); // 0x0F OR 0xF0
@@ -997,7 +997,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.TSB(AddressingModes.ZeroPage);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(memory.Read(0x50), Is.EqualTo(0xFF)); // 0xFF OR 0x80 = 0xFF
@@ -1017,7 +1017,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.TRB(AddressingModes.ZeroPage);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(memory.Read(0x50), Is.EqualTo(0x0F)); // 0xFF AND (NOT 0xF0)
@@ -1035,7 +1035,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.WAI(AddressingModes.Implied);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(state.Halted, Is.True, "Processor should be halted");
@@ -1052,7 +1052,7 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.STP(AddressingModes.Implied);
-        handler(memory, ref state);
+        cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
         Assert.That(state.Halted, Is.True, "Processor should be halted");
