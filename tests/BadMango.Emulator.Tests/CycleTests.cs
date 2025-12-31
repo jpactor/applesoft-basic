@@ -430,4 +430,47 @@ public class CycleTests
     }
 
     #endregion
+
+    #region ToString Method Tests
+
+    /// <summary>
+    /// Verifies that ToString returns the value with "cycles" suffix.
+    /// </summary>
+    [Test]
+    public void Cycle_ToString_IncludesCyclesSuffix()
+    {
+        var cycle = new Cycle(42ul);
+
+        var result = cycle.ToString();
+
+        Assert.That(result, Is.EqualTo("42 cycles"));
+    }
+
+    /// <summary>
+    /// Verifies that ToString with zero value includes "cycles" suffix.
+    /// </summary>
+    [Test]
+    public void Cycle_ToString_ZeroValue_IncludesCyclesSuffix()
+    {
+        var cycle = Cycle.Zero;
+
+        var result = cycle.ToString();
+
+        Assert.That(result, Is.EqualTo("0 cycles"));
+    }
+
+    /// <summary>
+    /// Verifies that ToString with large value includes "cycles" suffix.
+    /// </summary>
+    [Test]
+    public void Cycle_ToString_LargeValue_IncludesCyclesSuffix()
+    {
+        var cycle = new Cycle(1_000_000_000ul);
+
+        var result = cycle.ToString();
+
+        Assert.That(result, Is.EqualTo("1000000000 cycles"));
+    }
+
+    #endregion
 }

@@ -32,6 +32,11 @@ using Interfaces;
 public sealed class Scheduler : IScheduler
 {
     /// <summary>
+    /// Maximum number of cancelled handles to accumulate before forcing cleanup.
+    /// </summary>
+    private const int CancelledHandlesCleanupThreshold = 1000;
+
+    /// <summary>
     /// Priority queue of scheduled events, ordered by cycle, priority, then sequence.
     /// </summary>
     private readonly PriorityQueue<ScheduledEvent, ScheduledEvent> eventQueue;
@@ -227,14 +232,19 @@ public sealed class Scheduler : IScheduler
             }
 
             // Invoke the callback with the event context
-            if (eventContext is not null)
+            if (eventContext is null)
             {
-                nextEvent.Callback(eventContext);
+                throw new InvalidOperationException("Event context is not set. Call SetEventContext before dispatching events.");
             }
+
+            nextEvent.Callback(eventContext);
         }
 
         // Clean up the cancelled handles set periodically to prevent unbounded growth
-        if (cancelledHandles.Count > 100 && eventQueue.Count == 0)
+        // Clear when we have a significant number of cancelled handles and either:
+        // 1. The queue is empty, or
+        // 2. The number of cancelled handles exceeds a threshold
+        if (cancelledHandles.Count > 0 && (eventQueue.Count == 0 || cancelledHandles.Count > CancelledHandlesCleanupThreshold))
         {
             cancelledHandles.Clear();
         }
