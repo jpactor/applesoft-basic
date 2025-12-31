@@ -10,16 +10,11 @@
     <StackPanel Spacing="24" HorizontalAlignment="Center" MaxWidth="500">
         <!-- Logo and Title -->
         <StackPanel Spacing="16" HorizontalAlignment="Center">
-            <Border Width="80" Height="80" 
-                    Background="{DynamicResource PrimaryBrush}"
-                    CornerRadius="16">
-                <TextBlock Text="BP" 
-                           FontSize="32" 
-                           FontWeight="Bold"
-                           Foreground="White"
-                           HorizontalAlignment="Center"
-                           VerticalAlignment="Center" />
-            </Border>
+            <Image Source="avares://bpui/back-pocket-logo.png"
+                   Width="80" 
+                   Height="80"
+                   Stretch="Uniform"
+                   HorizontalAlignment="Center" />
             
             <TextBlock Text="{Binding ApplicationName}" 
                        FontSize="24" 

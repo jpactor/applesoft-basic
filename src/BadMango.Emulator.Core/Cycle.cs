@@ -119,6 +119,24 @@ public readonly record struct Cycle(ulong Value) : IComparable<Cycle>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public int CompareTo(Cycle other) => Value.CompareTo(other.Value);
 
+    /// <summary>Advances the current cycle count by the specified number of cycles.</summary>
+    /// <param name="cycles">The number of cycles to advance. Defaults to 1 if no value is provided.</param>
+    /// <remarks>
+    /// This method modifies the current cycle count by adding the specified number of cycles.
+    /// It is optimized for performance with aggressive inlining.
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void Advance(ulong cycles = 1ul) => Unsafe.AsRef(in this) += cycles;
+
+    /// <summary>Advances the current cycle count by the specified number of cycles.</summary>
+    /// <param name="cycles">The number of cycles to advance.</param>
+    /// <remarks>
+    /// This method modifies the current cycle count by adding the specified number of cycles.
+    /// It is optimized for performance with aggressive inlining.
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void Advance(Cycle cycles) => Unsafe.AsRef(in this) += cycles;
+
     /// <summary>
     /// Returns a string representation of the cycle count.
     /// </summary>

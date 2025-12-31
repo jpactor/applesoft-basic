@@ -75,6 +75,7 @@
 
   <ItemGroup>
     <AdditionalFiles Include="..\..\StyleCop.json" Link="StyleCop.json" />
+    <AvaloniaResource Include="..\..\back-pocket-logo.png" Link="back-pocket-logo.png" />
   </ItemGroup>
 
   <ItemGroup>

@@ -110,6 +110,25 @@ public struct Registers
     /// </remarks>
     public SystemRegisters System;
 
+    /// <summary>
+    /// Represents the instruction register (IR) of the CPU, which holds the current opcode
+    /// being executed or decoded by the processor.
+    /// </summary>
+    /// <remarks>
+    /// The <see cref="OpcodeBuffer"/> structure encapsulates the opcode and sub-opcode bytes,
+    /// providing access to the raw instruction data required for execution and emulation.
+    /// </remarks>
+    internal OpcodeBuffer IR;
+
+    /// <summary>
+    /// Tracks the number of cycles the current instruction is consuming.
+    /// </summary>
+    /// <remarks>
+    /// The TCU (Timing Control Unit) is used to monitor and manage the execution timing
+    /// of the current instruction within the CPU.
+    /// </remarks>
+    internal Cycle TCU;
+
     /// <summary>Initializes a new instance of the <see cref="Registers"/> struct with default values.</summary>
     /// <remarks>
     /// This constructor sets all fields of the <see cref="Registers"/> struct to their default values:
@@ -167,6 +186,36 @@ public struct Registers
         CP = true;
         E = true;
         SP.SetByte(0xFF);
+    }
+
+    /// <summary>Attempts to set the value of the E register.</summary>
+    /// <param name="value">The value to set for the E register.</param>
+    /// <param name="capabilities">The CPU capabilities used to check for emulation mode support.</param>
+    /// <returns>
+    /// <c>true</c> if the E register was successfully set; otherwise, <c>false</c>.
+    /// </returns>
+    /// <remarks>
+    /// The operation will only succeed if the <see cref="CpuCapabilities.SupportsEmulationFlag"/> capability is enabled.
+    /// </remarks>
+    internal bool TrySetE(bool value, CpuCapabilities capabilities)
+    {
+        if ((capabilities & CpuCapabilities.SupportsEmulationFlag) == 0) { return false; }
+
+        E = value;
+        return true;
+    }
+
+    /// <summary>Attempts to set the Compatibility Flag (CP) for the CPU.</summary>
+    /// <param name="value">The desired value to set for the Compatibility Flag (CP).</param>
+    /// <param name="capabilities">The CPU capabilities to check for compatibility support.</param>
+    /// <returns>
+    /// <c>true</c> if the Compatibility Flag (CP) was successfully set; otherwise, <c>false</c>.
+    /// </returns>
+    internal bool TrySetCP(bool value, CpuCapabilities capabilities)
+    {
+        if ((capabilities & CpuCapabilities.SupportsCompatibilityFlag) == 0) { return false; }
+        CP = value;
+        return true;
     }
 }
 

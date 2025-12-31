@@ -43,6 +43,9 @@ public class Cpu65C02 : ICpu
         opcodeTable = Cpu65C02OpcodeTableBuilder.Build();
     }
 
+    /// <inheritdoc />
+    public CpuCapabilities Capabilities => CpuCapabilities.Base6502 | CpuCapabilities.Supports65C02Instructions;
+
     /// <inheritdoc/>
     public bool Halted
     {
@@ -233,12 +236,14 @@ public class Cpu65C02 : ICpu
     }
 
     /// <inheritdoc/>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void RequestStop()
     {
         stopRequested = true;
     }
 
     /// <inheritdoc/>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void ClearStopRequest()
     {
         stopRequested = false;

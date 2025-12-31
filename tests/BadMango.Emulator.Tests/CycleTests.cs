@@ -288,4 +288,146 @@ public class CycleTests
 
         Assert.That(cycle.Value, Is.EqualTo(2ul));
     }
+
+    #region Advance Method Tests
+
+    /// <summary>
+    /// Verifies that Advance with default parameter advances by 1.
+    /// </summary>
+    [Test]
+    public void Cycle_Advance_DefaultParameter_AdvancesByOne()
+    {
+        var cycle = new Cycle(100ul);
+
+        cycle.Advance();
+
+        Assert.That(cycle.Value, Is.EqualTo(101ul));
+    }
+
+    /// <summary>
+    /// Verifies that Advance with ulong parameter advances by specified amount.
+    /// </summary>
+    [Test]
+    public void Cycle_Advance_WithUlongParameter_AdvancesBySpecifiedAmount()
+    {
+        var cycle = new Cycle(100ul);
+
+        cycle.Advance(50ul);
+
+        Assert.That(cycle.Value, Is.EqualTo(150ul));
+    }
+
+    /// <summary>
+    /// Verifies that Advance with Cycle parameter advances by the Cycle's value.
+    /// </summary>
+    [Test]
+    public void Cycle_Advance_WithCycleParameter_AdvancesByCycleValue()
+    {
+        var cycle = new Cycle(100ul);
+        var increment = new Cycle(25ul);
+
+        cycle.Advance(increment);
+
+        Assert.That(cycle.Value, Is.EqualTo(125ul));
+    }
+
+    /// <summary>
+    /// Verifies that Advance from zero works correctly.
+    /// </summary>
+    [Test]
+    public void Cycle_Advance_FromZero_AdvancesCorrectly()
+    {
+        var cycle = Cycle.Zero;
+
+        cycle.Advance(10ul);
+
+        Assert.That(cycle.Value, Is.EqualTo(10ul));
+    }
+
+    /// <summary>
+    /// Verifies that multiple Advance calls accumulate correctly.
+    /// </summary>
+    [Test]
+    public void Cycle_Advance_MultipleCalls_AccumulatesCorrectly()
+    {
+        var cycle = new Cycle(50ul);
+
+        cycle.Advance(10ul);
+        cycle.Advance(20ul);
+        cycle.Advance(30ul);
+
+        Assert.That(cycle.Value, Is.EqualTo(110ul));
+    }
+
+    /// <summary>
+    /// Verifies that Advance with zero does not change the value.
+    /// </summary>
+    [Test]
+    public void Cycle_Advance_WithZero_DoesNotChangeValue()
+    {
+        var cycle = new Cycle(100ul);
+
+        cycle.Advance(0ul);
+
+        Assert.That(cycle.Value, Is.EqualTo(100ul));
+    }
+
+    /// <summary>
+    /// Verifies that Advance with Cycle.Zero does not change the value.
+    /// </summary>
+    [Test]
+    public void Cycle_Advance_WithCycleZero_DoesNotChangeValue()
+    {
+        var cycle = new Cycle(100ul);
+
+        cycle.Advance(Cycle.Zero);
+
+        Assert.That(cycle.Value, Is.EqualTo(100ul));
+    }
+
+    /// <summary>
+    /// Verifies that Advance with Cycle.One advances by one.
+    /// </summary>
+    [Test]
+    public void Cycle_Advance_WithCycleOne_AdvancesByOne()
+    {
+        var cycle = new Cycle(100ul);
+
+        cycle.Advance(Cycle.One);
+
+        Assert.That(cycle.Value, Is.EqualTo(101ul));
+    }
+
+    /// <summary>
+    /// Verifies that Advance with a large value works correctly.
+    /// </summary>
+    [Test]
+    public void Cycle_Advance_WithLargeValue_AdvancesCorrectly()
+    {
+        var cycle = new Cycle(1_000_000ul);
+
+        cycle.Advance(999_000_000ul);
+
+        Assert.That(cycle.Value, Is.EqualTo(1_000_000_000ul));
+    }
+
+    /// <summary>
+    /// Verifies that Advance modifies the original struct (not a copy).
+    /// </summary>
+    [Test]
+    public void Cycle_Advance_ModifiesOriginalStruct()
+    {
+        var cycle = new Cycle(50ul);
+        var originalValue = cycle.Value;
+
+        cycle.Advance(25ul);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(originalValue, Is.EqualTo(50ul), "Original value should be captured before Advance");
+            Assert.That(cycle.Value, Is.EqualTo(75ul), "Cycle should be modified after Advance");
+        });
+    }
+
+    #endregion
 }
