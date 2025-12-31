@@ -263,7 +263,7 @@ public class BusResultTests
             Address: 0x1000u,
             Value: 0,
             WidthBits: 8,
-            Mode: CpuMode.Native,
+            Mode: BusAccessMode.Atomic,
             EmulationFlag: false,
             Intent: intent,
             SourceId: 1,

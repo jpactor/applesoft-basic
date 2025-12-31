@@ -264,7 +264,7 @@ public class PageEntryTests
         var entry1 = new PageEntry(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, ramTarget1, 0);
         var entry2 = new PageEntry(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, ramTarget2, 0);
 
-        var access = new BusAccess(0, 0, 8, CpuMode.Compat, true, AccessIntent.DataWrite, 0, 0, AccessFlags.None);
+        var access = new BusAccess(0, 0, 8, BusAccessMode.Decomposed, true, AccessIntent.DataWrite, 0, 0, AccessFlags.None);
 
         // Write via entry1's target at offset 2048
         entry1.Target.Write8(2048, 0xAA, in access);

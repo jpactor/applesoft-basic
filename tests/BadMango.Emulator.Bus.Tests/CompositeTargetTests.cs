@@ -150,7 +150,7 @@ public class CompositeTargetTests
 
         bus.MapPage(0, new PageEntry(1, RegionTag.Io, PagePerms.ReadExecute, TargetCaps.SupportsPeek, composite, 0));
 
-        var access = CreateTestAccess(0x0100, AccessIntent.InstructionFetch, CpuMode.Compat);
+        var access = CreateTestAccess(0x0100, AccessIntent.InstructionFetch, BusAccessMode.Decomposed);
         bus.Read8(access);
 
         Assert.That(capturedIntent, Is.EqualTo(AccessIntent.InstructionFetch), "Composite target should receive access intent");
@@ -162,7 +162,7 @@ public class CompositeTargetTests
     private static BusAccess CreateTestAccess(
         Addr address,
         AccessIntent intent,
-        CpuMode mode = CpuMode.Compat,
+        BusAccessMode mode = BusAccessMode.Decomposed,
         byte widthBits = 8,
         AccessFlags flags = AccessFlags.None)
     {
@@ -171,7 +171,7 @@ public class CompositeTargetTests
             Value: 0,
             WidthBits: widthBits,
             Mode: mode,
-            EmulationFlag: mode == CpuMode.Compat,
+            EmulationFlag: mode == BusAccessMode.Decomposed,
             Intent: intent,
             SourceId: 0,
             Cycle: 0,

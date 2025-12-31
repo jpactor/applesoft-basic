@@ -23,7 +23,7 @@ namespace BadMango.Emulator.Bus;
 /// <param name="Address">The address where the fault occurred.</param>
 /// <param name="WidthBits">The width of the attempted access (8, 16, or 32).</param>
 /// <param name="Intent">The intent of the access that faulted.</param>
-/// <param name="Mode">The CPU mode at the time of the fault.</param>
+/// <param name="Mode">The bus access mode at the time of the fault.</param>
 /// <param name="SourceId">The structural ID of the access initiator.</param>
 /// <param name="DeviceId">The device ID from the page entry, or -1 if unmapped.</param>
 /// <param name="RegionTag">The region tag from the page entry, if available.</param>
@@ -33,7 +33,7 @@ public readonly record struct BusFault(
     Addr Address,
     byte WidthBits,
     AccessIntent Intent,
-    CpuMode Mode,
+    BusAccessMode Mode,
     int SourceId,
     int DeviceId,
     RegionTag RegionTag,
@@ -97,7 +97,7 @@ public readonly record struct BusFault(
     /// Creates a success (no fault) result.
     /// </summary>
     /// <returns>A <see cref="BusFault"/> with <see cref="Kind"/> set to <see cref="FaultKind.None"/>.</returns>
-    public static BusFault Success() => new(FaultKind.None, 0, 0, AccessIntent.DataRead, CpuMode.Native, 0, 0, RegionTag.Unknown, 0);
+    public static BusFault Success() => new(FaultKind.None, 0, 0, AccessIntent.DataRead, BusAccessMode.Atomic, 0, 0, RegionTag.Unknown, 0);
 
     /// <summary>
     /// Creates a success (no fault) result with context from an access.

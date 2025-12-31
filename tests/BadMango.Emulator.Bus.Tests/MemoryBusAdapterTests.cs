@@ -293,8 +293,8 @@ public class MemoryBusAdapterTests
         // Since MemoryBusAdapter uses DataRead intent, this test verifies the mode is stored correctly
         bus.MapPage(0, new PageEntry(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, target, 0));
 
-        var adapterNative = new MemoryBusAdapter(bus, CpuMode.Native);
-        var adapterCompat = new MemoryBusAdapter(bus, CpuMode.Compat);
+        var adapterNative = new MemoryBusAdapter(bus, BusAccessMode.Atomic);
+        var adapterCompat = new MemoryBusAdapter(bus, BusAccessMode.Decomposed);
 
         // Both should succeed for DataRead intent
         Assert.DoesNotThrow(() => adapterNative.Read(0x0100));

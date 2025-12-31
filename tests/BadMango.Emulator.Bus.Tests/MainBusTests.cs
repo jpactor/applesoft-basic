@@ -250,10 +250,10 @@ public class MainBusTests
     }
 
     /// <summary>
-    /// Verifies TryRead8 returns NX fault for instruction fetch on non-executable page in Native mode.
+    /// Verifies TryRead8 returns NX fault for instruction fetch on non-executable page in Atomic mode.
     /// </summary>
     [Test]
-    public void TryRead8_InstructionFetchOnNxPage_NativeMode_ReturnsNxFault()
+    public void TryRead8_InstructionFetchOnNxPage_AtomicMode_ReturnsNxFault()
     {
         var bus = new MainBus();
         var memory = new PhysicalMemory(PageSize, "TestRAM");
@@ -262,7 +262,7 @@ public class MainBusTests
         // Map with read/write but no execute
         bus.MapPage(0, new PageEntry(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, target, 0));
 
-        var access = CreateTestAccess(0x0100, AccessIntent.InstructionFetch, CpuMode.Native);
+        var access = CreateTestAccess(0x0100, AccessIntent.InstructionFetch, BusAccessMode.Atomic);
         var result = bus.TryRead8(access);
 
         Assert.Multiple(() =>
@@ -273,10 +273,10 @@ public class MainBusTests
     }
 
     /// <summary>
-    /// Verifies TryRead8 ignores NX in Compat mode (Apple II behavior).
+    /// Verifies TryRead8 ignores NX in Decomposed mode (Apple II behavior).
     /// </summary>
     [Test]
-    public void TryRead8_InstructionFetchOnNxPage_CompatMode_Succeeds()
+    public void TryRead8_InstructionFetchOnNxPage_DecomposedMode_Succeeds()
     {
         var bus = new MainBus();
         var memory = new PhysicalMemory(PageSize, "TestRAM");
@@ -286,21 +286,21 @@ public class MainBusTests
         // Map with read/write but no execute
         bus.MapPage(0, new PageEntry(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, target, 0));
 
-        var access = CreateTestAccess(0x0100, AccessIntent.InstructionFetch, CpuMode.Compat);
+        var access = CreateTestAccess(0x0100, AccessIntent.InstructionFetch, BusAccessMode.Decomposed);
         var result = bus.TryRead8(access);
 
         Assert.Multiple(() =>
         {
-            Assert.That(result.Ok, Is.True, "Compat mode should ignore NX");
+            Assert.That(result.Ok, Is.True, "Decomposed mode should ignore NX");
             Assert.That(result.Value, Is.EqualTo(0xEA));
         });
     }
 
     /// <summary>
-    /// Verifies Read16 decomposes in Compat mode.
+    /// Verifies Read16 decomposes in Decomposed mode.
     /// </summary>
     [Test]
-    public void Read16_CompatMode_DecomposesIntoByteReads()
+    public void Read16_DecomposedMode_DecomposesIntoByteReads()
     {
         var bus = new MainBus();
         var memory = new PhysicalMemory(PageSize, "TestRAM");
@@ -310,17 +310,17 @@ public class MainBusTests
 
         bus.MapPage(0, new PageEntry(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsWide, target, 0));
 
-        var access = CreateTestAccess(0x0100, AccessIntent.DataRead, CpuMode.Compat, 16);
+        var access = CreateTestAccess(0x0100, AccessIntent.DataRead, BusAccessMode.Decomposed, 16);
         Word value = bus.Read16(access);
 
         Assert.That(value, Is.EqualTo((Word)0x1234));
     }
 
     /// <summary>
-    /// Verifies Read16 uses atomic access in Native mode when target supports wide.
+    /// Verifies Read16 uses atomic access in Atomic mode when target supports wide.
     /// </summary>
     [Test]
-    public void Read16_NativeMode_SupportsWide_UsesAtomicAccess()
+    public void Read16_AtomicMode_SupportsWide_UsesAtomicAccess()
     {
         var bus = new MainBus();
         var memory = new PhysicalMemory(PageSize, "TestRAM");
@@ -330,7 +330,7 @@ public class MainBusTests
 
         bus.MapPage(0, new PageEntry(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsWide, target, 0));
 
-        var access = CreateTestAccess(0x0100, AccessIntent.DataRead, CpuMode.Native, 16);
+        var access = CreateTestAccess(0x0100, AccessIntent.DataRead, BusAccessMode.Atomic, 16);
         Word value = bus.Read16(access);
 
         Assert.That(value, Is.EqualTo((Word)0x5678));
@@ -350,7 +350,7 @@ public class MainBusTests
 
         bus.MapPageRange(0, 2, 1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsWide, target, 0);
 
-        var access = CreateTestAccess(0x0FFF, AccessIntent.DataRead, CpuMode.Native, 16);
+        var access = CreateTestAccess(0x0FFF, AccessIntent.DataRead, BusAccessMode.Atomic, 16);
         Word value = bus.Read16(access);
 
         Assert.That(value, Is.EqualTo((Word)0xABCD));
@@ -370,7 +370,7 @@ public class MainBusTests
 
         bus.MapPage(0, new PageEntry(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsWide, target, 0));
 
-        var access = CreateTestAccess(0x0100, AccessIntent.DataRead, CpuMode.Native, 16, AccessFlags.Decompose);
+        var access = CreateTestAccess(0x0100, AccessIntent.DataRead, BusAccessMode.Atomic, 16, AccessFlags.Decompose);
         Word value = bus.Read16(access);
 
         Assert.That(value, Is.EqualTo((Word)0xBEEF));
@@ -392,7 +392,7 @@ public class MainBusTests
 
         bus.MapPage(0, new PageEntry(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsWide, target, 0));
 
-        var access = CreateTestAccess(0x0100, AccessIntent.DataRead, CpuMode.Native, 32);
+        var access = CreateTestAccess(0x0100, AccessIntent.DataRead, BusAccessMode.Atomic, 32);
         DWord value = bus.Read32(access);
 
         Assert.That(value, Is.EqualTo(0x12345678u));
@@ -410,7 +410,7 @@ public class MainBusTests
 
         bus.MapPage(0, new PageEntry(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsWide, target, 0));
 
-        var access = CreateTestAccess(0x0200, AccessIntent.DataWrite, CpuMode.Native, 16);
+        var access = CreateTestAccess(0x0200, AccessIntent.DataWrite, BusAccessMode.Atomic, 16);
         bus.Write16(access, 0xCAFE);
 
         Assert.Multiple(() =>
@@ -432,7 +432,7 @@ public class MainBusTests
 
         bus.MapPage(0, new PageEntry(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsWide, target, 0));
 
-        var access = CreateTestAccess(0x0300, AccessIntent.DataWrite, CpuMode.Native, 32);
+        var access = CreateTestAccess(0x0300, AccessIntent.DataWrite, BusAccessMode.Atomic, 32);
         bus.Write32(access, 0xDEADBEEFu);
 
         Assert.Multiple(() =>
@@ -457,7 +457,7 @@ public class MainBusTests
         // Only map page 0, leave page 1 unmapped
         bus.MapPage(0, new PageEntry(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, target, 0));
 
-        var access = CreateTestAccess(0x0FFF, AccessIntent.DataRead, CpuMode.Native, 16);
+        var access = CreateTestAccess(0x0FFF, AccessIntent.DataRead, BusAccessMode.Atomic, 16);
         var result = bus.TryRead16(access);
 
         Assert.Multiple(() =>
@@ -581,7 +581,7 @@ public class MainBusTests
     private static BusAccess CreateTestAccess(
         Addr address,
         AccessIntent intent,
-        CpuMode mode = CpuMode.Compat,
+        BusAccessMode mode = BusAccessMode.Decomposed,
         byte widthBits = 8,
         AccessFlags flags = AccessFlags.None)
     {
@@ -590,7 +590,7 @@ public class MainBusTests
             Value: 0,
             WidthBits: widthBits,
             Mode: mode,
-            EmulationFlag: mode == CpuMode.Compat,
+            EmulationFlag: mode == BusAccessMode.Decomposed,
             Intent: intent,
             SourceId: 0,
             Cycle: 0,

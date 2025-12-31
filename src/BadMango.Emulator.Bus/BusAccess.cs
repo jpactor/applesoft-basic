@@ -28,8 +28,8 @@ namespace BadMango.Emulator.Bus;
 /// <param name="Address">The memory address for the operation.</param>
 /// <param name="Value">The value for write operations; ignored for reads.</param>
 /// <param name="WidthBits">The effective width of the operation (8, 16, or 32 bits).</param>
-/// <param name="Mode">The CPU execution mode (Native or Compat).</param>
-/// <param name="EmulationFlag">The 65816 E flag state; only meaningful in Compat mode.</param>
+/// <param name="Mode">The bus access mode (Atomic or Decomposed).</param>
+/// <param name="EmulationFlag">The 65816 E flag state; only meaningful in Decomposed mode.</param>
 /// <param name="Intent">The purpose of the access (data, fetch, DMA, debug).</param>
 /// <param name="SourceId">Structural identifier of the access initiator (CPU, DMA channel, debugger).</param>
 /// <param name="Cycle">The current machine cycle for timing correlation.</param>
@@ -39,7 +39,7 @@ public readonly record struct BusAccess(
     Addr Address,
     DWord Value,
     byte WidthBits,
-    CpuMode Mode,
+    BusAccessMode Mode,
     bool EmulationFlag,
     AccessIntent Intent,
     int SourceId,

@@ -20,7 +20,7 @@ public class BusAccessTests
             Address: 0x1000u,
             Value: 0x42u,
             WidthBits: 8,
-            Mode: CpuMode.Native,
+            Mode: BusAccessMode.Atomic,
             EmulationFlag: false,
             Intent: AccessIntent.DataRead,
             SourceId: 1,
@@ -32,7 +32,7 @@ public class BusAccessTests
             Assert.That(access.Address, Is.EqualTo(0x1000u));
             Assert.That(access.Value, Is.EqualTo(0x42u));
             Assert.That(access.WidthBits, Is.EqualTo(8));
-            Assert.That(access.Mode, Is.EqualTo(CpuMode.Native));
+            Assert.That(access.Mode, Is.EqualTo(BusAccessMode.Atomic));
             Assert.That(access.EmulationFlag, Is.False);
             Assert.That(access.Intent, Is.EqualTo(AccessIntent.DataRead));
             Assert.That(access.SourceId, Is.EqualTo(1));
@@ -47,7 +47,7 @@ public class BusAccessTests
     [Test]
     public void BusAccess_IsSideEffectFree_TrueWhenFlagSet()
     {
-        var access = new BusAccess(0, 0, 8, CpuMode.Native, false, AccessIntent.DebugRead, 0, 0, AccessFlags.NoSideEffects);
+        var access = new BusAccess(0, 0, 8, BusAccessMode.Atomic, false, AccessIntent.DebugRead, 0, 0, AccessFlags.NoSideEffects);
         Assert.That(access.IsSideEffectFree, Is.True);
     }
 
@@ -57,7 +57,7 @@ public class BusAccessTests
     [Test]
     public void BusAccess_IsSideEffectFree_FalseWhenFlagNotSet()
     {
-        var access = new BusAccess(0, 0, 8, CpuMode.Native, false, AccessIntent.DataRead, 0, 0, AccessFlags.None);
+        var access = new BusAccess(0, 0, 8, BusAccessMode.Atomic, false, AccessIntent.DataRead, 0, 0, AccessFlags.None);
         Assert.That(access.IsSideEffectFree, Is.False);
     }
 
@@ -67,7 +67,7 @@ public class BusAccessTests
     [Test]
     public void BusAccess_IsAtomicRequested_TrueWhenFlagSet()
     {
-        var access = new BusAccess(0, 0, 16, CpuMode.Native, false, AccessIntent.DataRead, 0, 0, AccessFlags.Atomic);
+        var access = new BusAccess(0, 0, 16, BusAccessMode.Atomic, false, AccessIntent.DataRead, 0, 0, AccessFlags.Atomic);
         Assert.That(access.IsAtomicRequested, Is.True);
     }
 
@@ -77,7 +77,7 @@ public class BusAccessTests
     [Test]
     public void BusAccess_IsDecomposeForced_TrueWhenFlagSet()
     {
-        var access = new BusAccess(0, 0, 16, CpuMode.Compat, true, AccessIntent.DataRead, 0, 0, AccessFlags.Decompose);
+        var access = new BusAccess(0, 0, 16, BusAccessMode.Decomposed, true, AccessIntent.DataRead, 0, 0, AccessFlags.Decompose);
         Assert.That(access.IsDecomposeForced, Is.True);
     }
 
@@ -87,7 +87,7 @@ public class BusAccessTests
     [Test]
     public void BusAccess_IsDebugAccess_TrueForDebugRead()
     {
-        var access = new BusAccess(0, 0, 8, CpuMode.Native, false, AccessIntent.DebugRead, 0, 0, AccessFlags.None);
+        var access = new BusAccess(0, 0, 8, BusAccessMode.Atomic, false, AccessIntent.DebugRead, 0, 0, AccessFlags.None);
         Assert.That(access.IsDebugAccess, Is.True);
     }
 
@@ -97,7 +97,7 @@ public class BusAccessTests
     [Test]
     public void BusAccess_IsDebugAccess_TrueForDebugWrite()
     {
-        var access = new BusAccess(0, 0, 8, CpuMode.Native, false, AccessIntent.DebugWrite, 0, 0, AccessFlags.None);
+        var access = new BusAccess(0, 0, 8, BusAccessMode.Atomic, false, AccessIntent.DebugWrite, 0, 0, AccessFlags.None);
         Assert.That(access.IsDebugAccess, Is.True);
     }
 
@@ -107,7 +107,7 @@ public class BusAccessTests
     [Test]
     public void BusAccess_IsDebugAccess_FalseForDataRead()
     {
-        var access = new BusAccess(0, 0, 8, CpuMode.Native, false, AccessIntent.DataRead, 0, 0, AccessFlags.None);
+        var access = new BusAccess(0, 0, 8, BusAccessMode.Atomic, false, AccessIntent.DataRead, 0, 0, AccessFlags.None);
         Assert.That(access.IsDebugAccess, Is.False);
     }
 
@@ -117,7 +117,7 @@ public class BusAccessTests
     [Test]
     public void BusAccess_IsDmaAccess_TrueForDmaRead()
     {
-        var access = new BusAccess(0, 0, 8, CpuMode.Native, false, AccessIntent.DmaRead, 0, 0, AccessFlags.None);
+        var access = new BusAccess(0, 0, 8, BusAccessMode.Atomic, false, AccessIntent.DmaRead, 0, 0, AccessFlags.None);
         Assert.That(access.IsDmaAccess, Is.True);
     }
 
@@ -127,7 +127,7 @@ public class BusAccessTests
     [Test]
     public void BusAccess_IsDmaAccess_TrueForDmaWrite()
     {
-        var access = new BusAccess(0, 0, 8, CpuMode.Native, false, AccessIntent.DmaWrite, 0, 0, AccessFlags.None);
+        var access = new BusAccess(0, 0, 8, BusAccessMode.Atomic, false, AccessIntent.DmaWrite, 0, 0, AccessFlags.None);
         Assert.That(access.IsDmaAccess, Is.True);
     }
 
@@ -141,7 +141,7 @@ public class BusAccessTests
     [TestCase(AccessIntent.DmaRead)]
     public void BusAccess_IsRead_TrueForReadIntents(AccessIntent intent)
     {
-        var access = new BusAccess(0, 0, 8, CpuMode.Native, false, intent, 0, 0, AccessFlags.None);
+        var access = new BusAccess(0, 0, 8, BusAccessMode.Atomic, false, intent, 0, 0, AccessFlags.None);
         Assert.That(access.IsRead, Is.True);
     }
 
@@ -154,7 +154,7 @@ public class BusAccessTests
     [TestCase(AccessIntent.DmaWrite)]
     public void BusAccess_IsRead_FalseForWriteIntents(AccessIntent intent)
     {
-        var access = new BusAccess(0, 0, 8, CpuMode.Native, false, intent, 0, 0, AccessFlags.None);
+        var access = new BusAccess(0, 0, 8, BusAccessMode.Atomic, false, intent, 0, 0, AccessFlags.None);
         Assert.That(access.IsRead, Is.False);
     }
 
@@ -167,7 +167,7 @@ public class BusAccessTests
     [TestCase(AccessIntent.DmaWrite)]
     public void BusAccess_IsWrite_TrueForWriteIntents(AccessIntent intent)
     {
-        var access = new BusAccess(0, 0, 8, CpuMode.Native, false, intent, 0, 0, AccessFlags.None);
+        var access = new BusAccess(0, 0, 8, BusAccessMode.Atomic, false, intent, 0, 0, AccessFlags.None);
         Assert.That(access.IsWrite, Is.True);
     }
 
@@ -181,7 +181,7 @@ public class BusAccessTests
     [TestCase(AccessIntent.DmaRead)]
     public void BusAccess_IsWrite_FalseForReadIntents(AccessIntent intent)
     {
-        var access = new BusAccess(0, 0, 8, CpuMode.Native, false, intent, 0, 0, AccessFlags.None);
+        var access = new BusAccess(0, 0, 8, BusAccessMode.Atomic, false, intent, 0, 0, AccessFlags.None);
         Assert.That(access.IsWrite, Is.False);
     }
 
@@ -191,7 +191,7 @@ public class BusAccessTests
     [Test]
     public void BusAccess_WithAddressOffset_CreatesNewInstanceWithUpdatedAddress()
     {
-        var original = new BusAccess(0x1000u, 0x42u, 8, CpuMode.Native, false, AccessIntent.DataRead, 1, 100, AccessFlags.None);
+        var original = new BusAccess(0x1000u, 0x42u, 8, BusAccessMode.Atomic, false, AccessIntent.DataRead, 1, 100, AccessFlags.None);
         var updated = original.WithAddressOffset(4);
 
         Assert.Multiple(() =>
@@ -213,9 +213,9 @@ public class BusAccessTests
     [Test]
     public void BusAccess_RecordEquality_Works()
     {
-        var access1 = new BusAccess(0x1000u, 0x42u, 8, CpuMode.Native, false, AccessIntent.DataRead, 1, 100, AccessFlags.None);
-        var access2 = new BusAccess(0x1000u, 0x42u, 8, CpuMode.Native, false, AccessIntent.DataRead, 1, 100, AccessFlags.None);
-        var access3 = new BusAccess(0x2000u, 0x42u, 8, CpuMode.Native, false, AccessIntent.DataRead, 1, 100, AccessFlags.None);
+        var access1 = new BusAccess(0x1000u, 0x42u, 8, BusAccessMode.Atomic, false, AccessIntent.DataRead, 1, 100, AccessFlags.None);
+        var access2 = new BusAccess(0x1000u, 0x42u, 8, BusAccessMode.Atomic, false, AccessIntent.DataRead, 1, 100, AccessFlags.None);
+        var access3 = new BusAccess(0x2000u, 0x42u, 8, BusAccessMode.Atomic, false, AccessIntent.DataRead, 1, 100, AccessFlags.None);
 
         Assert.Multiple(() =>
         {
@@ -230,7 +230,7 @@ public class BusAccessTests
     [Test]
     public void BusAccess_PrivilegeLevel_DefaultsToRing0()
     {
-        var access = new BusAccess(0, 0, 8, CpuMode.Compat, true, AccessIntent.DataRead, 0, 0, AccessFlags.None);
+        var access = new BusAccess(0, 0, 8, BusAccessMode.Decomposed, true, AccessIntent.DataRead, 0, 0, AccessFlags.None);
 
         Assert.That(access.PrivilegeLevel, Is.EqualTo(PrivilegeLevel.Ring0));
     }
@@ -241,7 +241,7 @@ public class BusAccessTests
     [Test]
     public void BusAccess_PrivilegeLevel_CanBeSet()
     {
-        var access = new BusAccess(0, 0, 8, CpuMode.Native, false, AccessIntent.DataRead, 0, 0, AccessFlags.None, PrivilegeLevel.Ring3);
+        var access = new BusAccess(0, 0, 8, BusAccessMode.Atomic, false, AccessIntent.DataRead, 0, 0, AccessFlags.None, PrivilegeLevel.Ring3);
 
         Assert.That(access.PrivilegeLevel, Is.EqualTo(PrivilegeLevel.Ring3));
     }
@@ -252,8 +252,8 @@ public class BusAccessTests
     [Test]
     public void BusAccess_DifferentPrivilegeLevels_AreNotEqual()
     {
-        var access1 = new BusAccess(0, 0, 8, CpuMode.Native, false, AccessIntent.DataRead, 0, 0, AccessFlags.None, PrivilegeLevel.Ring0);
-        var access2 = new BusAccess(0, 0, 8, CpuMode.Native, false, AccessIntent.DataRead, 0, 0, AccessFlags.None, PrivilegeLevel.Ring3);
+        var access1 = new BusAccess(0, 0, 8, BusAccessMode.Atomic, false, AccessIntent.DataRead, 0, 0, AccessFlags.None, PrivilegeLevel.Ring0);
+        var access2 = new BusAccess(0, 0, 8, BusAccessMode.Atomic, false, AccessIntent.DataRead, 0, 0, AccessFlags.None, PrivilegeLevel.Ring3);
 
         Assert.That(access1, Is.Not.EqualTo(access2));
     }
