@@ -168,7 +168,7 @@ public class Cpu65C02 : ICpu
 
     /// <inheritdoc/>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public int Step()
+    public CpuStepResult Step()
     {
         // Clear TCU at the start of each instruction
         registers.TCU = Cycle.Zero;
@@ -184,12 +184,18 @@ public class Cpu65C02 : ICpu
 
             // Clear TCU after advancing scheduler
             registers.TCU = Cycle.Zero;
-            return (int)interruptCycles.Value;
+            return new CpuStepResult(CpuRunState.Running, interruptCycles);
         }
 
         if (Halted)
         {
-            return 0;
+            var haltedState = haltReason switch
+            {
+                HaltState.Wai => CpuRunState.WaitingForInterrupt,
+                HaltState.Stp => CpuRunState.Stopped,
+                _ => CpuRunState.Halted,
+            };
+            return new CpuStepResult(haltedState, Cycle.Zero);
         }
 
         // Capture state before execution for debug listener
@@ -258,7 +264,16 @@ public class Cpu65C02 : ICpu
         // Clear TCU after advancing scheduler (cycles have been committed)
         registers.TCU = Cycle.Zero;
 
-        return (int)instructionCycles.Value;
+        // Determine the run state after execution
+        CpuRunState runState = haltReason switch
+        {
+            HaltState.None => CpuRunState.Running,
+            HaltState.Wai => CpuRunState.WaitingForInterrupt,
+            HaltState.Stp => CpuRunState.Stopped,
+            _ => CpuRunState.Halted,
+        };
+
+        return new CpuStepResult(runState, instructionCycles);
     }
 
     /// <inheritdoc/>

@@ -233,7 +233,8 @@ public class InterruptAndHaltTests
         cpu.Step(); // Execute SEI
         cpu.Step(); // Execute WAI - CPU halts
         cpu.SignalIRQ(); // Signal IRQ (should be masked)
-        int cycles = cpu.Step(); // Should remain halted
+        var result = cpu.Step();
+        int cycles = (int)result.CyclesConsumed.Value; // Should remain halted
 
         // Assert
         Assert.That(cpu.Halted, Is.True, "CPU should remain halted");
@@ -279,7 +280,8 @@ public class InterruptAndHaltTests
         cpu.Step(); // Execute CLI
         cpu.Step(); // Execute STP - CPU halts permanently
         cpu.SignalIRQ(); // Signal IRQ
-        int cycles = cpu.Step(); // Should remain halted
+        var result = cpu.Step();
+        int cycles = (int)result.CyclesConsumed.Value; // Should remain halted
 
         // Assert
         Assert.That(cpu.Halted, Is.True, "CPU should remain halted");
@@ -301,7 +303,8 @@ public class InterruptAndHaltTests
         // Act
         cpu.Step(); // Execute STP - CPU halts permanently
         cpu.SignalNMI(); // Signal NMI
-        int cycles = cpu.Step(); // Should remain halted
+        var result = cpu.Step();
+        int cycles = (int)result.CyclesConsumed.Value; // Should remain halted
 
         // Assert
         Assert.That(cpu.Halted, Is.True, "CPU should remain halted");

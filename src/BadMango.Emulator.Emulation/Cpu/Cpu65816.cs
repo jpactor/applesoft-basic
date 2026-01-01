@@ -44,7 +44,7 @@ public class Cpu65816 : ICpu
     public bool IsStopRequested => throw new NotImplementedException();
 
     /// <inheritdoc/>
-    public int Step()
+    public CpuStepResult Step()
     {
         throw new NotImplementedException();
     }

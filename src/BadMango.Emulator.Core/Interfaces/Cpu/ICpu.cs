@@ -171,8 +171,8 @@ public interface ICpu
     /// <summary>
     /// Executes a single instruction.
     /// </summary>
-    /// <returns>Number of cycles consumed by the instruction.</returns>
-    int Step();
+    /// <returns>A <see cref="CpuStepResult"/> containing the run state and cycles consumed.</returns>
+    CpuStepResult Step();
 
     /// <summary>
     /// Executes instructions starting from the specified memory address.

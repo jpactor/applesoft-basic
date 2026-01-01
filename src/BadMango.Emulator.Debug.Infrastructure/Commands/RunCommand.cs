@@ -107,9 +107,9 @@ public sealed class RunCommand : CommandHandlerBase
                     break;
                 }
 
-                int cycles = debugContext.Cpu.Step();
+                var result = debugContext.Cpu.Step();
                 instructionCount++;
-                cycleCount += cycles;
+                cycleCount += (long)result.CyclesConsumed.Value;
             }
 
             // Determine final stop reason if limits were reached

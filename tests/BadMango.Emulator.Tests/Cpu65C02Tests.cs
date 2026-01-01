@@ -64,7 +64,8 @@ public class Cpu65C02Tests
         cpu.Reset();
 
         // Act
-        int cycles = cpu.Step();
+        var result = cpu.Step();
+        int cycles = (int)result.CyclesConsumed.Value;
 
         // Assert
         var state = cpu.GetState();
@@ -149,7 +150,8 @@ public class Cpu65C02Tests
         cpu.Reset();
 
         // Act
-        int cycles = cpu.Step();
+        var result = cpu.Step();
+        int cycles = (int)result.CyclesConsumed.Value;
 
         // Assert
         var state = cpu.GetState();
@@ -171,7 +173,8 @@ public class Cpu65C02Tests
         cpu.Reset();
 
         // Act
-        int cycles = cpu.Step();
+        var result = cpu.Step();
+        int cycles = (int)result.CyclesConsumed.Value;
 
         // Assert
         var state = cpu.GetState();
@@ -192,7 +195,8 @@ public class Cpu65C02Tests
         var stateBefore = cpu.GetState();
 
         // Act
-        int cycles = cpu.Step();
+        var result = cpu.Step();
+        int cycles = (int)result.CyclesConsumed.Value;
 
         // Assert
         var stateAfter = cpu.GetState();
@@ -316,7 +320,8 @@ public class Cpu65C02Tests
 
         // Act
         cpu.Step(); // LDX #$10
-        int cycles = cpu.Step(); // LDA $10,X
+        var result = cpu.Step();
+        int cycles = (int)result.CyclesConsumed.Value; // LDA $10,X
 
         // Assert
         var state = cpu.GetState();
@@ -341,7 +346,8 @@ public class Cpu65C02Tests
 
         // Act
         cpu.Step(); // LDX #$50
-        int cycles = cpu.Step(); // LDA $2000,X
+        var result = cpu.Step();
+        int cycles = (int)result.CyclesConsumed.Value; // LDA $2000,X
 
         // Assert
         var state = cpu.GetState();
@@ -366,7 +372,8 @@ public class Cpu65C02Tests
 
         // Act
         cpu.Step(); // LDA #$01
-        int cycles = cpu.Step(); // LDA $20FF,X
+        var result = cpu.Step();
+        int cycles = (int)result.CyclesConsumed.Value; // LDA $20FF,X
 
         // Assert
         var state = cpu.GetState();
@@ -391,7 +398,8 @@ public class Cpu65C02Tests
 
         // Act
         cpu.Step(); // LDY #$30
-        int cycles = cpu.Step(); // LDA $3000,Y
+        var result = cpu.Step();
+        int cycles = (int)result.CyclesConsumed.Value; // LDA $3000,Y
 
         // Assert
         var state = cpu.GetState();
@@ -417,7 +425,8 @@ public class Cpu65C02Tests
 
         // Act
         cpu.Step(); // LDX #$04
-        int cycles = cpu.Step(); // LDA ($20,X)
+        var result = cpu.Step();
+        int cycles = (int)result.CyclesConsumed.Value; // LDA ($20,X)
 
         // Assert
         var state = cpu.GetState();
@@ -443,7 +452,8 @@ public class Cpu65C02Tests
 
         // Act
         cpu.Step(); // LDY #$10
-        int cycles = cpu.Step(); // LDA ($30),Y
+        var result = cpu.Step();
+        int cycles = (int)result.CyclesConsumed.Value; // LDA ($30),Y
 
         // Assert
         var state = cpu.GetState();
@@ -469,7 +479,8 @@ public class Cpu65C02Tests
 
         // Act
         cpu.Step(); // LDY #$01
-        int cycles = cpu.Step(); // LDA ($40),Y
+        var result = cpu.Step();
+        int cycles = (int)result.CyclesConsumed.Value; // LDA ($40),Y
 
         // Assert
         var state = cpu.GetState();
@@ -596,7 +607,8 @@ public class Cpu65C02Tests
         // Act
         cpu.Step(); // LDA #$CD
         cpu.Step(); // LDX #$10
-        int cycles = cpu.Step(); // STA $2000,X
+        var result = cpu.Step();
+        int cycles = (int)result.CyclesConsumed.Value; // STA $2000,X
 
         // Assert
         Assert.That(memory.Read(0x2010), Is.EqualTo(0xCD));
@@ -623,7 +635,8 @@ public class Cpu65C02Tests
         // Act
         cpu.Step(); // LDA #$EF
         cpu.Step(); // LDY #$08
-        int cycles = cpu.Step(); // STA $3000,Y
+        var result = cpu.Step();
+        int cycles = (int)result.CyclesConsumed.Value; // STA $3000,Y
 
         // Assert
         Assert.That(memory.Read(0x3008), Is.EqualTo(0xEF));
@@ -648,7 +661,8 @@ public class Cpu65C02Tests
 
         // Act
         cpu.Step(); // LDY #$01
-        int cycles = cpu.Step(); // LDA $20FF,Y
+        var result = cpu.Step();
+        int cycles = (int)result.CyclesConsumed.Value; // LDA $20FF,Y
 
         // Assert
         var state = cpu.GetState();
@@ -668,7 +682,8 @@ public class Cpu65C02Tests
         cpu.Reset();
 
         // Act
-        int cycles = cpu.Step();
+        var result = cpu.Step();
+        int cycles = (int)result.CyclesConsumed.Value;
 
         // Assert
         Assert.That(cpu.Halted, Is.True);
@@ -688,7 +703,8 @@ public class Cpu65C02Tests
         cpu.Step(); // Execute illegal opcode to halt
 
         // Act
-        int cycles = cpu.Step();
+        var result = cpu.Step();
+        int cycles = (int)result.CyclesConsumed.Value;
 
         // Assert
         Assert.That(cpu.Halted, Is.True);
