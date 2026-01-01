@@ -9,6 +9,7 @@ using System.Runtime.CompilerServices;
 
 using Core;
 using Core.Cpu;
+using Core.Interfaces.Cpu;
 
 /// <summary>
 /// Provides instruction implementations that compose with addressing modes.
@@ -44,32 +45,35 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use.</param>
     /// <returns>An opcode handler that executes LDA with the given addressing mode.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler LDA(AddressingModeHandler<CpuState> addressingMode)
+    public static OpcodeHandler LDA(AddressingModeHandler addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            Addr address = addressingMode(memory, ref state);
-            byte size = state.Registers.GetAccumulatorSize();
-            var value = memory.ReadValue(address, size);
+            Addr address = addressingMode(cpu);
+            byte size = cpu.Registers.GetAccumulatorSize();
+            var value = cpu.ReadValue(address, size);
             opCycles++; // Memory read cycle
 
-            if (state.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.LDA;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.LDA };
 
-                if (state.AddressingMode == CpuAddressingModes.Immediate)
+                if (cpu.Trace.AddressingMode == CpuAddressingModes.Immediate)
                 {
-                    state.OperandSize = (byte)(size / 8);
-                    state.SetOperand(0, (byte)(value & 0xff));
+                    var operands = cpu.Trace.Operands;
+                    operands[0] = (byte)(value & 0xff);
+                    cpu.Trace = cpu.Trace with
+                    {
+                        OperandSize = (byte)(size / 8),
+                        Operands = operands,
+                    };
                 }
-
-                state.InstructionCycles += opCycles;
             }
 
-            state.Cycles += opCycles;
-            state.Registers.P.SetZeroAndNegative(value, size);
-            state.Registers.A.SetValue(value, size);
+            cpu.Registers.TCU += opCycles;
+            cpu.Registers.P.SetZeroAndNegative(value, size);
+            cpu.Registers.A.SetValue(value, size);
         };
     }
 
@@ -79,32 +83,35 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use.</param>
     /// <returns>An opcode handler that executes LDX with the given addressing mode.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler LDX(AddressingModeHandler<CpuState> addressingMode)
+    public static OpcodeHandler LDX(AddressingModeHandler addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            Addr address = addressingMode(memory, ref state);
-            byte size = state.Registers.GetIndexSize();
-            var value = memory.ReadValue(address, size);
+            Addr address = addressingMode(cpu);
+            byte size = cpu.Registers.GetIndexSize();
+            var value = cpu.ReadValue(address, size);
             opCycles++; // Memory read cycle
 
-            if (state.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.LDX;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.LDX };
 
-                if (state.AddressingMode == CpuAddressingModes.Immediate)
+                if (cpu.Trace.AddressingMode == CpuAddressingModes.Immediate)
                 {
-                    state.OperandSize = (byte)(size / 8);
-                    state.SetOperand(0, (byte)(value & 0xff));
+                    var operands = cpu.Trace.Operands;
+                    operands[0] = (byte)(value & 0xff);
+                    cpu.Trace = cpu.Trace with
+                    {
+                        OperandSize = (byte)(size / 8),
+                        Operands = operands,
+                    };
                 }
-
-                state.InstructionCycles += opCycles;
             }
 
-            state.Cycles += opCycles;
-            state.Registers.P.SetZeroAndNegative(value, size);
-            state.Registers.X.SetValue(value, size);
+            cpu.Registers.TCU += opCycles;
+            cpu.Registers.P.SetZeroAndNegative(value, size);
+            cpu.Registers.X.SetValue(value, size);
         };
     }
 
@@ -114,32 +121,35 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use.</param>
     /// <returns>An opcode handler that executes LDY with the given addressing mode.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler LDY(AddressingModeHandler<CpuState> addressingMode)
+    public static OpcodeHandler LDY(AddressingModeHandler addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            Addr address = addressingMode(memory, ref state);
-            byte size = state.Registers.GetIndexSize();
-            var value = memory.ReadValue(address, size);
+            Addr address = addressingMode(cpu);
+            byte size = cpu.Registers.GetIndexSize();
+            var value = cpu.ReadValue(address, size);
             opCycles++; // Memory read cycle
 
-            if (state.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.LDY;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.LDY };
 
-                if (state.AddressingMode == CpuAddressingModes.Immediate)
+                if (cpu.Trace.AddressingMode == CpuAddressingModes.Immediate)
                 {
-                    state.OperandSize = (byte)(size / 8);
-                    state.SetOperand(0, (byte)(value & 0xff));
+                    var operands = cpu.Trace.Operands;
+                    operands[0] = (byte)(value & 0xff);
+                    cpu.Trace = cpu.Trace with
+                    {
+                        OperandSize = (byte)(size / 8),
+                        Operands = operands,
+                    };
                 }
-
-                state.InstructionCycles += opCycles;
             }
 
-            state.Cycles += opCycles;
-            state.Registers.P.SetZeroAndNegative(value, size);
-            state.Registers.Y.SetValue(value, size);
+            cpu.Registers.TCU += opCycles;
+            cpu.Registers.P.SetZeroAndNegative(value, size);
+            cpu.Registers.Y.SetValue(value, size);
         };
     }
 
@@ -149,23 +159,22 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use.</param>
     /// <returns>An opcode handler that executes STA with the given addressing mode.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler STA(AddressingModeHandler<CpuState> addressingMode)
+    public static OpcodeHandler STA(AddressingModeHandler addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            Addr address = addressingMode(memory, ref state);
-            byte size = state.Registers.GetAccumulatorSize();
-            memory.WriteValue(address, state.Registers.A.GetValue(size), size);
+            Addr address = addressingMode(cpu);
+            byte size = cpu.Registers.GetAccumulatorSize();
+            cpu.WriteValue(address, cpu.Registers.A.GetValue(size), size);
             opCycles++; // Memory write cycle
 
-            if (state.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.STA;
-                state.InstructionCycles += opCycles;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.STA };
             }
 
-            state.Cycles += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 
@@ -175,23 +184,22 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use.</param>
     /// <returns>An opcode handler that executes STX with the given addressing mode.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler STX(AddressingModeHandler<CpuState> addressingMode)
+    public static OpcodeHandler STX(AddressingModeHandler addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            Addr address = addressingMode(memory, ref state);
-            byte size = state.Registers.GetIndexSize();
-            memory.WriteValue(address, state.Registers.X.GetValue(size), size);
+            Addr address = addressingMode(cpu);
+            byte size = cpu.Registers.GetIndexSize();
+            cpu.WriteValue(address, cpu.Registers.X.GetValue(size), size);
             opCycles++; // Memory write cycle
 
-            if (state.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.STX;
-                state.InstructionCycles += opCycles;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.STX };
             }
 
-            state.Cycles += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 
@@ -201,23 +209,22 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use.</param>
     /// <returns>An opcode handler that executes STY with the given addressing mode.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler STY(AddressingModeHandler<CpuState> addressingMode)
+    public static OpcodeHandler STY(AddressingModeHandler addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            Addr address = addressingMode(memory, ref state);
-            byte size = state.Registers.GetIndexSize();
-            memory.WriteValue(address, state.Registers.Y.GetValue(size), size);
+            Addr address = addressingMode(cpu);
+            byte size = cpu.Registers.GetIndexSize();
+            cpu.WriteValue(address, cpu.Registers.Y.GetValue(size), size);
             opCycles++; // Memory write cycle
 
-            if (state.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.STY;
-                state.InstructionCycles += opCycles;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.STY };
             }
 
-            state.Cycles += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 
@@ -227,21 +234,20 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes NOP.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler NOP(AddressingModeHandler<CpuState> addressingMode)
+    public static OpcodeHandler NOP(AddressingModeHandler addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            addressingMode(memory, ref state); // Call addressing mode (usually does nothing for Implied)
+            addressingMode(cpu); // Call addressing mode (usually does nothing for Implied)
             opCycles++; // NOP takes 2 cycles total (1 from fetch + 1 here)
 
-            if (state.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.NOP;
-                state.InstructionCycles += opCycles;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.NOP };
             }
 
-            state.Cycles += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 
@@ -251,38 +257,37 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes BRK.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler BRK(AddressingModeHandler<CpuState> addressingMode)
+    public static OpcodeHandler BRK(AddressingModeHandler addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            addressingMode(memory, ref state);
+            addressingMode(cpu);
 
             // BRK causes a software interrupt
             // Total 7 cycles: 1 (opcode fetch) + 1 (PC increment) + 2 (push PC) + 1 (push P) + 2 (read IRQ vector)
-            state.Registers.PC.Advance();
+            cpu.Registers.PC.Advance();
             opCycles++; // PC increment cycle
 
-            Word pc = state.Registers.PC.GetWord();
+            Word pc = cpu.Registers.PC.GetWord();
 
-            memory.Write(state.PushByte(Cpu65C02Constants.StackBase), pc.HighByte());
+            cpu.Write8(cpu.PushByte(Cpu65C02Constants.StackBase), pc.HighByte());
             opCycles++; // Push PC high byte
-            memory.Write(state.PushByte(Cpu65C02Constants.StackBase), pc.LowByte());
+            cpu.Write8(cpu.PushByte(Cpu65C02Constants.StackBase), pc.LowByte());
             opCycles++; // Push PC low byte
-            memory.Write(state.PushByte(Cpu65C02Constants.StackBase), (byte)(state.Registers.P | ProcessorStatusFlags.B));
+            cpu.Write8(cpu.PushByte(Cpu65C02Constants.StackBase), (byte)(cpu.Registers.P | ProcessorStatusFlags.B));
             opCycles++; // Push P
 
-            state.Registers.P |= ProcessorStatusFlags.I;
-            state.Registers.PC.SetWord(memory.ReadWord(Cpu65C02Constants.IrqVector));
+            cpu.Registers.P |= ProcessorStatusFlags.I;
+            cpu.Registers.PC.SetWord(cpu.Read16(Cpu65C02Constants.IrqVector));
             opCycles += 2; // Read IRQ vector (2 bytes)
 
-            if (state.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.BRK;
-                state.InstructionCycles += opCycles;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.BRK };
             }
 
-            state.Cycles += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 }

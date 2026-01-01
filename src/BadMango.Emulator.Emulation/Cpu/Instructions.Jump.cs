@@ -9,6 +9,7 @@ using System.Runtime.CompilerServices;
 
 using Core;
 using Core.Cpu;
+using Core.Interfaces.Cpu;
 
 /// <summary>
 /// Jump and subroutine instructions (JMP, JSR, RTS, RTI).
@@ -21,16 +22,16 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use (Absolute or Indirect).</param>
     /// <returns>An opcode handler that executes JMP.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler JMP(AddressingModeHandler<CpuState> addressingMode)
+    public static OpcodeHandler JMP(AddressingModeHandler addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
-            Addr targetAddr = addressingMode(memory, ref state);
-            state.Registers.PC.SetWord((Word)targetAddr);
+            Addr targetAddr = addressingMode(cpu);
+            cpu.Registers.PC.SetWord((Word)targetAddr);
 
-            if (state.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.JMP;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.JMP };
             }
         };
     }
@@ -41,31 +42,30 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use (typically Absolute).</param>
     /// <returns>An opcode handler that executes JSR.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler JSR(AddressingModeHandler<CpuState> addressingMode)
+    public static OpcodeHandler JSR(AddressingModeHandler addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            Addr targetAddr = addressingMode(memory, ref state);
+            Addr targetAddr = addressingMode(cpu);
 
             // JSR pushes PC - 1 to the stack (6502 behavior)
             // This is because RTS increments the pulled address before setting PC
-            Word returnAddr = (Word)(state.Registers.PC.GetWord() - 1);
+            Word returnAddr = (Word)(cpu.Registers.PC.GetWord() - 1);
 
-            memory.Write(state.PushByte(Cpu65C02Constants.StackBase), returnAddr.HighByte());
+            cpu.Write8(cpu.PushByte(Cpu65C02Constants.StackBase), returnAddr.HighByte());
             opCycles++; // Push high byte
-            memory.Write(state.PushByte(Cpu65C02Constants.StackBase), returnAddr.LowByte());
+            cpu.Write8(cpu.PushByte(Cpu65C02Constants.StackBase), returnAddr.LowByte());
             opCycles++; // Push low byte
-            state.Registers.PC.SetAddr(targetAddr);
+            cpu.Registers.PC.SetAddr(targetAddr);
             opCycles++; // Internal operation
 
-            if (state.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.JSR;
-                state.InstructionCycles += opCycles;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.JSR };
             }
 
-            state.Cycles += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 
@@ -75,27 +75,26 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes RTS.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler RTS(AddressingModeHandler<CpuState> addressingMode)
+    public static OpcodeHandler RTS(AddressingModeHandler addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            addressingMode(memory, ref state);
+            addressingMode(cpu);
 
-            byte lo = memory.Read(state.PopByte(Cpu65C02Constants.StackBase));
+            byte lo = cpu.Read8(cpu.PopByte(Cpu65C02Constants.StackBase));
             opCycles++; // Pull low byte
-            byte hi = memory.Read(state.PopByte(Cpu65C02Constants.StackBase));
+            byte hi = cpu.Read8(cpu.PopByte(Cpu65C02Constants.StackBase));
             opCycles++; // Pull high byte
-            state.Registers.PC.SetWord((Word)(((hi << 8) | lo) + 1));
+            cpu.Registers.PC.SetWord((Word)(((hi << 8) | lo) + 1));
             opCycles += 3; // Internal operations
 
-            if (state.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.RTS;
-                state.InstructionCycles += opCycles;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.RTS };
             }
 
-            state.Cycles += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 
@@ -105,29 +104,28 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes RTI.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler RTI(AddressingModeHandler<CpuState> addressingMode)
+    public static OpcodeHandler RTI(AddressingModeHandler addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            addressingMode(memory, ref state);
-            state.Registers.P = (ProcessorStatusFlags)memory.ReadByte(state.PopByte(Cpu65C02Constants.StackBase));
+            addressingMode(cpu);
+            cpu.Registers.P = (ProcessorStatusFlags)cpu.Read8(cpu.PopByte(Cpu65C02Constants.StackBase));
             opCycles++; // Pull P
-            byte lo = memory.Read(state.PopByte(Cpu65C02Constants.StackBase));
+            byte lo = cpu.Read8(cpu.PopByte(Cpu65C02Constants.StackBase));
             opCycles++; // Pull PC low byte
-            byte hi = memory.Read(state.PopByte(Cpu65C02Constants.StackBase));
+            byte hi = cpu.Read8(cpu.PopByte(Cpu65C02Constants.StackBase));
             opCycles++; // Pull PC high byte
-            state.Registers.PC.SetWord((Word)((hi << 8) | lo));
-            state.HaltReason = HaltState.None;
+            cpu.Registers.PC.SetWord((Word)((hi << 8) | lo));
+            cpu.HaltReason = HaltState.None;
             opCycles += 2; // Internal operations
 
-            if (state.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.RTI;
-                state.InstructionCycles += opCycles;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.RTI };
             }
 
-            state.Cycles += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 }

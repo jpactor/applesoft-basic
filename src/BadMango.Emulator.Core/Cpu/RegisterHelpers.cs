@@ -261,63 +261,9 @@ public static class RegisterHelpers
 
     #region Stack Pointer Register (SP)
 
-    /// <param name="state">The CPU state.</param>
-    extension(ref CpuState state)
-    {
-        /// <summary>Pushes a byte onto the stack and decrements the stack pointer.</summary>
-        /// <returns>The previous value of the stack pointer before it was decremented.</returns>
-        /// <param name="stackBase">The base address of the stack, if specified.</param>
-        /// <remarks>
-        /// This method modifies the stack pointer register (`SP`) by decrementing it,
-        /// effectively pushing a byte onto the stack. The returned value represents
-        /// the stack pointer's state prior to the modification, so that it can be used
-        /// to compute the address where the byte should be stored in memory.
-        /// </remarks>
-        public Addr PushByte(Addr stackBase = 0)
-        {
-            var old = state.Registers.SP.stack;
-            state.Registers.SP.stack--;
-            return stackBase + old;
-        }
-
-        /// <summary>Pops a byte from the stack and increments the stack pointer.</summary>
-        /// <returns>The previous value of the stack pointer before it was incremented.</returns>
-        /// <param name="stackBase">The base address of the stack, if specified.</param>
-        /// <remarks>
-        /// This method modifies the stack pointer register (`SP`) by incrementing it,
-        /// effectively popping a byte from the stack. The returned value represents
-        /// the stack pointer's state prior to the modification, so that it can be used
-        /// to compute the address from which the byte should be retrieved in memory.
-        /// </remarks>
-        public Addr PopByte(Addr stackBase = 0)
-        {
-            var old = state.Registers.SP.stack + 1;
-            state.Registers.SP.stack++;
-            return stackBase + old;
-        }
-    }
-
     /// <param name="sp">The stack pointer register.</param>
     extension(ref RegisterStackPointer sp)
     {
-
-        /// <summary>
-        /// Pushes a single byte onto the stack by decrementing the stack pointer.
-        /// </summary>
-        /// <param name="state">The current CPU state, which includes registers and execution context.</param>
-        /// <returns>The address of the stack pointer before the push operation.</returns>
-        /// <remarks>
-        /// This method updates the stack pointer register to reflect the push operation.
-        /// It is designed for efficient execution using aggressive inlining.
-        /// </remarks>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Addr PushByte(ref CpuState state)
-        {
-            var old = sp.stack;
-            sp.stack++;
-            return old;
-        }
-
         /// <summary>Pops (increments) the stack pointer.</summary>
         /// <param name="count">Number of bytes to pop (default 1).</param>
         /// <returns>The updated stack pointer register.</returns>

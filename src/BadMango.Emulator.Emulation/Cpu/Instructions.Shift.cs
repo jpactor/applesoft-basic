@@ -8,6 +8,7 @@ namespace BadMango.Emulator.Emulation.Cpu;
 using System.Runtime.CompilerServices;
 
 using Core.Cpu;
+using Core.Interfaces.Cpu;
 
 /// <summary>
 /// Shift and rotate instructions (ASL, LSR, ROL, ROR).
@@ -20,36 +21,35 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use (must be Accumulator).</param>
     /// <returns>An opcode handler that executes ASL on the accumulator.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler ASLa(AddressingModeHandler<CpuState> addressingMode)
+    public static OpcodeHandler ASLa(AddressingModeHandler addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            addressingMode(memory, ref state);
-            byte value = state.Registers.A.GetByte();
+            addressingMode(cpu);
+            byte value = cpu.Registers.A.GetByte();
 
             // Set carry from bit 7
             if ((value & 0x80) != 0)
             {
-                state.Registers.P |= ProcessorStatusFlags.C;
+                cpu.Registers.P |= ProcessorStatusFlags.C;
             }
             else
             {
-                state.Registers.P &= ~ProcessorStatusFlags.C;
+                cpu.Registers.P &= ~ProcessorStatusFlags.C;
             }
 
             value <<= 1;
-            state.Registers.A.SetByte(value);
-            state.Registers.P.SetZeroAndNegative(value);
+            cpu.Registers.A.SetByte(value);
+            cpu.Registers.P.SetZeroAndNegative(value);
             opCycles++;
 
-            if (state.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.ASL;
-                state.InstructionCycles += opCycles;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.ASL };
             }
 
-            state.Cycles += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 
@@ -59,38 +59,37 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use.</param>
     /// <returns>An opcode handler that executes ASL on memory.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler ASL(AddressingModeHandler<CpuState> addressingMode)
+    public static OpcodeHandler ASL(AddressingModeHandler addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            Addr address = addressingMode(memory, ref state);
-            byte value = memory.Read(address);
+            Addr address = addressingMode(cpu);
+            byte value = cpu.Read8(address);
             opCycles++; // Memory read
 
             // Set carry from bit 7
             if ((value & 0x80) != 0)
             {
-                state.Registers.P |= ProcessorStatusFlags.C;
+                cpu.Registers.P |= ProcessorStatusFlags.C;
             }
             else
             {
-                state.Registers.P &= ~ProcessorStatusFlags.C;
+                cpu.Registers.P &= ~ProcessorStatusFlags.C;
             }
 
             value <<= 1;
-            state.Registers.P.SetZeroAndNegative(value);
+            cpu.Registers.P.SetZeroAndNegative(value);
 
-            memory.Write(address, value);
+            cpu.Write8(address, value);
             opCycles += 2; // Memory write + internal operation
 
-            if (state.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.ASL;
-                state.InstructionCycles += opCycles;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.ASL };
             }
 
-            state.Cycles += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 
@@ -100,36 +99,35 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use (must be Accumulator).</param>
     /// <returns>An opcode handler that executes LSR on the accumulator.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler LSRa(AddressingModeHandler<CpuState> addressingMode)
+    public static OpcodeHandler LSRa(AddressingModeHandler addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            addressingMode(memory, ref state);
-            byte value = state.Registers.A.GetByte();
+            addressingMode(cpu);
+            byte value = cpu.Registers.A.GetByte();
 
             // Set carry from bit 0
             if ((value & 0x01) != 0)
             {
-                state.Registers.P |= ProcessorStatusFlags.C;
+                cpu.Registers.P |= ProcessorStatusFlags.C;
             }
             else
             {
-                state.Registers.P &= ~ProcessorStatusFlags.C;
+                cpu.Registers.P &= ~ProcessorStatusFlags.C;
             }
 
             value >>= 1;
-            state.Registers.A.SetByte(value);
-            state.Registers.P.SetZeroAndNegative(value);
+            cpu.Registers.A.SetByte(value);
+            cpu.Registers.P.SetZeroAndNegative(value);
             opCycles++;
 
-            if (state.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.LSR;
-                state.InstructionCycles += opCycles;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.LSR };
             }
 
-            state.Cycles += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 
@@ -139,38 +137,37 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use.</param>
     /// <returns>An opcode handler that executes LSR on memory.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler LSR(AddressingModeHandler<CpuState> addressingMode)
+    public static OpcodeHandler LSR(AddressingModeHandler addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            Addr address = addressingMode(memory, ref state);
-            byte value = memory.Read(address);
+            Addr address = addressingMode(cpu);
+            byte value = cpu.Read8(address);
             opCycles++; // Memory read
 
             // Set carry from bit 0
             if ((value & 0x01) != 0)
             {
-                state.Registers.P |= ProcessorStatusFlags.C;
+                cpu.Registers.P |= ProcessorStatusFlags.C;
             }
             else
             {
-                state.Registers.P &= ~ProcessorStatusFlags.C;
+                cpu.Registers.P &= ~ProcessorStatusFlags.C;
             }
 
             value >>= 1;
-            state.Registers.P.SetZeroAndNegative(value);
+            cpu.Registers.P.SetZeroAndNegative(value);
 
-            memory.Write(address, value);
+            cpu.Write8(address, value);
             opCycles += 2; // Memory write + internal operation
 
-            if (state.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.LSR;
-                state.InstructionCycles += opCycles;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.LSR };
             }
 
-            state.Cycles += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 
@@ -180,37 +177,36 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use (must be Accumulator).</param>
     /// <returns>An opcode handler that executes ROL on the accumulator.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler ROLa(AddressingModeHandler<CpuState> addressingMode)
+    public static OpcodeHandler ROLa(AddressingModeHandler addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            addressingMode(memory, ref state);
-            byte value = state.Registers.A.GetByte();
-            byte oldCarry = state.Registers.P.HasFlag(ProcessorStatusFlags.C) ? (byte)1 : (byte)0;
+            addressingMode(cpu);
+            byte value = cpu.Registers.A.GetByte();
+            byte oldCarry = cpu.Registers.P.HasFlag(ProcessorStatusFlags.C) ? (byte)1 : (byte)0;
 
             // Set carry from bit 7
             if ((value & 0x80) != 0)
             {
-                state.Registers.P |= ProcessorStatusFlags.C;
+                cpu.Registers.P |= ProcessorStatusFlags.C;
             }
             else
             {
-                state.Registers.P &= ~ProcessorStatusFlags.C;
+                cpu.Registers.P &= ~ProcessorStatusFlags.C;
             }
 
             value = (byte)((value << 1) | oldCarry);
-            state.Registers.A.SetByte(value);
-            state.Registers.P.SetZeroAndNegative(value);
+            cpu.Registers.A.SetByte(value);
+            cpu.Registers.P.SetZeroAndNegative(value);
             opCycles++;
 
-            if (state.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.ROL;
-                state.InstructionCycles += opCycles;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.ROL };
             }
 
-            state.Cycles += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 
@@ -220,40 +216,39 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use.</param>
     /// <returns>An opcode handler that executes ROL on memory.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler ROL(AddressingModeHandler<CpuState> addressingMode)
+    public static OpcodeHandler ROL(AddressingModeHandler addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            Addr address = addressingMode(memory, ref state);
-            byte value = memory.Read(address);
+            Addr address = addressingMode(cpu);
+            byte value = cpu.Read8(address);
             opCycles++; // Memory read
 
-            byte oldCarry = state.Registers.P.HasFlag(ProcessorStatusFlags.C) ? (byte)1 : (byte)0;
+            byte oldCarry = cpu.Registers.P.HasFlag(ProcessorStatusFlags.C) ? (byte)1 : (byte)0;
 
             // Set carry from bit 7
             if ((value & 0x80) != 0)
             {
-                state.Registers.P |= ProcessorStatusFlags.C;
+                cpu.Registers.P |= ProcessorStatusFlags.C;
             }
             else
             {
-                state.Registers.P &= ~ProcessorStatusFlags.C;
+                cpu.Registers.P &= ~ProcessorStatusFlags.C;
             }
 
             value = (byte)((value << 1) | oldCarry);
-            state.Registers.P.SetZeroAndNegative(value);
+            cpu.Registers.P.SetZeroAndNegative(value);
 
-            memory.Write(address, value);
+            cpu.Write8(address, value);
             opCycles += 2; // Memory write + internal operation
 
-            if (state.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.ROL;
-                state.InstructionCycles += opCycles;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.ROL };
             }
 
-            state.Cycles += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 
@@ -263,37 +258,36 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use (must be Accumulator).</param>
     /// <returns>An opcode handler that executes ROR on the accumulator.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler RORa(AddressingModeHandler<CpuState> addressingMode)
+    public static OpcodeHandler RORa(AddressingModeHandler addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            addressingMode(memory, ref state);
-            byte value = state.Registers.A.GetByte();
-            byte oldCarry = state.Registers.P.HasFlag(ProcessorStatusFlags.C) ? (byte)0x80 : (byte)0;
+            addressingMode(cpu);
+            byte value = cpu.Registers.A.GetByte();
+            byte oldCarry = cpu.Registers.P.HasFlag(ProcessorStatusFlags.C) ? (byte)0x80 : (byte)0;
 
             // Set carry from bit 0
             if ((value & 0x01) != 0)
             {
-                state.Registers.P |= ProcessorStatusFlags.C;
+                cpu.Registers.P |= ProcessorStatusFlags.C;
             }
             else
             {
-                state.Registers.P &= ~ProcessorStatusFlags.C;
+                cpu.Registers.P &= ~ProcessorStatusFlags.C;
             }
 
             value = (byte)((value >> 1) | oldCarry);
-            state.Registers.A.SetByte(value);
-            state.Registers.P.SetZeroAndNegative(value);
+            cpu.Registers.A.SetByte(value);
+            cpu.Registers.P.SetZeroAndNegative(value);
             opCycles++;
 
-            if (state.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.ROR;
-                state.InstructionCycles += opCycles;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.ROR };
             }
 
-            state.Cycles += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 
@@ -303,40 +297,39 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use.</param>
     /// <returns>An opcode handler that executes ROR on memory.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler ROR(AddressingModeHandler<CpuState> addressingMode)
+    public static OpcodeHandler ROR(AddressingModeHandler addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            Addr address = addressingMode(memory, ref state);
-            byte value = memory.Read(address);
+            Addr address = addressingMode(cpu);
+            byte value = cpu.Read8(address);
             opCycles++; // Memory read
 
-            byte oldCarry = state.Registers.P.HasFlag(ProcessorStatusFlags.C) ? (byte)0x80 : (byte)0;
+            byte oldCarry = cpu.Registers.P.HasFlag(ProcessorStatusFlags.C) ? (byte)0x80 : (byte)0;
 
             // Set carry from bit 0
             if ((value & 0x01) != 0)
             {
-                state.Registers.P |= ProcessorStatusFlags.C;
+                cpu.Registers.P |= ProcessorStatusFlags.C;
             }
             else
             {
-                state.Registers.P &= ~ProcessorStatusFlags.C;
+                cpu.Registers.P &= ~ProcessorStatusFlags.C;
             }
 
             value = (byte)((value >> 1) | oldCarry);
-            state.Registers.P.SetZeroAndNegative(value);
+            cpu.Registers.P.SetZeroAndNegative(value);
 
-            memory.Write(address, value);
+            cpu.Write8(address, value);
             opCycles += 2; // Memory write + internal operation
 
-            if (state.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.ROR;
-                state.InstructionCycles += opCycles;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.ROR };
             }
 
-            state.Cycles += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 }

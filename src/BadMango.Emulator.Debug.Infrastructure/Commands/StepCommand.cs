@@ -89,8 +89,8 @@ public sealed class StepCommand : CommandHandlerBase
                 debugContext.Output.WriteLine($"${instruction.Address:X4}: {instruction.FormatBytes(),-12} {instruction.FormatInstruction()}");
             }
 
-            int cycles = debugContext.Cpu.Step();
-            totalCycles += cycles;
+            var result = debugContext.Cpu.Step();
+            totalCycles += (int)result.CyclesConsumed.Value;
 
             if (debugContext.Cpu.IsStopRequested)
             {

@@ -431,7 +431,7 @@ public class CpuDebugSupportTests
         Assert.Multiple(() =>
         {
             Assert.That(cpu.Halted, Is.True);
-            Assert.That(cpu.GetState().HaltReason, Is.EqualTo(HaltState.Stp));
+            Assert.That(cpu.HaltReason, Is.EqualTo(HaltState.Stp));
         });
     }
 
@@ -450,7 +450,7 @@ public class CpuDebugSupportTests
         Assert.Multiple(() =>
         {
             Assert.That(cpu.Halted, Is.True);
-            Assert.That(cpu.GetState().HaltReason, Is.EqualTo(HaltState.Wai));
+            Assert.That(cpu.HaltReason, Is.EqualTo(HaltState.Wai));
         });
     }
 
@@ -471,15 +471,15 @@ public class CpuDebugSupportTests
         cpu.Reset();
 
         // Execute without debugger
-        int cyclesWithout = cpu.Step() + cpu.Step();
-        ulong totalCyclesWithout = cpu.GetState().Cycles;
+        int cyclesWithout = (int)cpu.Step().CyclesConsumed.Value + (int)cpu.Step().CyclesConsumed.Value;
+        ulong totalCyclesWithout = cpu.GetCycles();
 
         // Reset and execute with debugger
         cpu.Reset();
         var listener = new TestDebugListener();
         cpu.AttachDebugger(listener);
-        int cyclesWith = cpu.Step() + cpu.Step();
-        ulong totalCyclesWith = cpu.GetState().Cycles;
+        int cyclesWith = (int)cpu.Step().CyclesConsumed.Value + (int)cpu.Step().CyclesConsumed.Value;
+        ulong totalCyclesWith = cpu.GetCycles();
 
         Assert.Multiple(() =>
         {

@@ -42,12 +42,12 @@ public class Cpu65C02Tests
         cpu.Reset();
 
         // Assert
-        var state = cpu.GetState();
-        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1000));
-        Assert.That(state.Registers.SP.GetByte(), Is.EqualTo(0xFF));
-        Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0));
-        Assert.That(state.Registers.X.GetByte(), Is.EqualTo(0));
-        Assert.That(state.Registers.Y.GetByte(), Is.EqualTo(0));
+        
+        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x1000));
+        Assert.That(cpu.Registers.SP.GetByte(), Is.EqualTo(0xFF));
+        Assert.That(cpu.Registers.A.GetByte(), Is.EqualTo(0));
+        Assert.That(cpu.Registers.X.GetByte(), Is.EqualTo(0));
+        Assert.That(cpu.Registers.Y.GetByte(), Is.EqualTo(0));
         Assert.That(cpu.Halted, Is.False);
     }
 
@@ -64,13 +64,14 @@ public class Cpu65C02Tests
         cpu.Reset();
 
         // Act
-        int cycles = cpu.Step();
+        var result = cpu.Step();
+        int cycles = (int)result.CyclesConsumed.Value;
 
         // Assert
-        var state = cpu.GetState();
-        Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0x42));
+        
+        Assert.That(cpu.Registers.A.GetByte(), Is.EqualTo(0x42));
         Assert.That(cycles, Is.EqualTo(2));
-        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1002));
+        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x1002));
     }
 
     /// <summary>
@@ -89,8 +90,8 @@ public class Cpu65C02Tests
         cpu.Step();
 
         // Assert
-        var state = cpu.GetState();
-        Assert.That(state.Registers.P & ProcessorStatusFlags.Z, Is.EqualTo(ProcessorStatusFlags.Z)); // Zero flag set
+        
+        Assert.That(cpu.Registers.P & ProcessorStatusFlags.Z, Is.EqualTo(ProcessorStatusFlags.Z)); // Zero flag set
     }
 
     /// <summary>
@@ -109,8 +110,8 @@ public class Cpu65C02Tests
         cpu.Step();
 
         // Assert
-        var state = cpu.GetState();
-        Assert.That(state.Registers.P & ProcessorStatusFlags.N, Is.EqualTo(ProcessorStatusFlags.N)); // Negative flag set
+        
+        Assert.That(cpu.Registers.P & ProcessorStatusFlags.N, Is.EqualTo(ProcessorStatusFlags.N)); // Negative flag set
     }
 
     /// <summary>
@@ -149,11 +150,12 @@ public class Cpu65C02Tests
         cpu.Reset();
 
         // Act
-        int cycles = cpu.Step();
+        var result = cpu.Step();
+        int cycles = (int)result.CyclesConsumed.Value;
 
         // Assert
-        var state = cpu.GetState();
-        Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0x99));
+        
+        Assert.That(cpu.Registers.A.GetByte(), Is.EqualTo(0x99));
         Assert.That(cycles, Is.EqualTo(3));
     }
 
@@ -171,11 +173,12 @@ public class Cpu65C02Tests
         cpu.Reset();
 
         // Act
-        int cycles = cpu.Step();
+        var result = cpu.Step();
+        int cycles = (int)result.CyclesConsumed.Value;
 
         // Assert
-        var state = cpu.GetState();
-        Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0x55));
+        
+        Assert.That(cpu.Registers.A.GetByte(), Is.EqualTo(0x55));
         Assert.That(cycles, Is.EqualTo(4));
     }
 
@@ -189,41 +192,21 @@ public class Cpu65C02Tests
         memory.WriteWord(0xFFFC, 0x1000);
         memory.Write(0x1000, 0xEA); // NOP
         cpu.Reset();
-        var stateBefore = cpu.GetState();
+        var pcBefore = cpu.Registers.PC.GetWord();
+        var aBefore = cpu.Registers.A.GetByte();
+        var xBefore = cpu.Registers.X.GetByte();
+        var yBefore = cpu.Registers.Y.GetByte();
 
         // Act
-        int cycles = cpu.Step();
+        var result = cpu.Step();
+        int cycles = (int)result.CyclesConsumed.Value;
 
         // Assert
-        var stateAfter = cpu.GetState();
         Assert.That(cycles, Is.EqualTo(2));
-        Assert.That(stateAfter.Registers.PC.GetWord(), Is.EqualTo(stateBefore.Registers.PC.GetWord() + 1));
-        Assert.That(stateAfter.Registers.A.GetByte(), Is.EqualTo(stateBefore.Registers.A.GetByte()));
-        Assert.That(stateAfter.Registers.X.GetByte(), Is.EqualTo(stateBefore.Registers.X.GetByte()));
-        Assert.That(stateAfter.Registers.Y.GetByte(), Is.EqualTo(stateBefore.Registers.Y.GetByte()));
-    }
-
-    /// <summary>
-    /// Verifies that GetState and SetState work correctly.
-    /// </summary>
-    [Test]
-    public void GetState_SetState_WorkCorrectly()
-    {
-        // Arrange
-        var originalState = CreateState(pc: 0x1234, a: 0x42, x: 0x10, y: 0x20, sp: 0xFF, p: (ProcessorStatusFlags)0x30, cycles: 100);
-
-        // Act
-        cpu.SetState(originalState);
-        var retrievedState = cpu.GetState();
-
-        // Assert
-        Assert.That(retrievedState.Registers.A.GetByte(), Is.EqualTo(originalState.Registers.A.GetByte()));
-        Assert.That(retrievedState.Registers.X.GetByte(), Is.EqualTo(originalState.Registers.X.GetByte()));
-        Assert.That(retrievedState.Registers.Y.GetByte(), Is.EqualTo(originalState.Registers.Y.GetByte()));
-        Assert.That(retrievedState.Registers.SP.GetByte(), Is.EqualTo(originalState.Registers.SP.GetByte()));
-        Assert.That(retrievedState.Registers.P, Is.EqualTo(originalState.Registers.P));
-        Assert.That(retrievedState.Registers.PC.GetWord(), Is.EqualTo(originalState.Registers.PC.GetWord()));
-        Assert.That(retrievedState.Cycles, Is.EqualTo(originalState.Cycles));
+        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(pcBefore + 1));
+        Assert.That(cpu.Registers.A.GetByte(), Is.EqualTo(aBefore));
+        Assert.That(cpu.Registers.X.GetByte(), Is.EqualTo(xBefore));
+        Assert.That(cpu.Registers.Y.GetByte(), Is.EqualTo(yBefore));
     }
 
     /// <summary>
@@ -243,9 +226,9 @@ public class Cpu65C02Tests
         cpu.Step();
 
         // Assert - BRK should not halt, execution continues from IRQ vector
-        var state = cpu.GetState();
+        
         Assert.That(cpu.Halted, Is.False);
-        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x2000), "PC should be at IRQ vector");
+        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x2000), "PC should be at IRQ vector");
     }
 
     /// <summary>
@@ -269,8 +252,8 @@ public class Cpu65C02Tests
         cpu.Step(); // LDA zero page
 
         // Assert
-        var state = cpu.GetState();
-        Assert.That(state.Cycles, Is.EqualTo(2 + 2 + 3));
+        
+        Assert.That(cpu.GetCycles(), Is.EqualTo(2 + 2 + 3));
     }
 
     /// <summary>
@@ -316,11 +299,12 @@ public class Cpu65C02Tests
 
         // Act
         cpu.Step(); // LDX #$10
-        int cycles = cpu.Step(); // LDA $10,X
+        var result = cpu.Step();
+        int cycles = (int)result.CyclesConsumed.Value; // LDA $10,X
 
         // Assert
-        var state = cpu.GetState();
-        Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0x99));
+        
+        Assert.That(cpu.Registers.A.GetByte(), Is.EqualTo(0x99));
         Assert.That(cycles, Is.EqualTo(4)); // 4 cycles for ZP,X
     }
 
@@ -341,11 +325,12 @@ public class Cpu65C02Tests
 
         // Act
         cpu.Step(); // LDX #$50
-        int cycles = cpu.Step(); // LDA $2000,X
+        var result = cpu.Step();
+        int cycles = (int)result.CyclesConsumed.Value; // LDA $2000,X
 
         // Assert
-        var state = cpu.GetState();
-        Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0xAA));
+        
+        Assert.That(cpu.Registers.A.GetByte(), Is.EqualTo(0xAA));
         Assert.That(cycles, Is.EqualTo(4)); // 4 cycles (no page cross)
     }
 
@@ -366,11 +351,12 @@ public class Cpu65C02Tests
 
         // Act
         cpu.Step(); // LDA #$01
-        int cycles = cpu.Step(); // LDA $20FF,X
+        var result = cpu.Step();
+        int cycles = (int)result.CyclesConsumed.Value; // LDA $20FF,X
 
         // Assert
-        var state = cpu.GetState();
-        Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0xBB));
+        
+        Assert.That(cpu.Registers.A.GetByte(), Is.EqualTo(0xBB));
         Assert.That(cycles, Is.EqualTo(5)); // 5 cycles (page cross)
     }
 
@@ -391,11 +377,12 @@ public class Cpu65C02Tests
 
         // Act
         cpu.Step(); // LDY #$30
-        int cycles = cpu.Step(); // LDA $3000,Y
+        var result = cpu.Step();
+        int cycles = (int)result.CyclesConsumed.Value; // LDA $3000,Y
 
         // Assert
-        var state = cpu.GetState();
-        Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0xCC));
+        
+        Assert.That(cpu.Registers.A.GetByte(), Is.EqualTo(0xCC));
         Assert.That(cycles, Is.EqualTo(4)); // 4 cycles (no page cross)
     }
 
@@ -417,11 +404,12 @@ public class Cpu65C02Tests
 
         // Act
         cpu.Step(); // LDX #$04
-        int cycles = cpu.Step(); // LDA ($20,X)
+        var result = cpu.Step();
+        int cycles = (int)result.CyclesConsumed.Value; // LDA ($20,X)
 
         // Assert
-        var state = cpu.GetState();
-        Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0xDD));
+        
+        Assert.That(cpu.Registers.A.GetByte(), Is.EqualTo(0xDD));
         Assert.That(cycles, Is.EqualTo(6)); // 6 cycles for (Indirect,X)
     }
 
@@ -443,11 +431,12 @@ public class Cpu65C02Tests
 
         // Act
         cpu.Step(); // LDY #$10
-        int cycles = cpu.Step(); // LDA ($30),Y
+        var result = cpu.Step();
+        int cycles = (int)result.CyclesConsumed.Value; // LDA ($30),Y
 
         // Assert
-        var state = cpu.GetState();
-        Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0xEE));
+        
+        Assert.That(cpu.Registers.A.GetByte(), Is.EqualTo(0xEE));
         Assert.That(cycles, Is.EqualTo(5)); // 5 cycles (no page cross)
     }
 
@@ -469,11 +458,12 @@ public class Cpu65C02Tests
 
         // Act
         cpu.Step(); // LDY #$01
-        int cycles = cpu.Step(); // LDA ($40),Y
+        var result = cpu.Step();
+        int cycles = (int)result.CyclesConsumed.Value; // LDA ($40),Y
 
         // Assert
-        var state = cpu.GetState();
-        Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0xFF));
+        
+        Assert.That(cpu.Registers.A.GetByte(), Is.EqualTo(0xFF));
         Assert.That(cycles, Is.EqualTo(6)); // 6 cycles (page cross)
     }
 
@@ -596,7 +586,8 @@ public class Cpu65C02Tests
         // Act
         cpu.Step(); // LDA #$CD
         cpu.Step(); // LDX #$10
-        int cycles = cpu.Step(); // STA $2000,X
+        var result = cpu.Step();
+        int cycles = (int)result.CyclesConsumed.Value; // STA $2000,X
 
         // Assert
         Assert.That(memory.Read(0x2010), Is.EqualTo(0xCD));
@@ -623,7 +614,8 @@ public class Cpu65C02Tests
         // Act
         cpu.Step(); // LDA #$EF
         cpu.Step(); // LDY #$08
-        int cycles = cpu.Step(); // STA $3000,Y
+        var result = cpu.Step();
+        int cycles = (int)result.CyclesConsumed.Value; // STA $3000,Y
 
         // Assert
         Assert.That(memory.Read(0x3008), Is.EqualTo(0xEF));
@@ -648,11 +640,12 @@ public class Cpu65C02Tests
 
         // Act
         cpu.Step(); // LDY #$01
-        int cycles = cpu.Step(); // LDA $20FF,Y
+        var result = cpu.Step();
+        int cycles = (int)result.CyclesConsumed.Value; // LDA $20FF,Y
 
         // Assert
-        var state = cpu.GetState();
-        Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0x42));
+        
+        Assert.That(cpu.Registers.A.GetByte(), Is.EqualTo(0x42));
         Assert.That(cycles, Is.EqualTo(5)); // 4 base + 1 for page crossing
     }
 
@@ -668,7 +661,8 @@ public class Cpu65C02Tests
         cpu.Reset();
 
         // Act
-        int cycles = cpu.Step();
+        var result = cpu.Step();
+        int cycles = (int)result.CyclesConsumed.Value;
 
         // Assert
         Assert.That(cpu.Halted, Is.True);
@@ -688,7 +682,8 @@ public class Cpu65C02Tests
         cpu.Step(); // Execute illegal opcode to halt
 
         // Act
-        int cycles = cpu.Step();
+        var result = cpu.Step();
+        int cycles = (int)result.CyclesConsumed.Value;
 
         // Assert
         Assert.That(cpu.Halted, Is.True);
@@ -714,10 +709,10 @@ public class Cpu65C02Tests
         cpu.Execute(0x1000);
 
         // Assert
-        var state = cpu.GetState();
+        
         Assert.That(cpu.Halted, Is.True);
-        Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0x42));
-        Assert.That(state.Registers.X.GetByte(), Is.EqualTo(0x10));
+        Assert.That(cpu.Registers.A.GetByte(), Is.EqualTo(0x42));
+        Assert.That(cpu.Registers.X.GetByte(), Is.EqualTo(0x10));
     }
 
     /// <summary>
@@ -737,30 +732,7 @@ public class Cpu65C02Tests
         cpu.Execute(startAddress);
 
         // Assert
-        var state = cpu.GetState();
         Assert.That(cpu.Halted, Is.True);
-        Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0x55));
-    }
-
-    /// <summary>
-    /// Creates a CpuState for testing with the specified register values.
-    /// </summary>
-    private static CpuState CreateState(
-        Word pc = 0,
-        byte a = 0,
-        byte x = 0,
-        byte y = 0,
-        byte sp = 0,
-        ProcessorStatusFlags p = 0,
-        ulong cycles = 0)
-    {
-        var state = new CpuState { Cycles = cycles };
-        state.Registers.PC.SetWord(pc);
-        state.Registers.A.SetByte(a);
-        state.Registers.X.SetByte(x);
-        state.Registers.Y.SetByte(y);
-        state.Registers.SP.SetByte(sp);
-        state.Registers.P = p;
-        return state;
+        Assert.That(cpu.Registers.A.GetByte(), Is.EqualTo(0x55));
     }
 }

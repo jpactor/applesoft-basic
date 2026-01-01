@@ -115,7 +115,7 @@ public class ComprehensiveDebugFunctionalTests
 
         // Verify the program halted on STP
         Assert.That(cpu.Halted, Is.True, "CPU should be halted");
-        Assert.That(cpu.GetState().HaltReason, Is.EqualTo(HaltState.Stp), "Should halt due to STP");
+        Assert.That(cpu.HaltReason, Is.EqualTo(HaltState.Stp), "Should halt due to STP");
 
         // Verify final result: 5! = 120 = $78
         Assert.That(memory.Read(resultAddr), Is.EqualTo(120), "5! should equal 120");
@@ -560,7 +560,7 @@ public class ComprehensiveDebugFunctionalTests
         });
 
         // Verify total cycles add up
-        var totalCycles = cpu.GetState().Cycles;
+        var totalCycles = cpu.GetCycles();
         var sumOfInstructionCycles = listener.StepRecords.Sum(r => r.AfterStep.InstructionCycles);
         Assert.That(totalCycles, Is.EqualTo(sumOfInstructionCycles), "Total cycles should match sum of instruction cycles");
     }

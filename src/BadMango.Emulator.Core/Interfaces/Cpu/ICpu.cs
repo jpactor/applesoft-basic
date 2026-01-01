@@ -35,9 +35,46 @@ public interface ICpu
     CpuCapabilities Capabilities { get; }
 
     /// <summary>
+    /// Gets a reference to the CPU's register set.
+    /// </summary>
+    /// <value>A reference to the registers structure.</value>
+    /// <remarks>
+    /// This property provides direct access to CPU registers for instruction handlers
+    /// and addressing modes. Modifications to the returned reference affect the CPU directly.
+    /// </remarks>
+    ref Registers Registers { get; }
+
+    /// <summary>
+    /// Gets or sets the instruction trace for debug tracing.
+    /// </summary>
+    /// <value>The current instruction trace structure.</value>
+    /// <remarks>
+    /// This property provides access to the instruction trace for instruction handlers
+    /// and addressing modes to record debug information during execution.
+    /// Use the <c>with</c> keyword to create modified copies when setting.
+    /// Only meaningful when <see cref="IsDebuggerAttached"/> is true.
+    /// </remarks>
+    InstructionTrace Trace { get; set; }
+
+    /// <summary>
     /// Gets a value indicating whether the CPU is halted.
     /// </summary>
+    /// <remarks>
+    /// This property returns true if the CPU is in any halt state (Wai or Stp).
+    /// For more granular halt state information, use <see cref="HaltReason"/>.
+    /// </remarks>
     bool Halted { get; }
+
+    /// <summary>
+    /// Gets or sets the reason the CPU is halted.
+    /// </summary>
+    /// <remarks>
+    /// Distinguishes between different halt states:
+    /// - None: CPU is running
+    /// - Wai: Halted by WAI instruction (wait for interrupt)
+    /// - Stp: Halted by STP instruction (permanent halt until reset).
+    /// </remarks>
+    HaltState HaltReason { get; set; }
 
     /// <summary>
     /// Gets a value indicating whether a debugger is currently attached.
@@ -49,11 +86,93 @@ public interface ICpu
     /// </summary>
     bool IsStopRequested { get; }
 
+    // ─── Memory Access Methods ──────────────────────────────────────────
+
+    /// <summary>
+    /// Reads a byte from memory at the specified address.
+    /// </summary>
+    /// <param name="address">The memory address to read from.</param>
+    /// <returns>The byte value at the specified address.</returns>
+    /// <remarks>
+    /// This method provides bus-based memory access for instruction handlers.
+    /// The implementation routes through the memory bus with appropriate
+    /// cycle counting and fault handling.
+    /// </remarks>
+    byte Read8(Addr address);
+
+    /// <summary>
+    /// Writes a byte to memory at the specified address.
+    /// </summary>
+    /// <param name="address">The memory address to write to.</param>
+    /// <param name="value">The byte value to write.</param>
+    /// <remarks>
+    /// This method provides bus-based memory access for instruction handlers.
+    /// The implementation routes through the memory bus with appropriate
+    /// cycle counting and fault handling.
+    /// </remarks>
+    void Write8(Addr address, byte value);
+
+    /// <summary>
+    /// Reads a 16-bit word from memory at the specified address.
+    /// </summary>
+    /// <param name="address">The memory address to read from.</param>
+    /// <returns>The 16-bit word value at the specified address (little-endian).</returns>
+    Word Read16(Addr address);
+
+    /// <summary>
+    /// Writes a 16-bit word to memory at the specified address.
+    /// </summary>
+    /// <param name="address">The memory address to write to.</param>
+    /// <param name="value">The 16-bit word value to write (little-endian).</param>
+    void Write16(Addr address, Word value);
+
+    /// <summary>
+    /// Reads a value from memory based on the specified size.
+    /// </summary>
+    /// <param name="address">The memory address to read from.</param>
+    /// <param name="sizeInBits">The size to read (8, 16, or 32 bits).</param>
+    /// <returns>The value read from memory, zero-extended to 32 bits.</returns>
+    DWord ReadValue(Addr address, byte sizeInBits);
+
+    /// <summary>
+    /// Writes a value to memory based on the specified size.
+    /// </summary>
+    /// <param name="address">The memory address to write to.</param>
+    /// <param name="value">The value to write.</param>
+    /// <param name="sizeInBits">The size to write (8, 16, or 32 bits).</param>
+    void WriteValue(Addr address, DWord value, byte sizeInBits);
+
+    // ─── Stack Operations ───────────────────────────────────────────────
+
+    /// <summary>
+    /// Pushes a byte onto the stack and decrements the stack pointer.
+    /// </summary>
+    /// <param name="stackBase">The base address of the stack (default 0).</param>
+    /// <returns>The address where the byte should be stored (stack base + old SP).</returns>
+    /// <remarks>
+    /// This method decrements the stack pointer register and returns the address
+    /// where the byte should be written. The caller is responsible for actually
+    /// writing the value to memory using <see cref="Write8"/>.
+    /// </remarks>
+    Addr PushByte(Addr stackBase = 0);
+
+    /// <summary>
+    /// Pops a byte from the stack and increments the stack pointer.
+    /// </summary>
+    /// <param name="stackBase">The base address of the stack (default 0).</param>
+    /// <returns>The address from which the byte should be read (stack base + new SP).</returns>
+    /// <remarks>
+    /// This method increments the stack pointer register and returns the address
+    /// from which the byte should be read. The caller is responsible for actually
+    /// reading the value from memory using <see cref="Read8"/>.
+    /// </remarks>
+    Addr PopByte(Addr stackBase = 0);
+
     /// <summary>
     /// Executes a single instruction.
     /// </summary>
-    /// <returns>Number of cycles consumed by the instruction.</returns>
-    int Step();
+    /// <returns>A <see cref="CpuStepResult"/> containing the run state and cycles consumed.</returns>
+    CpuStepResult Step();
 
     /// <summary>
     /// Executes instructions starting from the specified memory address.
@@ -77,16 +196,21 @@ public interface ICpu
     Registers GetRegisters();
 
     /// <summary>
-    /// Gets the current complete CPU state including registers and execution state.
+    /// Gets the current cycle count as tracked by the scheduler.
     /// </summary>
-    /// <returns>RegisterAccumulator structure containing all register values, cycle count, and other execution state.</returns>
-    ref CpuState GetState();
+    /// <returns>The total number of cycles executed since reset.</returns>
+    ulong GetCycles();
 
     /// <summary>
-    /// Sets the complete CPU state including registers and execution state.
+    /// Sets the current cycle count, advancing the scheduler if necessary.
     /// </summary>
-    /// <param name="state">The state structure containing register values, cycle count, and other execution state to restore.</param>
-    void SetState(CpuState state);
+    /// <param name="cycles">The new cycle count value.</param>
+    /// <remarks>
+    /// If the new cycle count is greater than the current scheduler time,
+    /// the scheduler will be advanced to match. This is useful for test
+    /// scenarios that need to manipulate cycle timing.
+    /// </remarks>
+    void SetCycles(ulong cycles);
 
     /// <summary>
     /// Signals an IRQ (Interrupt Request) to the CPU.

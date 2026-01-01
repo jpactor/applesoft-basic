@@ -31,13 +31,20 @@ public class Cpu65816 : ICpu
     public bool Halted => throw new NotImplementedException();
 
     /// <inheritdoc/>
+    public HaltState HaltReason
+    {
+        get => throw new NotImplementedException();
+        set => throw new NotImplementedException();
+    }
+
+    /// <inheritdoc/>
     public bool IsDebuggerAttached => throw new NotImplementedException();
 
     /// <inheritdoc/>
     public bool IsStopRequested => throw new NotImplementedException();
 
     /// <inheritdoc/>
-    public int Step()
+    public CpuStepResult Step()
     {
         throw new NotImplementedException();
     }
@@ -61,13 +68,13 @@ public class Cpu65816 : ICpu
     }
 
     /// <inheritdoc/>
-    public ref CpuState GetState()
+    public ulong GetCycles()
     {
         throw new NotImplementedException();
     }
 
     /// <inheritdoc/>
-    public void SetState(CpuState state)
+    public void SetCycles(ulong cycles)
     {
         throw new NotImplementedException();
     }
@@ -116,6 +123,64 @@ public class Cpu65816 : ICpu
 
     /// <inheritdoc/>
     public void ClearStopRequest()
+    {
+        throw new NotImplementedException();
+    }
+
+    /// <inheritdoc/>
+    public ref Registers Registers => throw new NotImplementedException();
+
+    /// <inheritdoc/>
+    public InstructionTrace Trace
+    {
+        get => throw new NotImplementedException();
+        set => throw new NotImplementedException();
+    }
+
+    /// <inheritdoc/>
+    public byte Read8(Addr address)
+    {
+        throw new NotImplementedException();
+    }
+
+    /// <inheritdoc/>
+    public void Write8(Addr address, byte value)
+    {
+        throw new NotImplementedException();
+    }
+
+    /// <inheritdoc/>
+    public Word Read16(Addr address)
+    {
+        throw new NotImplementedException();
+    }
+
+    /// <inheritdoc/>
+    public void Write16(Addr address, Word value)
+    {
+        throw new NotImplementedException();
+    }
+
+    /// <inheritdoc/>
+    public DWord ReadValue(Addr address, byte sizeInBits)
+    {
+        throw new NotImplementedException();
+    }
+
+    /// <inheritdoc/>
+    public void WriteValue(Addr address, DWord value, byte sizeInBits)
+    {
+        throw new NotImplementedException();
+    }
+
+    /// <inheritdoc/>
+    public Addr PushByte(Addr stackBase = 0)
+    {
+        throw new NotImplementedException();
+    }
+
+    /// <inheritdoc/>
+    public Addr PopByte(Addr stackBase = 0)
     {
         throw new NotImplementedException();
     }

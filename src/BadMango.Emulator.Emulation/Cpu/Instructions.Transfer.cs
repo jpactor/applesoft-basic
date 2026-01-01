@@ -8,6 +8,7 @@ namespace BadMango.Emulator.Emulation.Cpu;
 using System.Runtime.CompilerServices;
 
 using Core.Cpu;
+using Core.Interfaces.Cpu;
 
 /// <summary>
 /// Register transfer instructions (TAX, TAY, TXA, TYA, TXS, TSX).
@@ -20,25 +21,24 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes TAX.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler TAX(AddressingModeHandler<CpuState> addressingMode)
+    public static OpcodeHandler TAX(AddressingModeHandler addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            addressingMode(memory, ref state);
-            byte size = state.Registers.GetIndexSize();
-            var value = state.Registers.A.GetValue(size);
-            state.Registers.X.SetValue(value, size);
-            state.Registers.P.SetZeroAndNegative(value, size);
+            addressingMode(cpu);
+            byte size = cpu.Registers.GetIndexSize();
+            var value = cpu.Registers.A.GetValue(size);
+            cpu.Registers.X.SetValue(value, size);
+            cpu.Registers.P.SetZeroAndNegative(value, size);
             opCycles++;
 
-            if (state.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.TAX;
-                state.InstructionCycles += opCycles;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.TAX };
             }
 
-            state.Cycles += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 
@@ -48,25 +48,24 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes TAY.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler TAY(AddressingModeHandler<CpuState> addressingMode)
+    public static OpcodeHandler TAY(AddressingModeHandler addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            addressingMode(memory, ref state);
-            byte size = state.Registers.GetIndexSize();
-            var value = state.Registers.A.GetValue(size);
-            state.Registers.Y.SetValue(value, size);
-            state.Registers.P.SetZeroAndNegative(value, size);
+            addressingMode(cpu);
+            byte size = cpu.Registers.GetIndexSize();
+            var value = cpu.Registers.A.GetValue(size);
+            cpu.Registers.Y.SetValue(value, size);
+            cpu.Registers.P.SetZeroAndNegative(value, size);
             opCycles++;
 
-            if (state.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.TAY;
-                state.InstructionCycles += opCycles;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.TAY };
             }
 
-            state.Cycles += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 
@@ -76,25 +75,24 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes TXA.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler TXA(AddressingModeHandler<CpuState> addressingMode)
+    public static OpcodeHandler TXA(AddressingModeHandler addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            addressingMode(memory, ref state);
-            byte size = state.Registers.GetAccumulatorSize();
-            var value = state.Registers.X.GetValue(size);
-            state.Registers.A.SetValue(value, size);
-            state.Registers.P.SetZeroAndNegative(value, size);
+            addressingMode(cpu);
+            byte size = cpu.Registers.GetAccumulatorSize();
+            var value = cpu.Registers.X.GetValue(size);
+            cpu.Registers.A.SetValue(value, size);
+            cpu.Registers.P.SetZeroAndNegative(value, size);
             opCycles++;
 
-            if (state.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.TXA;
-                state.InstructionCycles += opCycles;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.TXA };
             }
 
-            state.Cycles += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 
@@ -104,25 +102,24 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes TYA.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler TYA(AddressingModeHandler<CpuState> addressingMode)
+    public static OpcodeHandler TYA(AddressingModeHandler addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            addressingMode(memory, ref state);
-            byte size = state.Registers.GetAccumulatorSize();
-            var value = state.Registers.Y.GetValue(size);
-            state.Registers.A.SetValue(value, size);
-            state.Registers.P.SetZeroAndNegative(value, size);
+            addressingMode(cpu);
+            byte size = cpu.Registers.GetAccumulatorSize();
+            var value = cpu.Registers.Y.GetValue(size);
+            cpu.Registers.A.SetValue(value, size);
+            cpu.Registers.P.SetZeroAndNegative(value, size);
             opCycles++;
 
-            if (state.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.TYA;
-                state.InstructionCycles += opCycles;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.TYA };
             }
 
-            state.Cycles += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 
@@ -132,22 +129,21 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes TXS.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler TXS(AddressingModeHandler<CpuState> addressingMode)
+    public static OpcodeHandler TXS(AddressingModeHandler addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            addressingMode(memory, ref state);
-            state.Registers.SP.SetByte(state.Registers.X.GetByte());
+            addressingMode(cpu);
+            cpu.Registers.SP.SetByte(cpu.Registers.X.GetByte());
             opCycles++;
 
-            if (state.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.TXS;
-                state.InstructionCycles += opCycles;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.TXS };
             }
 
-            state.Cycles += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 
@@ -157,25 +153,24 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes TSX.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler TSX(AddressingModeHandler<CpuState> addressingMode)
+    public static OpcodeHandler TSX(AddressingModeHandler addressingMode)
     {
-        return (memory, ref state) =>
+        return cpu =>
         {
             byte opCycles = 0;
-            addressingMode(memory, ref state);
-            byte size = state.Registers.GetIndexSize();
-            byte value = state.Registers.SP.GetByte();
-            state.Registers.X.SetByte(value);
-            state.Registers.P.SetZeroAndNegative(value, size);
+            addressingMode(cpu);
+            byte size = cpu.Registers.GetIndexSize();
+            byte value = cpu.Registers.SP.GetByte();
+            cpu.Registers.X.SetByte(value);
+            cpu.Registers.P.SetZeroAndNegative(value, size);
             opCycles++;
 
-            if (state.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
-                state.Instruction = CpuInstructions.TSX;
-                state.InstructionCycles += opCycles;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.TSX };
             }
 
-            state.Cycles += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 }

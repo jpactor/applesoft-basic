@@ -4,14 +4,15 @@
 
 namespace BadMango.Emulator.Core.Cpu;
 
-using Interfaces;
+using Interfaces.Cpu;
 
 /// <summary>
 /// Delegate representing an addressing mode that computes an effective address.
 /// </summary>
-/// <typeparam name="TState">The CPU state type.</typeparam>
-/// <param name="memory">The memory interface.</param>
-/// <param name="state">Reference to the CPU state.</param>
+/// <param name="cpu">The CPU instance providing memory access and state.</param>
 /// <returns>The effective address computed by the addressing mode.</returns>
-public delegate Addr AddressingModeHandler<TState>(IMemory memory, ref TState state)
-    where TState : struct;
+/// <remarks>
+/// Addressing modes access CPU state via <see cref="ICpu.Registers"/> and memory via
+/// <see cref="ICpu.Read8"/>, <see cref="ICpu.Read16"/>, etc.
+/// </remarks>
+public delegate Addr AddressingModeHandler(ICpu cpu);
