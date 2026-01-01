@@ -176,10 +176,7 @@ public class Cpu65C02 : ICpu
 
         // Capture state before execution for debug listener
         Addr pcBefore = state.Registers.PC.GetAddr();
-        byte opcode = FetchByte();
-
-        // Advance TCU by one for the opcode fetch
-        state.Registers.TCU += 1;
+        byte opcode = FetchByte(); // Advances TCU by 1 for the opcode fetch
 
         // Notify debug listener before execution
         if (debugListener is not null)
@@ -454,7 +451,10 @@ public class Cpu65C02 : ICpu
         var pc = state.Registers.PC.GetAddr();
         state.Registers.PC.Advance();
         byte value = Read8(pc);
-        // Note: TCU is advanced in Step() after the fetch
+
+        // Advance TCU for the opcode fetch cycle
+        state.Registers.TCU += 1;
+
         return value;
     }
 
