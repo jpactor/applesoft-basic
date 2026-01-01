@@ -68,7 +68,19 @@ public class Cpu65816 : ICpu
     }
 
     /// <inheritdoc/>
-    public ref CpuState GetState()
+    public ulong GetCycles()
+    {
+        throw new NotImplementedException();
+    }
+
+    /// <inheritdoc/>
+    public void SetCycles(ulong cycles)
+    {
+        throw new NotImplementedException();
+    }
+
+    /// <inheritdoc/>
+    public CpuState GetState()
     {
         throw new NotImplementedException();
     }
@@ -126,9 +138,6 @@ public class Cpu65816 : ICpu
     {
         throw new NotImplementedException();
     }
-
-    /// <inheritdoc/>
-    public ref CpuState State => throw new NotImplementedException();
 
     /// <inheritdoc/>
     public ref Registers Registers => throw new NotImplementedException();

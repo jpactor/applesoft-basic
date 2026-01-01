@@ -12,7 +12,7 @@ using Interfaces.Cpu;
 /// <param name="cpu">The CPU instance providing memory access and state.</param>
 /// <remarks>
 /// <para>
-/// Handlers access CPU state via <see cref="ICpu.State"/> and memory via
+/// Handlers access CPU registers via <see cref="ICpu.Registers"/> and memory via
 /// <see cref="ICpu.Read8"/>, <see cref="ICpu.Write8"/>, etc.
 /// </para>
 /// <para>

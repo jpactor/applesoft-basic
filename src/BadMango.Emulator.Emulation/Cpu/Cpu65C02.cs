@@ -48,8 +48,8 @@ public class Cpu65C02 : ICpu
     private readonly ISignalBus signals;
     private readonly OpcodeTable opcodeTable;
 
-    private CpuState state; // CPU state including all registers and cycles
-    private HaltState haltReason; // Halt state managed directly by CPU, not in CpuState
+    private Registers registers; // CPU registers (directly stored, no CpuState wrapper)
+    private HaltState haltReason; // Halt state managed directly by CPU
     private InstructionTrace trace; // Instruction trace for debug information
     private bool stopRequested;
     private IDebugStepListener? debugListener;
@@ -108,17 +108,10 @@ public class Cpu65C02 : ICpu
     public CpuCapabilities Capabilities => CpuCapabilities.Base6502 | CpuCapabilities.Supports65C02Instructions;
 
     /// <inheritdoc />
-    public ref CpuState State
-    {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => ref state;
-    }
-
-    /// <inheritdoc />
     public ref Registers Registers
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => ref state.Registers;
+        get => ref registers;
     }
 
     /// <inheritdoc/>
@@ -168,11 +161,7 @@ public class Cpu65C02 : ICpu
         // Reset the scheduler's timing to cycle 0
         context.Scheduler.Reset();
 
-        state = new()
-        {
-            Registers = new(true, Read16(Cpu65C02Constants.ResetVector)),
-            Cycles = 0,
-        };
+        registers = new(true, Read16(Cpu65C02Constants.ResetVector));
         haltReason = HaltState.None;
         stopRequested = false;
     }
@@ -182,7 +171,7 @@ public class Cpu65C02 : ICpu
     public int Step()
     {
         // Clear TCU at the start of each instruction
-        state.Registers.TCU = Cycle.Zero;
+        registers.TCU = Cycle.Zero;
 
         // Check for pending interrupts at instruction boundary using the signal bus
         bool interruptProcessed = CheckInterrupts();
@@ -190,11 +179,11 @@ public class Cpu65C02 : ICpu
         {
             // Interrupt was processed, TCU was updated by ProcessInterrupt
             // Advance the scheduler by the TCU value
-            Cycle interruptCycles = state.Registers.TCU;
+            Cycle interruptCycles = registers.TCU;
             context.Scheduler.Advance(interruptCycles);
 
             // Clear TCU after advancing scheduler
-            state.Registers.TCU = Cycle.Zero;
+            registers.TCU = Cycle.Zero;
             return (int)interruptCycles.Value;
         }
 
@@ -204,7 +193,7 @@ public class Cpu65C02 : ICpu
         }
 
         // Capture state before execution for debug listener
-        Addr pcBefore = state.Registers.PC.GetAddr();
+        Addr pcBefore = registers.PC.GetAddr();
         byte opcode = FetchByte(); // Advances TCU by 1 for the opcode fetch
 
         // Notify debug listener before execution
@@ -224,13 +213,11 @@ public class Cpu65C02 : ICpu
                 StartCycle: context.Now,
                 InstructionCycles: new Cycle(1)); // Opcode fetch cycle
 
-            state.IsDebuggerAttached = true;
-
             var beforeArgs = new DebugStepEventArgs
             {
                 PC = pcBefore,
                 Opcode = opcode,
-                Registers = state.Registers,
+                Registers = registers,
                 Cycles = context.Now.Value,
                 Halted = false,
                 HaltReason = HaltState.None,
@@ -242,7 +229,7 @@ public class Cpu65C02 : ICpu
         opcodeTable.Execute(opcode, this);
 
         // Capture TCU before advancing scheduler (for return value)
-        Cycle instructionCycles = state.Registers.TCU;
+        Cycle instructionCycles = registers.TCU;
 
         // Advance the scheduler by the TCU value (total cycles for this instruction)
         context.Scheduler.Advance(instructionCycles);
@@ -259,20 +246,17 @@ public class Cpu65C02 : ICpu
                 OperandSize = trace.OperandSize,
                 Operands = trace.Operands,
                 EffectiveAddress = trace.EffectiveAddress,
-                Registers = state.Registers,
+                Registers = registers,
                 Cycles = context.Now.Value,
                 InstructionCycles = (byte)trace.InstructionCycles.Value,
                 Halted = Halted,
                 HaltReason = haltReason,
             };
             debugListener.OnAfterStep(in afterArgs);
-
-            // Reset debug state for next instruction
-            state.IsDebuggerAttached = false;
         }
 
         // Clear TCU after advancing scheduler (cycles have been committed)
-        state.Registers.TCU = Cycle.Zero;
+        registers.TCU = Cycle.Zero;
 
         return (int)instructionCycles.Value;
     }
@@ -280,7 +264,7 @@ public class Cpu65C02 : ICpu
     /// <inheritdoc/>
     public void Execute(uint startAddress)
     {
-        state.Registers.PC.SetAddr(startAddress);
+        registers.PC.SetAddr(startAddress);
         haltReason = HaltState.None;
         stopRequested = false;
 
@@ -294,35 +278,51 @@ public class Cpu65C02 : ICpu
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Registers GetRegisters()
     {
-        return state.Registers;
+        return registers;
     }
 
     /// <inheritdoc/>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ref CpuState GetState()
+    public ulong GetCycles()
     {
-        // Sync state.Cycles from the scheduler plus any pending TCU cycles.
+        // Return the scheduler's current cycle count plus any pending TCU cycles.
         // TCU holds cycles accumulated during instruction execution.
         // When called via Step(), TCU will have already been cleared for the next instruction,
         // so this effectively returns scheduler.Now.
         // When called after a direct handler invocation (unit test pattern), TCU holds
         // the cycles that haven't been flushed to the scheduler yet.
-        state.Cycles = context.Now.Value + state.Registers.TCU.Value;
-        return ref state;
+        return context.Now.Value + registers.TCU.Value;
     }
 
     /// <inheritdoc/>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void SetState(CpuState newState)
+    public void SetCycles(ulong cycles)
     {
-        // If the new state has a different cycle count, advance the scheduler to match
+        // If the new cycle count is greater than the current scheduler time, advance the scheduler to match
         // This maintains backward compatibility with code that sets cycles via state
-        if (newState.Cycles > context.Now.Value)
+        if (cycles > context.Now.Value)
         {
-            context.Scheduler.Advance(new Cycle(newState.Cycles - context.Now.Value));
+            context.Scheduler.Advance(new Cycle(cycles - context.Now.Value));
         }
+    }
 
-        state = newState;
+    /// <inheritdoc/>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public CpuState GetState()
+    {
+        return new CpuState
+        {
+            Registers = registers,
+            Cycles = GetCycles(),
+        };
+    }
+
+    /// <inheritdoc/>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void SetState(CpuState state)
+    {
+        registers = state.Registers;
+        SetCycles(state.Cycles);
     }
 
     /// <inheritdoc/>
@@ -354,14 +354,14 @@ public class Cpu65C02 : ICpu
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SetPC(Addr address)
     {
-        state.Registers.PC.SetAddr(address);
+        registers.PC.SetAddr(address);
     }
 
     /// <inheritdoc/>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Addr GetPC()
     {
-        return state.Registers.PC.GetAddr();
+        return registers.PC.GetAddr();
     }
 
     /// <inheritdoc/>
@@ -480,8 +480,8 @@ public class Cpu65C02 : ICpu
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Addr PushByte(Addr stackBase = 0)
     {
-        var old = state.Registers.SP.stack;
-        state.Registers.SP.stack--;
+        var old = registers.SP.stack;
+        registers.SP.stack--;
         return stackBase + old;
     }
 
@@ -489,8 +489,8 @@ public class Cpu65C02 : ICpu
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Addr PopByte(Addr stackBase = 0)
     {
-        var old = state.Registers.SP.stack + 1;
-        state.Registers.SP.stack++;
+        var old = registers.SP.stack + 1;
+        registers.SP.stack++;
         return stackBase + old;
     }
 
@@ -499,12 +499,12 @@ public class Cpu65C02 : ICpu
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private byte FetchByte()
     {
-        var pc = state.Registers.PC.GetAddr();
-        state.Registers.PC.Advance();
+        var pc = registers.PC.GetAddr();
+        registers.PC.Advance();
         byte value = Read8(pc);
 
         // Advance TCU for the opcode fetch cycle
-        state.Registers.TCU += 1;
+        registers.TCU += 1;
 
         return value;
     }
@@ -542,7 +542,7 @@ public class Cpu65C02 : ICpu
         }
 
         // Check for IRQ (maskable by I flag, level-triggered)
-        if (signals.IsAsserted(SignalLine.IRQ) && !state.Registers.P.IsInterruptDisabled())
+        if (signals.IsAsserted(SignalLine.IRQ) && !registers.P.IsInterruptDisabled())
         {
             // Resume from WAI if halted
             if (haltReason == HaltState.Wai)
@@ -573,23 +573,23 @@ public class Cpu65C02 : ICpu
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void ProcessInterrupt(Addr vector)
     {
-        var pc = state.Registers.PC.GetWord();
+        var pc = registers.PC.GetWord();
 
         // Push PC to stack (high byte first)
-        Write8(state.PushByte(Cpu65C02Constants.StackBase), pc.HighByte());
-        Write8(state.PushByte(Cpu65C02Constants.StackBase), pc.LowByte());
+        Write8(PushByte(Cpu65C02Constants.StackBase), pc.HighByte());
+        Write8(PushByte(Cpu65C02Constants.StackBase), pc.LowByte());
 
         // Push processor status (with B flag clear for hardware interrupts)
-        Write8(state.PushByte(Cpu65C02Constants.StackBase), (byte)(state.Registers.P & ~ProcessorStatusFlags.B));
+        Write8(PushByte(Cpu65C02Constants.StackBase), (byte)(registers.P & ~ProcessorStatusFlags.B));
 
         // Set I flag to disable further IRQs
-        state.Registers.P.SetInterruptDisable(true);
+        registers.P.SetInterruptDisable(true);
 
         // Load PC from interrupt vector
-        state.Registers.PC.SetAddr(Read16(vector));
+        registers.PC.SetAddr(Read16(vector));
 
         // Account for 7 cycles for interrupt processing
-        state.Registers.TCU += 7;
+        registers.TCU += 7;
     }
 
     /// <summary>

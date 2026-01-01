@@ -36,15 +36,15 @@ public class AddressingModesTests
     public void Implied_ReturnsZeroAndDoesNotModifyState()
     {
         // Arrange
-        var state = CreateState(pc: 0x1000, cycles: 10);
+        SetupCpu(pc: 0x1000, cycles: 10);
 
         // Act
-        cpu.SetState(state); Addr address = AddressingModes.Implied(cpu); state = cpu.GetState();
+        Addr address = AddressingModes.Implied(cpu);
 
         // Assert
         Assert.That(address, Is.EqualTo(0));
-        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1000)); // PC unchanged
-        Assert.That(state.Cycles, Is.EqualTo(10)); // Cycles unchanged
+        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x1000)); // PC unchanged
+        Assert.That(cpu.GetCycles(), Is.EqualTo(10)); // Cycles unchanged
     }
 
     /// <summary>
@@ -54,15 +54,15 @@ public class AddressingModesTests
     public void Immediate_ReturnsPCAndIncrementsIt()
     {
         // Arrange
-        var state = CreateState(pc: 0x1000, cycles: 10);
+        SetupCpu(pc: 0x1000, cycles: 10);
 
         // Act
-        cpu.SetState(state); Addr address = AddressingModes.Immediate(cpu); state = cpu.GetState();
+        Addr address = AddressingModes.Immediate(cpu);
 
         // Assert
         Assert.That(address, Is.EqualTo(0x1000));
-        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1001)); // PC incremented
-        Assert.That(state.Cycles, Is.EqualTo(10)); // No extra cycles for immediate
+        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x1001)); // PC incremented
+        Assert.That(cpu.GetCycles(), Is.EqualTo(10)); // No extra cycles for immediate
     }
 
     /// <summary>
@@ -73,15 +73,15 @@ public class AddressingModesTests
     {
         // Arrange
         memory.Write(0x1000, 0x42);
-        var state = CreateState(pc: 0x1000, cycles: 10);
+        SetupCpu(pc: 0x1000, cycles: 10);
 
         // Act
-        cpu.SetState(state); Addr address = AddressingModes.ZeroPage(cpu); state = cpu.GetState();
+        Addr address = AddressingModes.ZeroPage(cpu);
 
         // Assert
         Assert.That(address, Is.EqualTo(0x0042));
-        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1001));
-        Assert.That(state.Cycles, Is.EqualTo(11)); // +1 cycle for ZP fetch
+        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x1001));
+        Assert.That(cpu.GetCycles(), Is.EqualTo(11)); // +1 cycle for ZP fetch
     }
 
     /// <summary>
@@ -92,15 +92,15 @@ public class AddressingModesTests
     {
         // Arrange
         memory.Write(0x1000, 0xF0);
-        var state = CreateState(pc: 0x1000, x: 0x20, cycles: 10);
+        SetupCpu(pc: 0x1000, x: 0x20, cycles: 10);
 
         // Act
-        cpu.SetState(state); Addr address = AddressingModes.ZeroPageX(cpu); state = cpu.GetState();
+        Addr address = AddressingModes.ZeroPageX(cpu);
 
         // Assert
         Assert.That(address, Is.EqualTo(0x0010)); // 0xF0 + 0x20 = 0x110, wrapped to 0x10
-        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1001));
-        Assert.That(state.Cycles, Is.EqualTo(12)); // +2 cycles (fetch + index)
+        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x1001));
+        Assert.That(cpu.GetCycles(), Is.EqualTo(12)); // +2 cycles (fetch + index)
     }
 
     /// <summary>
@@ -111,15 +111,15 @@ public class AddressingModesTests
     {
         // Arrange
         memory.Write(0x1000, 0x80);
-        var state = CreateState(pc: 0x1000, y: 0x90, cycles: 10);
+        SetupCpu(pc: 0x1000, y: 0x90, cycles: 10);
 
         // Act
-        cpu.SetState(state); Addr address = AddressingModes.ZeroPageY(cpu); state = cpu.GetState();
+        Addr address = AddressingModes.ZeroPageY(cpu);
 
         // Assert
         Assert.That(address, Is.EqualTo(0x0010)); // 0x80 + 0x90 = 0x110, wrapped to 0x10
-        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1001));
-        Assert.That(state.Cycles, Is.EqualTo(12)); // +2 cycles (fetch + index)
+        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x1001));
+        Assert.That(cpu.GetCycles(), Is.EqualTo(12)); // +2 cycles (fetch + index)
     }
 
     /// <summary>
@@ -130,15 +130,15 @@ public class AddressingModesTests
     {
         // Arrange
         memory.WriteWord(0x1000, 0x5678);
-        var state = CreateState(pc: 0x1000, cycles: 10);
+        SetupCpu(pc: 0x1000, cycles: 10);
 
         // Act
-        cpu.SetState(state); Addr address = AddressingModes.Absolute(cpu); state = cpu.GetState();
+        Addr address = AddressingModes.Absolute(cpu);
 
         // Assert
         Assert.That(address, Is.EqualTo(0x5678));
-        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1002));
-        Assert.That(state.Cycles, Is.EqualTo(12)); // +2 cycles for 16-bit address fetch
+        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x1002));
+        Assert.That(cpu.GetCycles(), Is.EqualTo(12)); // +2 cycles for 16-bit address fetch
     }
 
     /// <summary>
@@ -149,15 +149,15 @@ public class AddressingModesTests
     {
         // Arrange
         memory.WriteWord(0x1000, 0x1234);
-        var state = CreateState(pc: 0x1000, x: 0x10, cycles: 10);
+        SetupCpu(pc: 0x1000, x: 0x10, cycles: 10);
 
         // Act
-        cpu.SetState(state); Addr address = AddressingModes.AbsoluteX(cpu); state = cpu.GetState();
+        Addr address = AddressingModes.AbsoluteX(cpu);
 
         // Assert
         Assert.That(address, Is.EqualTo(0x1244)); // 0x1234 + 0x10
-        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1002));
-        Assert.That(state.Cycles, Is.EqualTo(12)); // +2 cycles, no page boundary penalty
+        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x1002));
+        Assert.That(cpu.GetCycles(), Is.EqualTo(12)); // +2 cycles, no page boundary penalty
     }
 
     /// <summary>
@@ -168,15 +168,15 @@ public class AddressingModesTests
     {
         // Arrange
         memory.WriteWord(0x1000, 0x12FF);
-        var state = CreateState(pc: 0x1000, x: 0x02, cycles: 10);
+        SetupCpu(pc: 0x1000, x: 0x02, cycles: 10);
 
         // Act
-        cpu.SetState(state); Addr address = AddressingModes.AbsoluteX(cpu); state = cpu.GetState();
+        Addr address = AddressingModes.AbsoluteX(cpu);
 
         // Assert
         Assert.That(address, Is.EqualTo(0x1301)); // 0x12FF + 0x02
-        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1002));
-        Assert.That(state.Cycles, Is.EqualTo(13)); // +3 cycles (2 base + 1 page boundary)
+        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x1002));
+        Assert.That(cpu.GetCycles(), Is.EqualTo(13)); // +3 cycles (2 base + 1 page boundary)
     }
 
     /// <summary>
@@ -187,15 +187,15 @@ public class AddressingModesTests
     {
         // Arrange
         memory.WriteWord(0x1000, 0x2000);
-        var state = CreateState(pc: 0x1000, y: 0x50, cycles: 10);
+        SetupCpu(pc: 0x1000, y: 0x50, cycles: 10);
 
         // Act
-        cpu.SetState(state); Addr address = AddressingModes.AbsoluteY(cpu); state = cpu.GetState();
+        Addr address = AddressingModes.AbsoluteY(cpu);
 
         // Assert
         Assert.That(address, Is.EqualTo(0x2050)); // 0x2000 + 0x50
-        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1002));
-        Assert.That(state.Cycles, Is.EqualTo(12)); // +2 cycles, no page boundary penalty
+        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x1002));
+        Assert.That(cpu.GetCycles(), Is.EqualTo(12)); // +2 cycles, no page boundary penalty
     }
 
     /// <summary>
@@ -206,15 +206,15 @@ public class AddressingModesTests
     {
         // Arrange
         memory.WriteWord(0x1000, 0x20F0);
-        var state = CreateState(pc: 0x1000, y: 0x20, cycles: 10);
+        SetupCpu(pc: 0x1000, y: 0x20, cycles: 10);
 
         // Act
-        cpu.SetState(state); Addr address = AddressingModes.AbsoluteY(cpu); state = cpu.GetState();
+        Addr address = AddressingModes.AbsoluteY(cpu);
 
         // Assert
         Assert.That(address, Is.EqualTo(0x2110)); // 0x20F0 + 0x20
-        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1002));
-        Assert.That(state.Cycles, Is.EqualTo(13)); // +3 cycles (2 base + 1 page boundary)
+        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x1002));
+        Assert.That(cpu.GetCycles(), Is.EqualTo(13)); // +3 cycles (2 base + 1 page boundary)
     }
 
     /// <summary>
@@ -226,15 +226,15 @@ public class AddressingModesTests
         // Arrange
         memory.Write(0x1000, 0x40); // ZP address
         memory.WriteWord(0x0045, 0x3000); // Pointer at ZP 0x45 (0x40 + 0x05)
-        var state = CreateState(pc: 0x1000, x: 0x05, cycles: 10);
+        SetupCpu(pc: 0x1000, x: 0x05, cycles: 10);
 
         // Act
-        cpu.SetState(state); Addr address = AddressingModes.IndirectX(cpu); state = cpu.GetState();
+        Addr address = AddressingModes.IndirectX(cpu);
 
         // Assert
         Assert.That(address, Is.EqualTo(0x3000));
-        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1001));
-        Assert.That(state.Cycles, Is.EqualTo(14)); // +4 cycles (fetch ZP + index + read pointer)
+        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x1001));
+        Assert.That(cpu.GetCycles(), Is.EqualTo(14)); // +4 cycles (fetch ZP + index + read pointer)
     }
 
     /// <summary>
@@ -246,15 +246,15 @@ public class AddressingModesTests
         // Arrange
         memory.Write(0x1000, 0x50); // ZP address
         memory.WriteWord(0x0050, 0x4000); // Pointer at ZP 0x50
-        var state = CreateState(pc: 0x1000, y: 0x10, cycles: 10);
+        SetupCpu(pc: 0x1000, y: 0x10, cycles: 10);
 
         // Act
-        cpu.SetState(state); Addr address = AddressingModes.IndirectY(cpu); state = cpu.GetState();
+        Addr address = AddressingModes.IndirectY(cpu);
 
         // Assert
         Assert.That(address, Is.EqualTo(0x4010)); // 0x4000 + 0x10
-        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1001));
-        Assert.That(state.Cycles, Is.EqualTo(13)); // +3 cycles, no page boundary penalty
+        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x1001));
+        Assert.That(cpu.GetCycles(), Is.EqualTo(13)); // +3 cycles, no page boundary penalty
     }
 
     /// <summary>
@@ -266,15 +266,15 @@ public class AddressingModesTests
         // Arrange
         memory.Write(0x1000, 0x60); // ZP address
         memory.WriteWord(0x0060, 0x40FF); // Pointer at ZP 0x60
-        var state = CreateState(pc: 0x1000, y: 0x02, cycles: 10);
+        SetupCpu(pc: 0x1000, y: 0x02, cycles: 10);
 
         // Act
-        cpu.SetState(state); Addr address = AddressingModes.IndirectY(cpu); state = cpu.GetState();
+        Addr address = AddressingModes.IndirectY(cpu);
 
         // Assert
         Assert.That(address, Is.EqualTo(0x4101)); // 0x40FF + 0x02
-        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1001));
-        Assert.That(state.Cycles, Is.EqualTo(14)); // +4 cycles (3 base + 1 page boundary)
+        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x1001));
+        Assert.That(cpu.GetCycles(), Is.EqualTo(14)); // +4 cycles (3 base + 1 page boundary)
     }
 
     /// <summary>
@@ -285,15 +285,15 @@ public class AddressingModesTests
     {
         // Arrange - no page crossing case
         memory.WriteWord(0x1000, 0x2000);
-        var state = CreateState(pc: 0x1000, x: 0x10, cycles: 10);
+        SetupCpu(pc: 0x1000, x: 0x10, cycles: 10);
 
         // Act
-        cpu.SetState(state); Addr address = AddressingModes.AbsoluteXWrite(cpu); state = cpu.GetState();
+        Addr address = AddressingModes.AbsoluteXWrite(cpu);
 
         // Assert
         Assert.That(address, Is.EqualTo(0x2010));
-        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1002));
-        Assert.That(state.Cycles, Is.EqualTo(13)); // Always +3 cycles for write operations
+        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x1002));
+        Assert.That(cpu.GetCycles(), Is.EqualTo(13)); // Always +3 cycles for write operations
     }
 
     /// <summary>
@@ -304,15 +304,15 @@ public class AddressingModesTests
     {
         // Arrange - no page crossing case
         memory.WriteWord(0x1000, 0x3000);
-        var state = CreateState(pc: 0x1000, y: 0x20, cycles: 10);
+        SetupCpu(pc: 0x1000, y: 0x20, cycles: 10);
 
         // Act
-        cpu.SetState(state); Addr address = AddressingModes.AbsoluteYWrite(cpu); state = cpu.GetState();
+        Addr address = AddressingModes.AbsoluteYWrite(cpu);
 
         // Assert
         Assert.That(address, Is.EqualTo(0x3020));
-        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1002));
-        Assert.That(state.Cycles, Is.EqualTo(13)); // Always +3 cycles for write operations
+        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x1002));
+        Assert.That(cpu.GetCycles(), Is.EqualTo(13)); // Always +3 cycles for write operations
     }
 
     /// <summary>
@@ -324,21 +324,21 @@ public class AddressingModesTests
         // Arrange - no page crossing case
         memory.Write(0x1000, 0x70); // ZP address
         memory.WriteWord(0x0070, 0x5000); // Pointer at ZP 0x70
-        var state = CreateState(pc: 0x1000, y: 0x30, cycles: 10);
+        SetupCpu(pc: 0x1000, y: 0x30, cycles: 10);
 
         // Act
-        cpu.SetState(state); Addr address = AddressingModes.IndirectYWrite(cpu); state = cpu.GetState();
+        Addr address = AddressingModes.IndirectYWrite(cpu);
 
         // Assert
         Assert.That(address, Is.EqualTo(0x5030));
-        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1001));
-        Assert.That(state.Cycles, Is.EqualTo(14)); // Always +4 cycles for write operations
+        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x1001));
+        Assert.That(cpu.GetCycles(), Is.EqualTo(14)); // Always +4 cycles for write operations
     }
 
     /// <summary>
-    /// Creates a CpuState for testing with the specified register values.
+    /// Sets up CPU registers for testing.
     /// </summary>
-    private static CpuState CreateState(
+    private void SetupCpu(
         Word pc = 0,
         byte a = 0,
         byte x = 0,
@@ -347,13 +347,12 @@ public class AddressingModesTests
         ProcessorStatusFlags p = 0,
         ulong cycles = 0)
     {
-        var state = new CpuState { Cycles = cycles };
-        state.Registers.PC.SetWord(pc);
-        state.Registers.A.SetByte(a);
-        state.Registers.X.SetByte(x);
-        state.Registers.Y.SetByte(y);
-        state.Registers.SP.SetByte(sp);
-        state.Registers.P = p;
-        return state;
+        cpu.Registers.PC.SetWord(pc);
+        cpu.Registers.A.SetByte(a);
+        cpu.Registers.X.SetByte(x);
+        cpu.Registers.Y.SetByte(y);
+        cpu.Registers.SP.SetByte(sp);
+        cpu.Registers.P = p;
+        cpu.SetCycles(cycles);
     }
 }

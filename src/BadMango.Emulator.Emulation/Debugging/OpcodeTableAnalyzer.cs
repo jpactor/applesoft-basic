@@ -256,8 +256,8 @@ public static class OpcodeTableAnalyzer
         var targetType = target.GetType();
         var addressingModeDelegate = targetType
             .GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-            .Where(f => f.FieldType == typeof(AddressingModeHandler<CpuState>))
-            .Select(f => f.GetValue(target) as AddressingModeHandler<CpuState>)
+            .Where(f => f.FieldType == typeof(AddressingModeHandler))
+            .Select(f => f.GetValue(target) as AddressingModeHandler)
             .FirstOrDefault(d => d is not null);
 
         if (addressingModeDelegate is not null)

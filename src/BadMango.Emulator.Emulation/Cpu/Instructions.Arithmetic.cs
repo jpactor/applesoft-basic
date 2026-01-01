@@ -21,7 +21,7 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use.</param>
     /// <returns>An opcode handler that executes ADC with the given addressing mode.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler ADC(AddressingModeHandler<CpuState> addressingMode)
+    public static OpcodeHandler ADC(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -115,7 +115,7 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use.</param>
     /// <returns>An opcode handler that executes SBC with the given addressing mode.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler SBC(AddressingModeHandler<CpuState> addressingMode)
+    public static OpcodeHandler SBC(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -209,7 +209,7 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use.</param>
     /// <returns>An opcode handler that executes INC with the given addressing mode.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler INC(AddressingModeHandler<CpuState> addressingMode)
+    public static OpcodeHandler INC(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -241,7 +241,7 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use.</param>
     /// <returns>An opcode handler that executes DEC with the given addressing mode.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler DEC(AddressingModeHandler<CpuState> addressingMode)
+    public static OpcodeHandler DEC(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -273,7 +273,7 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes INX.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler INX(AddressingModeHandler<CpuState> addressingMode)
+    public static OpcodeHandler INX(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -300,7 +300,7 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes INY.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler INY(AddressingModeHandler<CpuState> addressingMode)
+    public static OpcodeHandler INY(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -327,7 +327,7 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes DEX.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler DEX(AddressingModeHandler<CpuState> addressingMode)
+    public static OpcodeHandler DEX(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -354,7 +354,7 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes DEY.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler DEY(AddressingModeHandler<CpuState> addressingMode)
+    public static OpcodeHandler DEY(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {

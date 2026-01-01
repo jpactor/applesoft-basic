@@ -21,7 +21,7 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes TAX.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler TAX(AddressingModeHandler<CpuState> addressingMode)
+    public static OpcodeHandler TAX(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -49,7 +49,7 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes TAY.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler TAY(AddressingModeHandler<CpuState> addressingMode)
+    public static OpcodeHandler TAY(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -77,7 +77,7 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes TXA.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler TXA(AddressingModeHandler<CpuState> addressingMode)
+    public static OpcodeHandler TXA(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -105,7 +105,7 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes TYA.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler TYA(AddressingModeHandler<CpuState> addressingMode)
+    public static OpcodeHandler TYA(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -133,7 +133,7 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes TXS.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler TXS(AddressingModeHandler<CpuState> addressingMode)
+    public static OpcodeHandler TXS(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -158,7 +158,7 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes TSX.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler TSX(AddressingModeHandler<CpuState> addressingMode)
+    public static OpcodeHandler TSX(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {

@@ -35,24 +35,12 @@ public interface ICpu
     CpuCapabilities Capabilities { get; }
 
     /// <summary>
-    /// Gets a reference to the current CPU state including registers and execution state.
-    /// </summary>
-    /// <value>A reference to the CPU state structure.</value>
-    /// <remarks>
-    /// This property provides direct access to the CPU state for instruction handlers
-    /// and addressing modes. The state includes registers, cycle count, halt state,
-    /// and debug information. Modifications to the returned reference affect the CPU directly.
-    /// </remarks>
-    ref CpuState State { get; }
-
-    /// <summary>
     /// Gets a reference to the CPU's register set.
     /// </summary>
     /// <value>A reference to the registers structure.</value>
     /// <remarks>
     /// This property provides direct access to CPU registers for instruction handlers
-    /// and addressing modes. It is the preferred way to access registers over
-    /// <see cref="State"/>.Registers. Modifications to the returned reference affect the CPU directly.
+    /// and addressing modes. Modifications to the returned reference affect the CPU directly.
     /// </remarks>
     ref Registers Registers { get; }
 
@@ -208,15 +196,41 @@ public interface ICpu
     Registers GetRegisters();
 
     /// <summary>
-    /// Gets the current complete CPU state including registers and execution state.
+    /// Gets the current cycle count as tracked by the scheduler.
     /// </summary>
-    /// <returns>RegisterAccumulator structure containing all register values, cycle count, and other execution state.</returns>
-    ref CpuState GetState();
+    /// <returns>The total number of cycles executed since reset.</returns>
+    ulong GetCycles();
 
     /// <summary>
-    /// Sets the complete CPU state including registers and execution state.
+    /// Sets the current cycle count, advancing the scheduler if necessary.
     /// </summary>
-    /// <param name="state">The state structure containing register values, cycle count, and other execution state to restore.</param>
+    /// <param name="cycles">The new cycle count value.</param>
+    /// <remarks>
+    /// If the new cycle count is greater than the current scheduler time,
+    /// the scheduler will be advanced to match. This is useful for test
+    /// scenarios that need to manipulate cycle timing.
+    /// </remarks>
+    void SetCycles(ulong cycles);
+
+    /// <summary>
+    /// Gets a snapshot of the current CPU state including registers and cycles.
+    /// </summary>
+    /// <returns>A <see cref="CpuState"/> structure containing the current state.</returns>
+    /// <remarks>
+    /// This method is primarily provided for testing and debugging purposes.
+    /// For runtime CPU operation, prefer accessing <see cref="Registers"/> and
+    /// <see cref="GetCycles"/> directly.
+    /// </remarks>
+    CpuState GetState();
+
+    /// <summary>
+    /// Sets the CPU state from a snapshot.
+    /// </summary>
+    /// <param name="state">The state to apply to the CPU.</param>
+    /// <remarks>
+    /// This method is primarily provided for testing and debugging purposes.
+    /// It sets the registers and cycle count from the provided state snapshot.
+    /// </remarks>
     void SetState(CpuState state);
 
     /// <summary>
