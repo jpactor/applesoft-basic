@@ -51,11 +51,11 @@ public static partial class Instructions
         {
             byte opCycles = 0;
             Addr address = addressingMode(cpu);
-            byte size = cpu.State.Registers.GetAccumulatorSize();
+            byte size = cpu.Registers.GetAccumulatorSize();
             var value = cpu.ReadValue(address, size);
             opCycles++; // Memory read cycle
 
-            if (cpu.State.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.LDA };
 
@@ -73,9 +73,9 @@ public static partial class Instructions
                 cpu.Trace = cpu.Trace with { InstructionCycles = cpu.Trace.InstructionCycles + opCycles };
             }
 
-            cpu.State.Registers.TCU += opCycles;
-            cpu.State.Registers.P.SetZeroAndNegative(value, size);
-            cpu.State.Registers.A.SetValue(value, size);
+            cpu.Registers.TCU += opCycles;
+            cpu.Registers.P.SetZeroAndNegative(value, size);
+            cpu.Registers.A.SetValue(value, size);
         };
     }
 
@@ -91,11 +91,11 @@ public static partial class Instructions
         {
             byte opCycles = 0;
             Addr address = addressingMode(cpu);
-            byte size = cpu.State.Registers.GetIndexSize();
+            byte size = cpu.Registers.GetIndexSize();
             var value = cpu.ReadValue(address, size);
             opCycles++; // Memory read cycle
 
-            if (cpu.State.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.LDX };
 
@@ -113,9 +113,9 @@ public static partial class Instructions
                 cpu.Trace = cpu.Trace with { InstructionCycles = cpu.Trace.InstructionCycles + opCycles };
             }
 
-            cpu.State.Registers.TCU += opCycles;
-            cpu.State.Registers.P.SetZeroAndNegative(value, size);
-            cpu.State.Registers.X.SetValue(value, size);
+            cpu.Registers.TCU += opCycles;
+            cpu.Registers.P.SetZeroAndNegative(value, size);
+            cpu.Registers.X.SetValue(value, size);
         };
     }
 
@@ -131,11 +131,11 @@ public static partial class Instructions
         {
             byte opCycles = 0;
             Addr address = addressingMode(cpu);
-            byte size = cpu.State.Registers.GetIndexSize();
+            byte size = cpu.Registers.GetIndexSize();
             var value = cpu.ReadValue(address, size);
             opCycles++; // Memory read cycle
 
-            if (cpu.State.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.LDY };
 
@@ -153,9 +153,9 @@ public static partial class Instructions
                 cpu.Trace = cpu.Trace with { InstructionCycles = cpu.Trace.InstructionCycles + opCycles };
             }
 
-            cpu.State.Registers.TCU += opCycles;
-            cpu.State.Registers.P.SetZeroAndNegative(value, size);
-            cpu.State.Registers.Y.SetValue(value, size);
+            cpu.Registers.TCU += opCycles;
+            cpu.Registers.P.SetZeroAndNegative(value, size);
+            cpu.Registers.Y.SetValue(value, size);
         };
     }
 
@@ -171,17 +171,17 @@ public static partial class Instructions
         {
             byte opCycles = 0;
             Addr address = addressingMode(cpu);
-            byte size = cpu.State.Registers.GetAccumulatorSize();
-            cpu.WriteValue(address, cpu.State.Registers.A.GetValue(size), size);
+            byte size = cpu.Registers.GetAccumulatorSize();
+            cpu.WriteValue(address, cpu.Registers.A.GetValue(size), size);
             opCycles++; // Memory write cycle
 
-            if (cpu.State.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.STA };
                 cpu.Trace = cpu.Trace with { InstructionCycles = cpu.Trace.InstructionCycles + opCycles };
             }
 
-            cpu.State.Registers.TCU += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 
@@ -197,17 +197,17 @@ public static partial class Instructions
         {
             byte opCycles = 0;
             Addr address = addressingMode(cpu);
-            byte size = cpu.State.Registers.GetIndexSize();
-            cpu.WriteValue(address, cpu.State.Registers.X.GetValue(size), size);
+            byte size = cpu.Registers.GetIndexSize();
+            cpu.WriteValue(address, cpu.Registers.X.GetValue(size), size);
             opCycles++; // Memory write cycle
 
-            if (cpu.State.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.STX };
                 cpu.Trace = cpu.Trace with { InstructionCycles = cpu.Trace.InstructionCycles + opCycles };
             }
 
-            cpu.State.Registers.TCU += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 
@@ -223,17 +223,17 @@ public static partial class Instructions
         {
             byte opCycles = 0;
             Addr address = addressingMode(cpu);
-            byte size = cpu.State.Registers.GetIndexSize();
-            cpu.WriteValue(address, cpu.State.Registers.Y.GetValue(size), size);
+            byte size = cpu.Registers.GetIndexSize();
+            cpu.WriteValue(address, cpu.Registers.Y.GetValue(size), size);
             opCycles++; // Memory write cycle
 
-            if (cpu.State.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.STY };
                 cpu.Trace = cpu.Trace with { InstructionCycles = cpu.Trace.InstructionCycles + opCycles };
             }
 
-            cpu.State.Registers.TCU += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 
@@ -251,13 +251,13 @@ public static partial class Instructions
             addressingMode(cpu); // Call addressing mode (usually does nothing for Implied)
             opCycles++; // NOP takes 2 cycles total (1 from fetch + 1 here)
 
-            if (cpu.State.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.NOP };
                 cpu.Trace = cpu.Trace with { InstructionCycles = cpu.Trace.InstructionCycles + opCycles };
             }
 
-            cpu.State.Registers.TCU += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 
@@ -276,29 +276,29 @@ public static partial class Instructions
 
             // BRK causes a software interrupt
             // Total 7 cycles: 1 (opcode fetch) + 1 (PC increment) + 2 (push PC) + 1 (push P) + 2 (read IRQ vector)
-            cpu.State.Registers.PC.Advance();
+            cpu.Registers.PC.Advance();
             opCycles++; // PC increment cycle
 
-            Word pc = cpu.State.Registers.PC.GetWord();
+            Word pc = cpu.Registers.PC.GetWord();
 
-            cpu.Write8(cpu.State.PushByte(Cpu65C02Constants.StackBase), pc.HighByte());
+            cpu.Write8(cpu.PushByte(Cpu65C02Constants.StackBase), pc.HighByte());
             opCycles++; // Push PC high byte
-            cpu.Write8(cpu.State.PushByte(Cpu65C02Constants.StackBase), pc.LowByte());
+            cpu.Write8(cpu.PushByte(Cpu65C02Constants.StackBase), pc.LowByte());
             opCycles++; // Push PC low byte
-            cpu.Write8(cpu.State.PushByte(Cpu65C02Constants.StackBase), (byte)(cpu.State.Registers.P | ProcessorStatusFlags.B));
+            cpu.Write8(cpu.PushByte(Cpu65C02Constants.StackBase), (byte)(cpu.Registers.P | ProcessorStatusFlags.B));
             opCycles++; // Push P
 
-            cpu.State.Registers.P |= ProcessorStatusFlags.I;
-            cpu.State.Registers.PC.SetWord(cpu.Read16(Cpu65C02Constants.IrqVector));
+            cpu.Registers.P |= ProcessorStatusFlags.I;
+            cpu.Registers.PC.SetWord(cpu.Read16(Cpu65C02Constants.IrqVector));
             opCycles += 2; // Read IRQ vector (2 bytes)
 
-            if (cpu.State.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.BRK };
                 cpu.Trace = cpu.Trace with { InstructionCycles = cpu.Trace.InstructionCycles + opCycles };
             }
 
-            cpu.State.Registers.TCU += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 }

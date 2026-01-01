@@ -114,6 +114,13 @@ public class Cpu65C02 : ICpu
         get => ref state;
     }
 
+    /// <inheritdoc />
+    public ref Registers Registers
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => ref state.Registers;
+    }
+
     /// <inheritdoc/>
     public bool Halted
     {
@@ -467,6 +474,24 @@ public class Cpu65C02 : ICpu
             default:
                 throw new ArgumentException($"Invalid size: {sizeInBits}. Must be 8, 16, or 32.", nameof(sizeInBits));
         }
+    }
+
+    /// <inheritdoc/>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Addr PushByte(Addr stackBase = 0)
+    {
+        var old = state.Registers.SP.stack;
+        state.Registers.SP.stack--;
+        return stackBase + old;
+    }
+
+    /// <inheritdoc/>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Addr PopByte(Addr stackBase = 0)
+    {
+        var old = state.Registers.SP.stack + 1;
+        state.Registers.SP.stack++;
+        return stackBase + old;
     }
 
     // ─── Private Helper Methods ─────────────────────────────────────────

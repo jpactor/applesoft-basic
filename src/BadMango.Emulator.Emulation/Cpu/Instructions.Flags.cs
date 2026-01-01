@@ -27,16 +27,16 @@ public static partial class Instructions
         {
             byte opCycles = 0;
             addressingMode(cpu);
-            cpu.State.Registers.P &= ~ProcessorStatusFlags.C;
+            cpu.Registers.P &= ~ProcessorStatusFlags.C;
             opCycles++;
 
-            if (cpu.State.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.CLC };
                 cpu.Trace = cpu.Trace with { InstructionCycles = cpu.Trace.InstructionCycles + opCycles };
             }
 
-            cpu.State.Registers.TCU += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 
@@ -52,16 +52,16 @@ public static partial class Instructions
         {
             byte opCycles = 0;
             addressingMode(cpu);
-            cpu.State.Registers.P |= ProcessorStatusFlags.C;
+            cpu.Registers.P |= ProcessorStatusFlags.C;
             opCycles++;
 
-            if (cpu.State.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.SEC };
                 cpu.Trace = cpu.Trace with { InstructionCycles = cpu.Trace.InstructionCycles + opCycles };
             }
 
-            cpu.State.Registers.TCU += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 
@@ -77,16 +77,16 @@ public static partial class Instructions
         {
             byte opCycles = 0;
             addressingMode(cpu);
-            cpu.State.Registers.P &= ~ProcessorStatusFlags.I;
+            cpu.Registers.P &= ~ProcessorStatusFlags.I;
             opCycles++;
 
-            if (cpu.State.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.CLI };
                 cpu.Trace = cpu.Trace with { InstructionCycles = cpu.Trace.InstructionCycles + opCycles };
             }
 
-            cpu.State.Registers.TCU += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 
@@ -102,16 +102,16 @@ public static partial class Instructions
         {
             byte opCycles = 0;
             addressingMode(cpu);
-            cpu.State.Registers.P |= ProcessorStatusFlags.I;
+            cpu.Registers.P |= ProcessorStatusFlags.I;
             opCycles++;
 
-            if (cpu.State.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.SEI };
                 cpu.Trace = cpu.Trace with { InstructionCycles = cpu.Trace.InstructionCycles + opCycles };
             }
 
-            cpu.State.Registers.TCU += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 
@@ -127,16 +127,16 @@ public static partial class Instructions
         {
             byte opCycles = 0;
             addressingMode(cpu);
-            cpu.State.Registers.P &= ~ProcessorStatusFlags.D;
+            cpu.Registers.P &= ~ProcessorStatusFlags.D;
             opCycles++;
 
-            if (cpu.State.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.CLD };
                 cpu.Trace = cpu.Trace with { InstructionCycles = cpu.Trace.InstructionCycles + opCycles };
             }
 
-            cpu.State.Registers.TCU += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 
@@ -152,16 +152,16 @@ public static partial class Instructions
         {
             byte opCycles = 0;
             addressingMode(cpu);
-            cpu.State.Registers.P |= ProcessorStatusFlags.D;
+            cpu.Registers.P |= ProcessorStatusFlags.D;
             opCycles++;
 
-            if (cpu.State.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.SED };
                 cpu.Trace = cpu.Trace with { InstructionCycles = cpu.Trace.InstructionCycles + opCycles };
             }
 
-            cpu.State.Registers.TCU += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 
@@ -177,16 +177,16 @@ public static partial class Instructions
         {
             byte opCycles = 0;
             addressingMode(cpu);
-            cpu.State.Registers.P &= ~ProcessorStatusFlags.V;
+            cpu.Registers.P &= ~ProcessorStatusFlags.V;
             opCycles++;
 
-            if (cpu.State.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.CLV };
                 cpu.Trace = cpu.Trace with { InstructionCycles = cpu.Trace.InstructionCycles + opCycles };
             }
 
-            cpu.State.Registers.TCU += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 }

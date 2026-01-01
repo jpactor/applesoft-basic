@@ -65,9 +65,8 @@ public static class AddressingModes
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Addr Immediate(ICpu cpu)
     {
-        ref var state = ref cpu.State;
-        Addr address = state.Registers.PC.GetDWord();
-        state.Registers.PC.Advance();
+        Addr address = cpu.Registers.PC.GetDWord();
+        cpu.Registers.PC.Advance();
 
         if (cpu.IsDebuggerAttached)
         {
@@ -85,19 +84,18 @@ public static class AddressingModes
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Addr ZeroPage(ICpu cpu)
     {
-        ref var state = ref cpu.State;
         byte addrCycles = 0;
-        byte zpOffset = cpu.Read8(state.Registers.PC.addr++);
+        byte zpOffset = cpu.Read8(cpu.Registers.PC.addr++);
         addrCycles++; // 1 cycle to fetch the ZP address
 
-        Word directPage = state.Registers.D.GetWord();
+        Word directPage = cpu.Registers.D.GetWord();
 
         if ((directPage & 0xFF) != 0)
         {
             addrCycles++;
         }
 
-        state.Registers.TCU += addrCycles;
+        cpu.Registers.TCU += addrCycles;
         Addr effectiveAddr = (Addr)(directPage + zpOffset);
 
         if (cpu.IsDebuggerAttached)
@@ -125,16 +123,15 @@ public static class AddressingModes
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Addr ZeroPageX(ICpu cpu)
     {
-        ref var state = ref cpu.State;
         byte addrCycles = 0;
-        var pc = state.Registers.PC.GetAddr();
-        state.Registers.PC.Advance();
+        var pc = cpu.Registers.PC.GetAddr();
+        cpu.Registers.PC.Advance();
         byte zpOffset = cpu.Read8(pc);
         addrCycles++; // 1 cycle to fetch ZP address
 
-        Word directPage = state.Registers.D.GetWord();
+        Word directPage = cpu.Registers.D.GetWord();
 
-        byte x = state.Registers.X.GetByte();
+        byte x = cpu.Registers.X.GetByte();
         byte effectiveOffset = (byte)(zpOffset + x);
 
         addrCycles++; // 1 cycle for indexing
@@ -144,7 +141,7 @@ public static class AddressingModes
             addrCycles++;
         }
 
-        state.Registers.TCU += addrCycles;
+        cpu.Registers.TCU += addrCycles;
         Addr effectiveAddr = (Addr)(directPage + effectiveOffset);
 
         if (cpu.IsDebuggerAttached)
@@ -172,16 +169,15 @@ public static class AddressingModes
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Addr ZeroPageY(ICpu cpu)
     {
-        ref var state = ref cpu.State;
         byte addrCycles = 0;
-        var pc = state.Registers.PC.GetAddr();
-        state.Registers.PC.Advance();
+        var pc = cpu.Registers.PC.GetAddr();
+        cpu.Registers.PC.Advance();
         byte zpOffset = cpu.Read8(pc);
         addrCycles++; // 1 cycle to fetch ZP address
 
-        Word directPage = state.Registers.D.GetWord();
+        Word directPage = cpu.Registers.D.GetWord();
 
-        byte y = state.Registers.Y.GetByte();
+        byte y = cpu.Registers.Y.GetByte();
         byte effectiveOffset = (byte)(zpOffset + y);
 
         addrCycles++; // 1 cycle for indexing
@@ -191,7 +187,7 @@ public static class AddressingModes
             addrCycles++;
         }
 
-        state.Registers.TCU += addrCycles;
+        cpu.Registers.TCU += addrCycles;
         Addr effectiveAddr = (Addr)(directPage + effectiveOffset);
 
         if (cpu.IsDebuggerAttached)
@@ -219,16 +215,15 @@ public static class AddressingModes
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Addr Absolute(ICpu cpu)
     {
-        ref var state = ref cpu.State;
         byte addrCycles = 0;
-        Addr pc = state.Registers.PC.GetAddr();
+        Addr pc = cpu.Registers.PC.GetAddr();
         Addr address = cpu.Read16(pc);
         addrCycles += 2; // 2 cycles to fetch the 16-bit address
-        state.Registers.PC.Advance(2);
+        cpu.Registers.PC.Advance(2);
 
-        state.Registers.TCU += addrCycles;
+        cpu.Registers.TCU += addrCycles;
 
-        Addr effectiveAddr = ((Addr)state.Registers.DBR << 16) | address;
+        Addr effectiveAddr = ((Addr)cpu.Registers.DBR << 16) | address;
 
         if (cpu.IsDebuggerAttached)
         {
@@ -256,21 +251,20 @@ public static class AddressingModes
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Addr AbsoluteX(ICpu cpu)
     {
-        ref var state = ref cpu.State;
         byte addrCycles = 0;
-        Addr pc = state.Registers.PC.GetAddr();
+        Addr pc = cpu.Registers.PC.GetAddr();
         Addr baseAddr = cpu.Read16(pc);
         addrCycles += 2; // 2 cycles to fetch the 16-bit address
-        state.Registers.PC.Advance(2);
+        cpu.Registers.PC.Advance(2);
 
-        Addr effectiveAddr = baseAddr + state.Registers.X.GetDWord();
+        Addr effectiveAddr = baseAddr + cpu.Registers.X.GetDWord();
 
         if ((baseAddr & 0xFF00) != (effectiveAddr & 0xFF00))
         {
             addrCycles++;
         }
 
-        state.Registers.TCU += addrCycles;
+        cpu.Registers.TCU += addrCycles;
 
         if (cpu.IsDebuggerAttached)
         {
@@ -298,21 +292,20 @@ public static class AddressingModes
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Addr AbsoluteY(ICpu cpu)
     {
-        ref var state = ref cpu.State;
         byte addrCycles = 0;
-        Addr pc = state.Registers.PC.GetAddr();
+        Addr pc = cpu.Registers.PC.GetAddr();
         Addr baseAddr = cpu.Read16(pc);
         addrCycles += 2; // 2 cycles to fetch the 16-bit address
-        state.Registers.PC.Advance(2);
+        cpu.Registers.PC.Advance(2);
 
-        Addr effectiveAddr = baseAddr + state.Registers.Y.GetDWord();
+        Addr effectiveAddr = baseAddr + cpu.Registers.Y.GetDWord();
 
         if ((baseAddr & 0xFF00) != (effectiveAddr & 0xFF00))
         {
             addrCycles++;
         }
 
-        state.Registers.TCU += addrCycles;
+        cpu.Registers.TCU += addrCycles;
 
         if (cpu.IsDebuggerAttached)
         {
@@ -340,16 +333,15 @@ public static class AddressingModes
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Addr IndirectX(ICpu cpu)
     {
-        ref var state = ref cpu.State;
         byte addrCycles = 0;
-        var pc = state.Registers.PC.GetAddr();
-        state.Registers.PC.Advance();
+        var pc = cpu.Registers.PC.GetAddr();
+        cpu.Registers.PC.Advance();
         byte zpOffset = cpu.Read8(pc);
         addrCycles++; // 1 cycle to fetch ZP address
 
-        Word directPage = state.Registers.D.GetWord();
+        Word directPage = cpu.Registers.D.GetWord();
 
-        byte x = state.Registers.X.GetByte();
+        byte x = cpu.Registers.X.GetByte();
         byte effectiveOffset = (byte)(zpOffset + x);
 
         addrCycles++; // 1 cycle for indexing
@@ -364,7 +356,7 @@ public static class AddressingModes
 
         addrCycles += 2; // 2 cycles to read pointer from ZP
 
-        state.Registers.TCU += addrCycles;
+        cpu.Registers.TCU += addrCycles;
 
         if (cpu.IsDebuggerAttached)
         {
@@ -391,14 +383,13 @@ public static class AddressingModes
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Addr IndirectY(ICpu cpu)
     {
-        ref var state = ref cpu.State;
         byte addrCycles = 0;
-        var pc = state.Registers.PC.GetAddr();
-        state.Registers.PC.Advance();
+        var pc = cpu.Registers.PC.GetAddr();
+        cpu.Registers.PC.Advance();
         byte zpOffset = cpu.Read8(pc);
         addrCycles++; // 1 cycle to fetch ZP address
 
-        Word directPage = state.Registers.D.GetWord();
+        Word directPage = cpu.Registers.D.GetWord();
 
         if ((directPage & 0xFF) != 0)
         {
@@ -410,7 +401,7 @@ public static class AddressingModes
 
         addrCycles += 2; // 2 cycles to read pointer from ZP
 
-        byte y = state.Registers.Y.GetByte();
+        byte y = cpu.Registers.Y.GetByte();
         Addr effectiveAddr = baseAddr + y;
 
         if ((baseAddr & 0xFF00) != (effectiveAddr & 0xFF00))
@@ -418,7 +409,7 @@ public static class AddressingModes
             addrCycles++;
         }
 
-        state.Registers.TCU += addrCycles;
+        cpu.Registers.TCU += addrCycles;
 
         if (cpu.IsDebuggerAttached)
         {
@@ -445,15 +436,14 @@ public static class AddressingModes
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Addr AbsoluteXWrite(ICpu cpu)
     {
-        ref var state = ref cpu.State;
         byte addrCycles = 0;
-        Addr pc = state.Registers.PC.GetAddr();
+        Addr pc = cpu.Registers.PC.GetAddr();
         Addr baseAddr = cpu.Read16(pc);
-        state.Registers.PC.Advance(2);
-        Addr effectiveAddr = baseAddr + state.Registers.X.GetByte();
+        cpu.Registers.PC.Advance(2);
+        Addr effectiveAddr = baseAddr + cpu.Registers.X.GetByte();
         addrCycles += 3; // 2 cycles to fetch address + 1 extra for write operations
 
-        state.Registers.TCU += addrCycles;
+        cpu.Registers.TCU += addrCycles;
 
         if (cpu.IsDebuggerAttached)
         {
@@ -481,15 +471,14 @@ public static class AddressingModes
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Addr AbsoluteYWrite(ICpu cpu)
     {
-        ref var state = ref cpu.State;
         byte addrCycles = 0;
-        Addr pc = state.Registers.PC.GetAddr();
+        Addr pc = cpu.Registers.PC.GetAddr();
         Addr baseAddr = cpu.Read16(pc);
-        state.Registers.PC.Advance(2);
-        Addr effectiveAddr = baseAddr + state.Registers.Y.GetByte();
+        cpu.Registers.PC.Advance(2);
+        Addr effectiveAddr = baseAddr + cpu.Registers.Y.GetByte();
         addrCycles += 3; // 2 cycles to fetch address + 1 extra for write operations
 
-        state.Registers.TCU += addrCycles;
+        cpu.Registers.TCU += addrCycles;
 
         if (cpu.IsDebuggerAttached)
         {
@@ -517,14 +506,13 @@ public static class AddressingModes
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Addr IndirectYWrite(ICpu cpu)
     {
-        ref var state = ref cpu.State;
         byte addrCycles = 0;
-        var pc = state.Registers.PC.GetAddr();
-        state.Registers.PC.Advance();
+        var pc = cpu.Registers.PC.GetAddr();
+        cpu.Registers.PC.Advance();
         byte zpOffset = cpu.Read8(pc);
         addrCycles++; // 1 cycle to fetch ZP address
 
-        Word directPage = state.Registers.D.GetWord();
+        Word directPage = cpu.Registers.D.GetWord();
 
         if ((directPage & 0xFF) != 0)
         {
@@ -536,12 +524,12 @@ public static class AddressingModes
 
         addrCycles += 2; // 2 cycles to read pointer from ZP
 
-        byte y = state.Registers.Y.GetByte();
+        byte y = cpu.Registers.Y.GetByte();
         Addr effectiveAddr = baseAddr + y;
 
         addrCycles++; // 1 extra cycle for write (always taken)
 
-        state.Registers.TCU += addrCycles;
+        cpu.Registers.TCU += addrCycles;
 
         if (cpu.IsDebuggerAttached)
         {
@@ -589,16 +577,15 @@ public static class AddressingModes
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Addr Relative(ICpu cpu)
     {
-        ref var state = ref cpu.State;
         byte addrCycles = 0;
-        var pc = state.Registers.PC.GetAddr();
-        state.Registers.PC.Advance();
+        var pc = cpu.Registers.PC.GetAddr();
+        cpu.Registers.PC.Advance();
         sbyte offset = (sbyte)cpu.Read8(pc);
         addrCycles++; // 1 cycle to fetch the offset
 
-        Addr targetAddr = (Addr)(state.Registers.PC.GetAddr() + offset);
+        Addr targetAddr = (Addr)(cpu.Registers.PC.GetAddr() + offset);
 
-        state.Registers.TCU += addrCycles;
+        cpu.Registers.TCU += addrCycles;
 
         if (cpu.IsDebuggerAttached)
         {
@@ -625,18 +612,17 @@ public static class AddressingModes
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Addr Indirect(ICpu cpu)
     {
-        ref var state = ref cpu.State;
         byte addrCycles = 0;
-        Addr pc = state.Registers.PC.GetAddr();
+        Addr pc = cpu.Registers.PC.GetAddr();
         Addr pointerAddr = cpu.Read16(pc);
         addrCycles += 2; // 2 cycles to fetch pointer address
-        state.Registers.PC.Advance(2);
+        cpu.Registers.PC.Advance(2);
 
         Addr targetAddr = cpu.Read16(pointerAddr);
 
         addrCycles += 2; // 2 cycles to read target
 
-        state.Registers.TCU += addrCycles;
+        cpu.Registers.TCU += addrCycles;
 
         if (cpu.IsDebuggerAttached)
         {

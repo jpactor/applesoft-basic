@@ -46,6 +46,17 @@ public interface ICpu
     ref CpuState State { get; }
 
     /// <summary>
+    /// Gets a reference to the CPU's register set.
+    /// </summary>
+    /// <value>A reference to the registers structure.</value>
+    /// <remarks>
+    /// This property provides direct access to CPU registers for instruction handlers
+    /// and addressing modes. It is the preferred way to access registers over
+    /// <see cref="State"/>.Registers. Modifications to the returned reference affect the CPU directly.
+    /// </remarks>
+    ref Registers Registers { get; }
+
+    /// <summary>
     /// Gets or sets the instruction trace for debug tracing.
     /// </summary>
     /// <value>The current instruction trace structure.</value>
@@ -142,6 +153,32 @@ public interface ICpu
     /// <param name="value">The value to write.</param>
     /// <param name="sizeInBits">The size to write (8, 16, or 32 bits).</param>
     void WriteValue(Addr address, DWord value, byte sizeInBits);
+
+    // ─── Stack Operations ───────────────────────────────────────────────
+
+    /// <summary>
+    /// Pushes a byte onto the stack and decrements the stack pointer.
+    /// </summary>
+    /// <param name="stackBase">The base address of the stack (default 0).</param>
+    /// <returns>The address where the byte should be stored (stack base + old SP).</returns>
+    /// <remarks>
+    /// This method decrements the stack pointer register and returns the address
+    /// where the byte should be written. The caller is responsible for actually
+    /// writing the value to memory using <see cref="Write8"/>.
+    /// </remarks>
+    Addr PushByte(Addr stackBase = 0);
+
+    /// <summary>
+    /// Pops a byte from the stack and increments the stack pointer.
+    /// </summary>
+    /// <param name="stackBase">The base address of the stack (default 0).</param>
+    /// <returns>The address from which the byte should be read (stack base + new SP).</returns>
+    /// <remarks>
+    /// This method increments the stack pointer register and returns the address
+    /// from which the byte should be read. The caller is responsible for actually
+    /// reading the value from memory using <see cref="Read8"/>.
+    /// </remarks>
+    Addr PopByte(Addr stackBase = 0);
 
     /// <summary>
     /// Executes a single instruction.

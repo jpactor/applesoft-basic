@@ -28,10 +28,10 @@ public static partial class Instructions
             byte opCycles = 0;
             Addr targetAddr = addressingMode(cpu);
 
-            if (!cpu.State.Registers.P.HasFlag(ProcessorStatusFlags.C))
+            if (!cpu.Registers.P.HasFlag(ProcessorStatusFlags.C))
             {
-                Word oldPC = cpu.State.Registers.PC.GetWord();
-                cpu.State.Registers.PC.SetWord((Word)targetAddr);
+                Word oldPC = cpu.Registers.PC.GetWord();
+                cpu.Registers.PC.SetWord((Word)targetAddr);
                 opCycles++; // Branch taken
 
                 if ((oldPC & 0xFF00) != (targetAddr & 0xFF00))
@@ -40,13 +40,13 @@ public static partial class Instructions
                 }
             }
 
-            if (cpu.State.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.BCC };
                 cpu.Trace = cpu.Trace with { InstructionCycles = cpu.Trace.InstructionCycles + opCycles };
             }
 
-            cpu.State.Registers.TCU += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 
@@ -63,10 +63,10 @@ public static partial class Instructions
             byte opCycles = 0;
             Addr targetAddr = addressingMode(cpu);
 
-            if (cpu.State.Registers.P.HasFlag(ProcessorStatusFlags.C))
+            if (cpu.Registers.P.HasFlag(ProcessorStatusFlags.C))
             {
-                Word oldPC = cpu.State.Registers.PC.GetWord();
-                cpu.State.Registers.PC.SetWord((Word)targetAddr);
+                Word oldPC = cpu.Registers.PC.GetWord();
+                cpu.Registers.PC.SetWord((Word)targetAddr);
                 opCycles++; // Branch taken
 
                 if ((oldPC & 0xFF00) != (targetAddr & 0xFF00))
@@ -75,13 +75,13 @@ public static partial class Instructions
                 }
             }
 
-            if (cpu.State.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.BCS };
                 cpu.Trace = cpu.Trace with { InstructionCycles = cpu.Trace.InstructionCycles + opCycles };
             }
 
-            cpu.State.Registers.TCU += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 
@@ -98,10 +98,10 @@ public static partial class Instructions
             byte opCycles = 0;
             Addr targetAddr = addressingMode(cpu);
 
-            if (cpu.State.Registers.P.HasFlag(ProcessorStatusFlags.Z))
+            if (cpu.Registers.P.HasFlag(ProcessorStatusFlags.Z))
             {
-                Word oldPC = cpu.State.Registers.PC.GetWord();
-                cpu.State.Registers.PC.SetWord((Word)targetAddr);
+                Word oldPC = cpu.Registers.PC.GetWord();
+                cpu.Registers.PC.SetWord((Word)targetAddr);
                 opCycles++; // Branch taken
 
                 if ((oldPC & 0xFF00) != (targetAddr & 0xFF00))
@@ -110,13 +110,13 @@ public static partial class Instructions
                 }
             }
 
-            if (cpu.State.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.BEQ };
                 cpu.Trace = cpu.Trace with { InstructionCycles = cpu.Trace.InstructionCycles + opCycles };
             }
 
-            cpu.State.Registers.TCU += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 
@@ -133,10 +133,10 @@ public static partial class Instructions
             byte opCycles = 0;
             Addr targetAddr = addressingMode(cpu);
 
-            if (!cpu.State.Registers.P.HasFlag(ProcessorStatusFlags.Z))
+            if (!cpu.Registers.P.HasFlag(ProcessorStatusFlags.Z))
             {
-                Word oldPC = cpu.State.Registers.PC.GetWord();
-                cpu.State.Registers.PC.SetWord((Word)targetAddr);
+                Word oldPC = cpu.Registers.PC.GetWord();
+                cpu.Registers.PC.SetWord((Word)targetAddr);
                 opCycles++; // Branch taken
 
                 if ((oldPC & 0xFF00) != (targetAddr & 0xFF00))
@@ -145,13 +145,13 @@ public static partial class Instructions
                 }
             }
 
-            if (cpu.State.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.BNE };
                 cpu.Trace = cpu.Trace with { InstructionCycles = cpu.Trace.InstructionCycles + opCycles };
             }
 
-            cpu.State.Registers.TCU += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 
@@ -168,10 +168,10 @@ public static partial class Instructions
             byte opCycles = 0;
             Addr targetAddr = addressingMode(cpu);
 
-            if (cpu.State.Registers.P.HasFlag(ProcessorStatusFlags.N))
+            if (cpu.Registers.P.HasFlag(ProcessorStatusFlags.N))
             {
-                Word oldPC = cpu.State.Registers.PC.GetWord();
-                cpu.State.Registers.PC.SetWord((Word)targetAddr);
+                Word oldPC = cpu.Registers.PC.GetWord();
+                cpu.Registers.PC.SetWord((Word)targetAddr);
                 opCycles++; // Branch taken
 
                 if ((oldPC & 0xFF00) != (targetAddr & 0xFF00))
@@ -180,13 +180,13 @@ public static partial class Instructions
                 }
             }
 
-            if (cpu.State.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.BMI };
                 cpu.Trace = cpu.Trace with { InstructionCycles = cpu.Trace.InstructionCycles + opCycles };
             }
 
-            cpu.State.Registers.TCU += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 
@@ -203,10 +203,10 @@ public static partial class Instructions
             byte opCycles = 0;
             Addr targetAddr = addressingMode(cpu);
 
-            if (!cpu.State.Registers.P.HasFlag(ProcessorStatusFlags.N))
+            if (!cpu.Registers.P.HasFlag(ProcessorStatusFlags.N))
             {
-                Word oldPC = cpu.State.Registers.PC.GetWord();
-                cpu.State.Registers.PC.SetWord((Word)targetAddr);
+                Word oldPC = cpu.Registers.PC.GetWord();
+                cpu.Registers.PC.SetWord((Word)targetAddr);
                 opCycles++; // Branch taken
 
                 if ((oldPC & 0xFF00) != (targetAddr & 0xFF00))
@@ -215,13 +215,13 @@ public static partial class Instructions
                 }
             }
 
-            if (cpu.State.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.BPL };
                 cpu.Trace = cpu.Trace with { InstructionCycles = cpu.Trace.InstructionCycles + opCycles };
             }
 
-            cpu.State.Registers.TCU += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 
@@ -238,10 +238,10 @@ public static partial class Instructions
             byte opCycles = 0;
             Addr targetAddr = addressingMode(cpu);
 
-            if (!cpu.State.Registers.P.HasFlag(ProcessorStatusFlags.V))
+            if (!cpu.Registers.P.HasFlag(ProcessorStatusFlags.V))
             {
-                Word oldPC = cpu.State.Registers.PC.GetWord();
-                cpu.State.Registers.PC.SetWord((Word)targetAddr);
+                Word oldPC = cpu.Registers.PC.GetWord();
+                cpu.Registers.PC.SetWord((Word)targetAddr);
                 opCycles++; // Branch taken
 
                 if ((oldPC & 0xFF00) != (targetAddr & 0xFF00))
@@ -250,13 +250,13 @@ public static partial class Instructions
                 }
             }
 
-            if (cpu.State.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.BVC };
                 cpu.Trace = cpu.Trace with { InstructionCycles = cpu.Trace.InstructionCycles + opCycles };
             }
 
-            cpu.State.Registers.TCU += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 
@@ -273,10 +273,10 @@ public static partial class Instructions
             byte opCycles = 0;
             Addr targetAddr = addressingMode(cpu);
 
-            if (cpu.State.Registers.P.HasFlag(ProcessorStatusFlags.V))
+            if (cpu.Registers.P.HasFlag(ProcessorStatusFlags.V))
             {
-                Word oldPC = cpu.State.Registers.PC.GetWord();
-                cpu.State.Registers.PC.SetWord((Word)targetAddr);
+                Word oldPC = cpu.Registers.PC.GetWord();
+                cpu.Registers.PC.SetWord((Word)targetAddr);
                 opCycles++; // Branch taken
 
                 if ((oldPC & 0xFF00) != (targetAddr & 0xFF00))
@@ -285,13 +285,13 @@ public static partial class Instructions
                 }
             }
 
-            if (cpu.State.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.BVS };
                 cpu.Trace = cpu.Trace with { InstructionCycles = cpu.Trace.InstructionCycles + opCycles };
             }
 
-            cpu.State.Registers.TCU += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 
@@ -311,8 +311,8 @@ public static partial class Instructions
         {
             byte opCycles = 0;
             Addr targetAddr = addressingMode(cpu);
-            Word oldPC = cpu.State.Registers.PC.GetWord();
-            cpu.State.Registers.PC.SetWord((Word)targetAddr);
+            Word oldPC = cpu.Registers.PC.GetWord();
+            cpu.Registers.PC.SetWord((Word)targetAddr);
             opCycles++; // Branch always taken
 
             if ((oldPC & 0xFF00) != (targetAddr & 0xFF00))
@@ -320,13 +320,13 @@ public static partial class Instructions
                 opCycles++; // Page boundary crossed
             }
 
-            if (cpu.State.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.BRA };
                 cpu.Trace = cpu.Trace with { InstructionCycles = cpu.Trace.InstructionCycles + opCycles };
             }
 
-            cpu.State.Registers.TCU += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 }

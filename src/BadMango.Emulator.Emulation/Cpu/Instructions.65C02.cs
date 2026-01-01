@@ -30,13 +30,13 @@ public static partial class Instructions
             cpu.Write8(address, 0x00);
             opCycles++; // Memory write
 
-            if (cpu.State.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.STZ };
                 cpu.Trace = cpu.Trace with { InstructionCycles = cpu.Trace.InstructionCycles + opCycles };
             }
 
-            cpu.State.Registers.TCU += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 
@@ -59,16 +59,16 @@ public static partial class Instructions
             byte value = cpu.Read8(address);
             opCycles++; // Memory read
 
-            byte a = cpu.State.Registers.A.GetByte();
+            byte a = cpu.Registers.A.GetByte();
 
             // Set Z flag based on A AND M
             if ((a & value) == 0)
             {
-                cpu.State.Registers.P |= ProcessorStatusFlags.Z;
+                cpu.Registers.P |= ProcessorStatusFlags.Z;
             }
             else
             {
-                cpu.State.Registers.P &= ~ProcessorStatusFlags.Z;
+                cpu.Registers.P &= ~ProcessorStatusFlags.Z;
             }
 
             // Set bits in memory (M = M OR A)
@@ -76,13 +76,13 @@ public static partial class Instructions
             cpu.Write8(address, value);
             opCycles += 2; // Memory write + internal operation
 
-            if (cpu.State.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.TSB };
                 cpu.Trace = cpu.Trace with { InstructionCycles = cpu.Trace.InstructionCycles + opCycles };
             }
 
-            cpu.State.Registers.TCU += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 
@@ -105,16 +105,16 @@ public static partial class Instructions
             byte value = cpu.Read8(address);
             opCycles++; // Memory read
 
-            byte a = cpu.State.Registers.A.GetByte();
+            byte a = cpu.Registers.A.GetByte();
 
             // Set Z flag based on A AND M
             if ((a & value) == 0)
             {
-                cpu.State.Registers.P |= ProcessorStatusFlags.Z;
+                cpu.Registers.P |= ProcessorStatusFlags.Z;
             }
             else
             {
-                cpu.State.Registers.P &= ~ProcessorStatusFlags.Z;
+                cpu.Registers.P &= ~ProcessorStatusFlags.Z;
             }
 
             // Clear bits in memory (M = M AND (NOT A))
@@ -122,13 +122,13 @@ public static partial class Instructions
             cpu.Write8(address, value);
             opCycles += 2; // Memory write + internal operation
 
-            if (cpu.State.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.TRB };
                 cpu.Trace = cpu.Trace with { InstructionCycles = cpu.Trace.InstructionCycles + opCycles };
             }
 
-            cpu.State.Registers.TCU += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 
@@ -151,13 +151,13 @@ public static partial class Instructions
             cpu.HaltReason = HaltState.Wai;
             opCycles += 2;
 
-            if (cpu.State.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.WAI };
                 cpu.Trace = cpu.Trace with { InstructionCycles = cpu.Trace.InstructionCycles + opCycles };
             }
 
-            cpu.State.Registers.TCU += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 
@@ -180,13 +180,13 @@ public static partial class Instructions
             cpu.HaltReason = HaltState.Stp;
             opCycles += 2;
 
-            if (cpu.State.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.STP };
                 cpu.Trace = cpu.Trace with { InstructionCycles = cpu.Trace.InstructionCycles + opCycles };
             }
 
-            cpu.State.Registers.TCU += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 }

@@ -27,9 +27,9 @@ public static partial class Instructions
         return cpu =>
         {
             Addr targetAddr = addressingMode(cpu);
-            cpu.State.Registers.PC.SetWord((Word)targetAddr);
+            cpu.Registers.PC.SetWord((Word)targetAddr);
 
-            if (cpu.State.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.JMP };
             }
@@ -51,22 +51,22 @@ public static partial class Instructions
 
             // JSR pushes PC - 1 to the stack (6502 behavior)
             // This is because RTS increments the pulled address before setting PC
-            Word returnAddr = (Word)(cpu.State.Registers.PC.GetWord() - 1);
+            Word returnAddr = (Word)(cpu.Registers.PC.GetWord() - 1);
 
-            cpu.Write8(cpu.State.PushByte(Cpu65C02Constants.StackBase), returnAddr.HighByte());
+            cpu.Write8(cpu.PushByte(Cpu65C02Constants.StackBase), returnAddr.HighByte());
             opCycles++; // Push high byte
-            cpu.Write8(cpu.State.PushByte(Cpu65C02Constants.StackBase), returnAddr.LowByte());
+            cpu.Write8(cpu.PushByte(Cpu65C02Constants.StackBase), returnAddr.LowByte());
             opCycles++; // Push low byte
-            cpu.State.Registers.PC.SetAddr(targetAddr);
+            cpu.Registers.PC.SetAddr(targetAddr);
             opCycles++; // Internal operation
 
-            if (cpu.State.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.JSR };
                 cpu.Trace = cpu.Trace with { InstructionCycles = cpu.Trace.InstructionCycles + opCycles };
             }
 
-            cpu.State.Registers.TCU += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 
@@ -83,20 +83,20 @@ public static partial class Instructions
             byte opCycles = 0;
             addressingMode(cpu);
 
-            byte lo = cpu.Read8(cpu.State.PopByte(Cpu65C02Constants.StackBase));
+            byte lo = cpu.Read8(cpu.PopByte(Cpu65C02Constants.StackBase));
             opCycles++; // Pull low byte
-            byte hi = cpu.Read8(cpu.State.PopByte(Cpu65C02Constants.StackBase));
+            byte hi = cpu.Read8(cpu.PopByte(Cpu65C02Constants.StackBase));
             opCycles++; // Pull high byte
-            cpu.State.Registers.PC.SetWord((Word)(((hi << 8) | lo) + 1));
+            cpu.Registers.PC.SetWord((Word)(((hi << 8) | lo) + 1));
             opCycles += 3; // Internal operations
 
-            if (cpu.State.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.RTS };
                 cpu.Trace = cpu.Trace with { InstructionCycles = cpu.Trace.InstructionCycles + opCycles };
             }
 
-            cpu.State.Registers.TCU += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 
@@ -112,23 +112,23 @@ public static partial class Instructions
         {
             byte opCycles = 0;
             addressingMode(cpu);
-            cpu.State.Registers.P = (ProcessorStatusFlags)cpu.Read8(cpu.State.PopByte(Cpu65C02Constants.StackBase));
+            cpu.Registers.P = (ProcessorStatusFlags)cpu.Read8(cpu.PopByte(Cpu65C02Constants.StackBase));
             opCycles++; // Pull P
-            byte lo = cpu.Read8(cpu.State.PopByte(Cpu65C02Constants.StackBase));
+            byte lo = cpu.Read8(cpu.PopByte(Cpu65C02Constants.StackBase));
             opCycles++; // Pull PC low byte
-            byte hi = cpu.Read8(cpu.State.PopByte(Cpu65C02Constants.StackBase));
+            byte hi = cpu.Read8(cpu.PopByte(Cpu65C02Constants.StackBase));
             opCycles++; // Pull PC high byte
-            cpu.State.Registers.PC.SetWord((Word)((hi << 8) | lo));
+            cpu.Registers.PC.SetWord((Word)((hi << 8) | lo));
             cpu.HaltReason = HaltState.None;
             opCycles += 2; // Internal operations
 
-            if (cpu.State.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.RTI };
                 cpu.Trace = cpu.Trace with { InstructionCycles = cpu.Trace.InstructionCycles + opCycles };
             }
 
-            cpu.State.Registers.TCU += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 }

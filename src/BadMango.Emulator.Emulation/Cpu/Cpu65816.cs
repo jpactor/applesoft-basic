@@ -131,6 +131,9 @@ public class Cpu65816 : ICpu
     public ref CpuState State => throw new NotImplementedException();
 
     /// <inheritdoc/>
+    public ref Registers Registers => throw new NotImplementedException();
+
+    /// <inheritdoc/>
     public InstructionTrace Trace
     {
         get => throw new NotImplementedException();
@@ -169,6 +172,18 @@ public class Cpu65816 : ICpu
 
     /// <inheritdoc/>
     public void WriteValue(Addr address, DWord value, byte sizeInBits)
+    {
+        throw new NotImplementedException();
+    }
+
+    /// <inheritdoc/>
+    public Addr PushByte(Addr stackBase = 0)
+    {
+        throw new NotImplementedException();
+    }
+
+    /// <inheritdoc/>
+    public Addr PopByte(Addr stackBase = 0)
     {
         throw new NotImplementedException();
     }

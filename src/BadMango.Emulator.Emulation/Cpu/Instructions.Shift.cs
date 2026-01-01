@@ -27,30 +27,30 @@ public static partial class Instructions
         {
             byte opCycles = 0;
             addressingMode(cpu);
-            byte value = cpu.State.Registers.A.GetByte();
+            byte value = cpu.Registers.A.GetByte();
 
             // Set carry from bit 7
             if ((value & 0x80) != 0)
             {
-                cpu.State.Registers.P |= ProcessorStatusFlags.C;
+                cpu.Registers.P |= ProcessorStatusFlags.C;
             }
             else
             {
-                cpu.State.Registers.P &= ~ProcessorStatusFlags.C;
+                cpu.Registers.P &= ~ProcessorStatusFlags.C;
             }
 
             value <<= 1;
-            cpu.State.Registers.A.SetByte(value);
-            cpu.State.Registers.P.SetZeroAndNegative(value);
+            cpu.Registers.A.SetByte(value);
+            cpu.Registers.P.SetZeroAndNegative(value);
             opCycles++;
 
-            if (cpu.State.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.ASL };
                 cpu.Trace = cpu.Trace with { InstructionCycles = cpu.Trace.InstructionCycles + opCycles };
             }
 
-            cpu.State.Registers.TCU += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 
@@ -72,26 +72,26 @@ public static partial class Instructions
             // Set carry from bit 7
             if ((value & 0x80) != 0)
             {
-                cpu.State.Registers.P |= ProcessorStatusFlags.C;
+                cpu.Registers.P |= ProcessorStatusFlags.C;
             }
             else
             {
-                cpu.State.Registers.P &= ~ProcessorStatusFlags.C;
+                cpu.Registers.P &= ~ProcessorStatusFlags.C;
             }
 
             value <<= 1;
-            cpu.State.Registers.P.SetZeroAndNegative(value);
+            cpu.Registers.P.SetZeroAndNegative(value);
 
             cpu.Write8(address, value);
             opCycles += 2; // Memory write + internal operation
 
-            if (cpu.State.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.ASL };
                 cpu.Trace = cpu.Trace with { InstructionCycles = cpu.Trace.InstructionCycles + opCycles };
             }
 
-            cpu.State.Registers.TCU += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 
@@ -107,30 +107,30 @@ public static partial class Instructions
         {
             byte opCycles = 0;
             addressingMode(cpu);
-            byte value = cpu.State.Registers.A.GetByte();
+            byte value = cpu.Registers.A.GetByte();
 
             // Set carry from bit 0
             if ((value & 0x01) != 0)
             {
-                cpu.State.Registers.P |= ProcessorStatusFlags.C;
+                cpu.Registers.P |= ProcessorStatusFlags.C;
             }
             else
             {
-                cpu.State.Registers.P &= ~ProcessorStatusFlags.C;
+                cpu.Registers.P &= ~ProcessorStatusFlags.C;
             }
 
             value >>= 1;
-            cpu.State.Registers.A.SetByte(value);
-            cpu.State.Registers.P.SetZeroAndNegative(value);
+            cpu.Registers.A.SetByte(value);
+            cpu.Registers.P.SetZeroAndNegative(value);
             opCycles++;
 
-            if (cpu.State.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.LSR };
                 cpu.Trace = cpu.Trace with { InstructionCycles = cpu.Trace.InstructionCycles + opCycles };
             }
 
-            cpu.State.Registers.TCU += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 
@@ -152,26 +152,26 @@ public static partial class Instructions
             // Set carry from bit 0
             if ((value & 0x01) != 0)
             {
-                cpu.State.Registers.P |= ProcessorStatusFlags.C;
+                cpu.Registers.P |= ProcessorStatusFlags.C;
             }
             else
             {
-                cpu.State.Registers.P &= ~ProcessorStatusFlags.C;
+                cpu.Registers.P &= ~ProcessorStatusFlags.C;
             }
 
             value >>= 1;
-            cpu.State.Registers.P.SetZeroAndNegative(value);
+            cpu.Registers.P.SetZeroAndNegative(value);
 
             cpu.Write8(address, value);
             opCycles += 2; // Memory write + internal operation
 
-            if (cpu.State.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.LSR };
                 cpu.Trace = cpu.Trace with { InstructionCycles = cpu.Trace.InstructionCycles + opCycles };
             }
 
-            cpu.State.Registers.TCU += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 
@@ -187,31 +187,31 @@ public static partial class Instructions
         {
             byte opCycles = 0;
             addressingMode(cpu);
-            byte value = cpu.State.Registers.A.GetByte();
-            byte oldCarry = cpu.State.Registers.P.HasFlag(ProcessorStatusFlags.C) ? (byte)1 : (byte)0;
+            byte value = cpu.Registers.A.GetByte();
+            byte oldCarry = cpu.Registers.P.HasFlag(ProcessorStatusFlags.C) ? (byte)1 : (byte)0;
 
             // Set carry from bit 7
             if ((value & 0x80) != 0)
             {
-                cpu.State.Registers.P |= ProcessorStatusFlags.C;
+                cpu.Registers.P |= ProcessorStatusFlags.C;
             }
             else
             {
-                cpu.State.Registers.P &= ~ProcessorStatusFlags.C;
+                cpu.Registers.P &= ~ProcessorStatusFlags.C;
             }
 
             value = (byte)((value << 1) | oldCarry);
-            cpu.State.Registers.A.SetByte(value);
-            cpu.State.Registers.P.SetZeroAndNegative(value);
+            cpu.Registers.A.SetByte(value);
+            cpu.Registers.P.SetZeroAndNegative(value);
             opCycles++;
 
-            if (cpu.State.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.ROL };
                 cpu.Trace = cpu.Trace with { InstructionCycles = cpu.Trace.InstructionCycles + opCycles };
             }
 
-            cpu.State.Registers.TCU += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 
@@ -230,31 +230,31 @@ public static partial class Instructions
             byte value = cpu.Read8(address);
             opCycles++; // Memory read
 
-            byte oldCarry = cpu.State.Registers.P.HasFlag(ProcessorStatusFlags.C) ? (byte)1 : (byte)0;
+            byte oldCarry = cpu.Registers.P.HasFlag(ProcessorStatusFlags.C) ? (byte)1 : (byte)0;
 
             // Set carry from bit 7
             if ((value & 0x80) != 0)
             {
-                cpu.State.Registers.P |= ProcessorStatusFlags.C;
+                cpu.Registers.P |= ProcessorStatusFlags.C;
             }
             else
             {
-                cpu.State.Registers.P &= ~ProcessorStatusFlags.C;
+                cpu.Registers.P &= ~ProcessorStatusFlags.C;
             }
 
             value = (byte)((value << 1) | oldCarry);
-            cpu.State.Registers.P.SetZeroAndNegative(value);
+            cpu.Registers.P.SetZeroAndNegative(value);
 
             cpu.Write8(address, value);
             opCycles += 2; // Memory write + internal operation
 
-            if (cpu.State.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.ROL };
                 cpu.Trace = cpu.Trace with { InstructionCycles = cpu.Trace.InstructionCycles + opCycles };
             }
 
-            cpu.State.Registers.TCU += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 
@@ -270,31 +270,31 @@ public static partial class Instructions
         {
             byte opCycles = 0;
             addressingMode(cpu);
-            byte value = cpu.State.Registers.A.GetByte();
-            byte oldCarry = cpu.State.Registers.P.HasFlag(ProcessorStatusFlags.C) ? (byte)0x80 : (byte)0;
+            byte value = cpu.Registers.A.GetByte();
+            byte oldCarry = cpu.Registers.P.HasFlag(ProcessorStatusFlags.C) ? (byte)0x80 : (byte)0;
 
             // Set carry from bit 0
             if ((value & 0x01) != 0)
             {
-                cpu.State.Registers.P |= ProcessorStatusFlags.C;
+                cpu.Registers.P |= ProcessorStatusFlags.C;
             }
             else
             {
-                cpu.State.Registers.P &= ~ProcessorStatusFlags.C;
+                cpu.Registers.P &= ~ProcessorStatusFlags.C;
             }
 
             value = (byte)((value >> 1) | oldCarry);
-            cpu.State.Registers.A.SetByte(value);
-            cpu.State.Registers.P.SetZeroAndNegative(value);
+            cpu.Registers.A.SetByte(value);
+            cpu.Registers.P.SetZeroAndNegative(value);
             opCycles++;
 
-            if (cpu.State.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.ROR };
                 cpu.Trace = cpu.Trace with { InstructionCycles = cpu.Trace.InstructionCycles + opCycles };
             }
 
-            cpu.State.Registers.TCU += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 
@@ -313,31 +313,31 @@ public static partial class Instructions
             byte value = cpu.Read8(address);
             opCycles++; // Memory read
 
-            byte oldCarry = cpu.State.Registers.P.HasFlag(ProcessorStatusFlags.C) ? (byte)0x80 : (byte)0;
+            byte oldCarry = cpu.Registers.P.HasFlag(ProcessorStatusFlags.C) ? (byte)0x80 : (byte)0;
 
             // Set carry from bit 0
             if ((value & 0x01) != 0)
             {
-                cpu.State.Registers.P |= ProcessorStatusFlags.C;
+                cpu.Registers.P |= ProcessorStatusFlags.C;
             }
             else
             {
-                cpu.State.Registers.P &= ~ProcessorStatusFlags.C;
+                cpu.Registers.P &= ~ProcessorStatusFlags.C;
             }
 
             value = (byte)((value >> 1) | oldCarry);
-            cpu.State.Registers.P.SetZeroAndNegative(value);
+            cpu.Registers.P.SetZeroAndNegative(value);
 
             cpu.Write8(address, value);
             opCycles += 2; // Memory write + internal operation
 
-            if (cpu.State.IsDebuggerAttached)
+            if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.ROR };
                 cpu.Trace = cpu.Trace with { InstructionCycles = cpu.Trace.InstructionCycles + opCycles };
             }
 
-            cpu.State.Registers.TCU += opCycles;
+            cpu.Registers.TCU += opCycles;
         };
     }
 }
