@@ -52,13 +52,23 @@ public sealed class SlotIOHandlers
     /// Gets the read handler array for the slot's 16-byte I/O region.
     /// </summary>
     /// <value>An array of 16 read handlers (some may be null).</value>
-    public SoftSwitchReadHandler?[] ReadHandlers => readHandlers;
+    /// <remarks>
+    /// This property is internal to prevent external code from bypassing
+    /// the validation in <see cref="Set"/>. Use <see cref="Set"/> to
+    /// configure handlers with proper offset validation.
+    /// </remarks>
+    internal SoftSwitchReadHandler?[] ReadHandlers => readHandlers;
 
     /// <summary>
     /// Gets the write handler array for the slot's 16-byte I/O region.
     /// </summary>
     /// <value>An array of 16 write handlers (some may be null).</value>
-    public SoftSwitchWriteHandler?[] WriteHandlers => writeHandlers;
+    /// <remarks>
+    /// This property is internal to prevent external code from bypassing
+    /// the validation in <see cref="Set"/>. Use <see cref="Set"/> to
+    /// configure handlers with proper offset validation.
+    /// </remarks>
+    internal SoftSwitchWriteHandler?[] WriteHandlers => writeHandlers;
 
     /// <summary>
     /// Sets read and/or write handlers for a specific offset within the slot's I/O region.
