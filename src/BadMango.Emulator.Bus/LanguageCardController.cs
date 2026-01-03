@@ -235,7 +235,7 @@ public sealed class LanguageCardController : IScheduledDevice
     /// </para>
     /// <list type="bullet">
     /// <item><description>Bit 0: Write enable address (1 = write enable possible with R×2)</description></item>
-    /// <item><description>Bits 0-1: Read source (00=RAM, 01=ROM, 10=ROM, 11=RAM)</description></item>
+    /// <item><description>Bits 0 and 1: Read source - RAM when bits are equal (00 or 11), ROM when different (01 or 10)</description></item>
     /// <item><description>Bit 3: Bank select (0 = Bank 2, 1 = Bank 1)</description></item>
     /// </list>
     /// <para>
@@ -259,9 +259,17 @@ public sealed class LanguageCardController : IScheduledDevice
             else if (!writeEnabled)
             {
                 // First read of odd address (or different odd address) - prime the R×2 protocol
-                // But don't disturb an already-enabled write state
+                // When write is already enabled, reading a different odd address maintains
+                // the write-enabled state rather than resetting it. This matches the Apple II
+                // behavior where once write is enabled, only an even address read disables it.
                 preWrite = true;
                 lastReadOffset = offset;
+            }
+            else
+            {
+                // Write already enabled, reading odd address keeps it enabled but clears preWrite
+                // (reading different odd address after write is enabled should not disable write)
+                preWrite = false;
             }
         }
         else if (isRead)
