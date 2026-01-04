@@ -100,9 +100,10 @@ public sealed class VideoModeController : IVideoModeDevice
         dispatcher.Register(0x52, ClearMixedRead, ClearMixedWrite);     // MIXCLR
         dispatcher.Register(0x53, SetMixedRead, SetMixedWrite);         // MIXSET
 
-        // Note: $C054-$C057 are shared with AuxiliaryMemoryController
-        // We only handle the video mode aspects here (page2 and hires state)
-        // The AuxiliaryMemoryController handles the memory banking aspects
+        // $C054-$C057 (PAGE2/HIRES switches) are handled by AuxiliaryMemoryController
+        // because they affect both video display and memory banking. The
+        // AuxiliaryMemoryController calls SetPage2() and SetHiRes() on this controller
+        // to keep video state synchronized. See Phase 1.4 AuxiliaryMemoryController.
 
         // Annunciators ($C058-$C05F)
         for (byte i = 0; i < 8; i++)

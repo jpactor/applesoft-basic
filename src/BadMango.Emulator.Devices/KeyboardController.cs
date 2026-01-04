@@ -32,6 +32,11 @@ public sealed class KeyboardController : IKeyboardDevice
     private const byte StrobeBit = 0x80;
     private const byte KeyDownBit = 0x80;
 
+    /// <summary>
+    /// CPU cycles per millisecond at approximately 1.02 MHz.
+    /// </summary>
+    private const int CyclesPerMillisecond = 1020;
+
     private readonly Queue<(byte Key, int DelayMs)> typeQueue = new();
     private byte lastKey;
     private bool strobe;
@@ -179,8 +184,7 @@ public sealed class KeyboardController : IKeyboardDevice
             KeyDown(entry.Key);
 
             // Schedule key release and next key
-            var cyclesPerMs = 1020; // Approximately 1.02 MHz
-            var delayCycles = (ulong)(entry.DelayMs * cyclesPerMs);
+            var delayCycles = (ulong)(entry.DelayMs * CyclesPerMillisecond);
 
             scheduler.ScheduleAt(
                 scheduler.Now + delayCycles,

@@ -36,6 +36,11 @@ public sealed class GameIOController : IGamePortDevice
     private const byte Paddle0Offset = 0x64;
     private const byte PaddleTriggerOffset = 0x70;
     private const byte ButtonPressedBit = 0x80;
+
+    /// <summary>
+    /// Cycles per paddle unit at 1 MHz. Paddle values 0-255 map to timer
+    /// durations of 0-2805 cycles (approximately 0-2.75ms).
+    /// </summary>
     private const int CyclesPerPaddleUnit = 11;
 
     private readonly bool[] buttons = new bool[4];

@@ -27,9 +27,14 @@ public readonly struct DevicePageId : IEquatable<DevicePageId>
 {
     private const int ClassShift = 20;
     private const int InstanceShift = 8;
-    private const uint ClassMask = 0xF00000;
-    private const uint InstanceMask = 0x0FFF00;
-    private const uint PageMask = 0x0000FF;
+    private const int ClassBits = 4;
+    private const int InstanceBits = 12;
+    private const int PageBits = 8;
+
+    // Masks derived from shift constants for consistency
+    private const uint ClassMask = ((1u << ClassBits) - 1) << ClassShift;     // 0xF00000
+    private const uint InstanceMask = ((1u << InstanceBits) - 1) << InstanceShift; // 0x0FFF00
+    private const uint PageMask = (1u << PageBits) - 1;                        // 0x0000FF
 
     private readonly uint value;
 
