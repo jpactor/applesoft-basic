@@ -427,7 +427,7 @@ public class AuxiliaryMemoryControllerTests
     [Test]
     public void ZeroPageSwitching_WithCompositeTarget_EndToEnd()
     {
-        var (controller, bus, dispatcher) = CreateInitializedController();
+        var (_, bus, dispatcher) = CreateInitializedController();
 
         var readAccessZp = CreateTestAccess(0x0042, AccessIntent.DataRead);
         var writeAccessZp = CreateTestAccess(0x0042, AccessIntent.DataWrite);
@@ -455,7 +455,7 @@ public class AuxiliaryMemoryControllerTests
     [Test]
     public void StackSwitching_WithCompositeTarget_EndToEnd()
     {
-        var (controller, bus, dispatcher) = CreateInitializedController();
+        var (_, bus, dispatcher) = CreateInitializedController();
 
         var readAccessStack = CreateTestAccess(0x0142, AccessIntent.DataRead);
         var writeAccessStack = CreateTestAccess(0x0142, AccessIntent.DataWrite);
@@ -483,7 +483,7 @@ public class AuxiliaryMemoryControllerTests
     [Test]
     public void TextPageSwitching_WithCompositeTarget_EndToEnd()
     {
-        var (controller, bus, dispatcher) = CreateInitializedController();
+        var (_, bus, dispatcher) = CreateInitializedController();
 
         var readAccessText = CreateTestAccess(0x0500, AccessIntent.DataRead);
         var writeAccessText = CreateTestAccess(0x0500, AccessIntent.DataWrite);
@@ -512,7 +512,7 @@ public class AuxiliaryMemoryControllerTests
     [Test]
     public void GeneralMemoryPage0Switching_WithRAMRDRAMWRT_EndToEnd()
     {
-        var (controller, bus, dispatcher) = CreateInitializedControllerWithGeneralAux();
+        var (_, bus, dispatcher) = CreateInitializedControllerWithGeneralAux();
 
         // Address in general region within page 0 ($0200-$03FF)
         var readAccess = CreateTestAccess(0x0300, AccessIntent.DataRead);
@@ -551,7 +551,7 @@ public class AuxiliaryMemoryControllerTests
     [Test]
     public void GeneralMemoryPages1To11Switching_WithRAMRDRAMWRT_EndToEnd()
     {
-        var (controller, bus, dispatcher) = CreateInitializedControllerWithGeneralAux();
+        var (_, bus, dispatcher) = CreateInitializedControllerWithGeneralAux();
 
         // Address in general region in page 1 ($1000-$1FFF)
         var readAccess = CreateTestAccess(0x1500, AccessIntent.DataRead);
@@ -584,7 +584,7 @@ public class AuxiliaryMemoryControllerTests
     [Test]
     public void Permutation_ALTZP_IndependentOfRAMRDRAMWRT()
     {
-        var (controller, bus, dispatcher) = CreateInitializedControllerWithGeneralAux();
+        var (_, bus, dispatcher) = CreateInitializedControllerWithGeneralAux();
 
         // Zero page address
         var zpReadAccess = CreateTestAccess(0x0042, AccessIntent.DataRead);
@@ -623,7 +623,7 @@ public class AuxiliaryMemoryControllerTests
     [Test]
     public void Permutation_80STORE_PAGE2_OverridesRAMRDRAMWRT_ForTextPage()
     {
-        var (controller, bus, dispatcher) = CreateInitializedControllerWithGeneralAux();
+        var (_, bus, dispatcher) = CreateInitializedControllerWithGeneralAux();
 
         // Text page address
         var textReadAccess = CreateTestAccess(0x0500, AccessIntent.DataRead);
@@ -701,7 +701,7 @@ public class AuxiliaryMemoryControllerTests
     [Test]
     public void Permutation_HiResLayerActivation_RequiresAllThreeSwitches()
     {
-        var (controller, bus, dispatcher) = CreateInitializedController();
+        var (_, bus, dispatcher) = CreateInitializedController();
 
         // Test all permutations of 80STORE, HIRES, PAGE2
         // Layer should only activate when ALL THREE are enabled
@@ -741,7 +741,7 @@ public class AuxiliaryMemoryControllerTests
     [Test]
     public void Permutation_AsymmetricRAMRDRAMWRT_CorrectRouting()
     {
-        var (controller, bus, dispatcher) = CreateInitializedControllerWithGeneralAux();
+        var (_, bus, dispatcher) = CreateInitializedControllerWithGeneralAux();
 
         var readAccess = CreateTestAccess(0x0300, AccessIntent.DataRead);
         var writeAccess = CreateTestAccess(0x0300, AccessIntent.DataWrite);
@@ -774,7 +774,7 @@ public class AuxiliaryMemoryControllerTests
     [Test]
     public void Permutation_StackIndependentOfTextPage()
     {
-        var (controller, bus, dispatcher) = CreateInitializedController();
+        var (_, bus, dispatcher) = CreateInitializedController();
 
         var stackReadAccess = CreateTestAccess(0x0142, AccessIntent.DataRead);
         var stackWriteAccess = CreateTestAccess(0x0142, AccessIntent.DataWrite);
@@ -851,7 +851,7 @@ public class AuxiliaryMemoryControllerTests
     [Test]
     public void Permutation_RapidSwitchToggling_MaintainsCorrectState()
     {
-        var (controller, bus, dispatcher) = CreateInitializedControllerWithGeneralAux();
+        var (_, bus, dispatcher) = CreateInitializedControllerWithGeneralAux();
 
         var generalReadAccess = CreateTestAccess(0x0300, AccessIntent.DataRead);
         var generalWriteAccess = CreateTestAccess(0x0300, AccessIntent.DataWrite);
