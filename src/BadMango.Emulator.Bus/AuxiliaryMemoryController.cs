@@ -23,27 +23,13 @@ using BadMango.Emulator.Bus.Interfaces;
 /// <item><description>RAMWRT ($C004/$C005): Writes to aux for $0200-$BFFF</description></item>
 /// </list>
 /// <para>
-/// This controller uses the layered mapping API to manage auxiliary memory overlays.
-/// Layer activation is controlled by the combination of soft switch states.
+/// This controller manages soft switch state. Sub-page regions (zero page, stack, text page)
+/// are handled by <see cref="AuxiliaryMemoryPage0Target"/> which reads the controller state
+/// directly. Hi-res pages use the layered mapping API since they are page-aligned.
 /// </para>
 /// </remarks>
 public sealed class AuxiliaryMemoryController : IScheduledDevice
 {
-    /// <summary>
-    /// The name of the auxiliary zero page layer ($0000-$00FF).
-    /// </summary>
-    public const string LayerNameZeroPage = "AUX_ZP";
-
-    /// <summary>
-    /// The name of the auxiliary stack layer ($0100-$01FF).
-    /// </summary>
-    public const string LayerNameStack = "AUX_STACK";
-
-    /// <summary>
-    /// The name of the auxiliary text page 1 layer ($0400-$07FF).
-    /// </summary>
-    public const string LayerNameTextPage = "AUX_TEXT";
-
     /// <summary>
     /// The name of the auxiliary hi-res page 1 layer ($2000-$3FFF).
     /// </summary>
@@ -433,13 +419,15 @@ public sealed class AuxiliaryMemoryController : IScheduledDevice
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Layer activation rules:
+    /// Layer activation rules for hi-res pages (which are page-aligned and use layers):
     /// </para>
     /// <list type="bullet">
-    /// <item><description>Zero Page and Stack are controlled by ALTZP</description></item>
-    /// <item><description>Text page is controlled by 80STORE AND PAGE2</description></item>
     /// <item><description>Hi-res pages are controlled by 80STORE AND HIRES AND PAGE2</description></item>
     /// </list>
+    /// <para>
+    /// Sub-page regions (zero page, stack, text page) are handled by
+    /// <see cref="AuxiliaryMemoryPage0Target"/> which reads the controller state directly.
+    /// </para>
     /// </remarks>
     private void ApplyState()
     {
@@ -448,14 +436,8 @@ public sealed class AuxiliaryMemoryController : IScheduledDevice
             return;
         }
 
-        // Zero Page and Stack controlled by ALTZP
-        SetLayerActive(LayerNameZeroPage, altzp);
-        SetLayerActive(LayerNameStack, altzp);
-
-        // Text page controlled by 80STORE + PAGE2
-        SetLayerActive(LayerNameTextPage, store80 && page2);
-
         // Hi-res pages controlled by 80STORE + HIRES + PAGE2
+        // These are page-aligned (8KB each) so they use layers
         bool auxHires = store80 && hires && page2;
         SetLayerActive(LayerNameHiResPage1, auxHires);
         SetLayerActive(LayerNameHiResPage2, auxHires);
@@ -490,8 +472,10 @@ public sealed class AuxiliaryMemoryController : IScheduledDevice
         }
         catch (KeyNotFoundException)
         {
-            // Layer not found - this is not necessarily an error during
-            // early initialization or in configurations without aux memory
+            // Layer not found - this is expected in configurations without auxiliary memory
+            // (e.g., basic Apple II without 80-column card) or during early initialization
+            // when layers haven't been created yet. The controller gracefully handles this
+            // by treating the layer as effectively deactivated.
         }
     }
 }

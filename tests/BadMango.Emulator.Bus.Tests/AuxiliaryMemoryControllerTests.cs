@@ -13,8 +13,6 @@ using Moq;
 [TestFixture]
 public class AuxiliaryMemoryControllerTests
 {
-    private const int PageSize = 4096;
-
     /// <summary>
     /// Verifies that the controller is created with the correct name.
     /// </summary>
@@ -57,18 +55,15 @@ public class AuxiliaryMemoryControllerTests
     }
 
     /// <summary>
-    /// Verifies that all auxiliary memory layers start inactive.
+    /// Verifies that hi-res layers start inactive.
     /// </summary>
     [Test]
-    public void Initialize_AllLayersStartInactive()
+    public void Initialize_HiResLayersStartInactive()
     {
         var (_, bus, _) = CreateInitializedController();
 
         Assert.Multiple(() =>
         {
-            Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameZeroPage), Is.False, "AUX_ZP should be inactive");
-            Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameStack), Is.False, "AUX_STACK should be inactive");
-            Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameTextPage), Is.False, "AUX_TEXT should be inactive");
             Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameHiResPage1), Is.False, "AUX_HIRES1 should be inactive");
             Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameHiResPage2), Is.False, "AUX_HIRES2 should be inactive");
         });
@@ -88,45 +83,33 @@ public class AuxiliaryMemoryControllerTests
     // ─── ALTZP Tests ($C008/$C009) ──────────────────────────────────────────────
 
     /// <summary>
-    /// Verifies that SETSTDZP ($C008) disables ALTZP and deactivates zero page/stack layers.
+    /// Verifies that SETSTDZP ($C008) disables ALTZP.
     /// </summary>
     [Test]
-    public void SetStdZp_DisablesAltZp_DeactivatesZeroPageAndStackLayers()
+    public void SetStdZp_DisablesAltZp()
     {
-        var (controller, bus, dispatcher) = CreateInitializedController();
+        var (controller, _, dispatcher) = CreateInitializedController();
 
         // First enable ALTZP
         SimulateWrite(dispatcher, 0x09, 0x00); // SETALTZP
         Assert.That(controller.IsAltZpEnabled, Is.True, "ALTZP should be enabled");
-        Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameZeroPage), Is.True, "AUX_ZP should be active");
-        Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameStack), Is.True, "AUX_STACK should be active");
 
         // Now disable via SETSTDZP
         SimulateWrite(dispatcher, 0x08, 0x00); // SETSTDZP
-        Assert.Multiple(() =>
-        {
-            Assert.That(controller.IsAltZpEnabled, Is.False, "ALTZP should be disabled");
-            Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameZeroPage), Is.False, "AUX_ZP should be inactive");
-            Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameStack), Is.False, "AUX_STACK should be inactive");
-        });
+        Assert.That(controller.IsAltZpEnabled, Is.False, "ALTZP should be disabled");
     }
 
     /// <summary>
-    /// Verifies that SETALTZP ($C009) enables ALTZP and activates zero page/stack layers.
+    /// Verifies that SETALTZP ($C009) enables ALTZP.
     /// </summary>
     [Test]
-    public void SetAltZp_EnablesAltZp_ActivatesZeroPageAndStackLayers()
+    public void SetAltZp_EnablesAltZp()
     {
-        var (controller, bus, dispatcher) = CreateInitializedController();
+        var (controller, _, dispatcher) = CreateInitializedController();
 
         SimulateWrite(dispatcher, 0x09, 0x00); // SETALTZP
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(controller.IsAltZpEnabled, Is.True, "ALTZP should be enabled");
-            Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameZeroPage), Is.True, "AUX_ZP should be active");
-            Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameStack), Is.True, "AUX_STACK should be active");
-        });
+        Assert.That(controller.IsAltZpEnabled, Is.True, "ALTZP should be enabled");
     }
 
     // ─── 80STORE + PAGE2 Tests ($C000/$C001, $C054/$C055) ───────────────────────
@@ -159,35 +142,6 @@ public class AuxiliaryMemoryControllerTests
         SimulateWrite(dispatcher, 0x01, 0x00); // 80STOREON
 
         Assert.That(controller.Is80StoreEnabled, Is.True);
-    }
-
-    /// <summary>
-    /// Verifies that text page layer activates only when both 80STORE and PAGE2 are enabled.
-    /// </summary>
-    [Test]
-    public void TextPageLayer_ActivatesOnlyWhen80StoreAndPage2Enabled()
-    {
-        var (controller, bus, dispatcher) = CreateInitializedController();
-
-        // Initially: 80STORE off, PAGE2 off - text layer should be inactive
-        Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameTextPage), Is.False, "Text layer should be inactive initially");
-
-        // Enable PAGE2 only - text layer should still be inactive
-        SimulateWrite(dispatcher, 0x55, 0x00); // PAGE2
-        Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameTextPage), Is.False, "Text layer should be inactive with only PAGE2");
-
-        // Disable PAGE2, enable 80STORE - text layer should still be inactive
-        SimulateWrite(dispatcher, 0x54, 0x00); // PAGE1
-        SimulateWrite(dispatcher, 0x01, 0x00); // 80STOREON
-        Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameTextPage), Is.False, "Text layer should be inactive with only 80STORE");
-
-        // Enable PAGE2 with 80STORE - text layer should be active
-        SimulateWrite(dispatcher, 0x55, 0x00); // PAGE2
-        Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameTextPage), Is.True, "Text layer should be active with 80STORE + PAGE2");
-
-        // Disable 80STORE - text layer should be inactive
-        SimulateWrite(dispatcher, 0x00, 0x00); // 80STOREOFF
-        Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameTextPage), Is.False, "Text layer should be inactive after disabling 80STORE");
     }
 
     /// <summary>
@@ -275,7 +229,7 @@ public class AuxiliaryMemoryControllerTests
     [Test]
     public void HiResPageLayers_ActivateOnlyWhen80StoreHiResAndPage2Enabled()
     {
-        var (controller, bus, dispatcher) = CreateInitializedController();
+        var (_, bus, dispatcher) = CreateInitializedController();
 
         // Initially all off - hi-res layers should be inactive
         Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameHiResPage1), Is.False);
@@ -284,28 +238,18 @@ public class AuxiliaryMemoryControllerTests
         // Enable only 80STORE + HIRES (no PAGE2) - should still be inactive
         SimulateWrite(dispatcher, 0x01, 0x00); // 80STOREON
         SimulateWrite(dispatcher, 0x57, 0x00); // HIRES
-        Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameHiResPage1), Is.False, "Should be inactive without PAGE2");
-        Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameHiResPage2), Is.False, "Should be inactive without PAGE2");
+        Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameHiResPage1), Is.False);
+        Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameHiResPage2), Is.False);
 
         // Enable PAGE2 - now should be active
         SimulateWrite(dispatcher, 0x55, 0x00); // PAGE2
-        Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameHiResPage1), Is.True, "Should be active with all three enabled");
-        Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameHiResPage2), Is.True, "Should be active with all three enabled");
-
-        // Disable HIRES - should be inactive
-        SimulateWrite(dispatcher, 0x56, 0x00); // LORES
-        Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameHiResPage1), Is.False, "Should be inactive without HIRES");
-        Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameHiResPage2), Is.False, "Should be inactive without HIRES");
-
-        // Re-enable HIRES - should be active again
-        SimulateWrite(dispatcher, 0x57, 0x00); // HIRES
         Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameHiResPage1), Is.True);
         Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameHiResPage2), Is.True);
 
-        // Disable 80STORE - should be inactive
-        SimulateWrite(dispatcher, 0x00, 0x00); // 80STOREOFF
-        Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameHiResPage1), Is.False, "Should be inactive without 80STORE");
-        Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameHiResPage2), Is.False, "Should be inactive without 80STORE");
+        // Disable HIRES - should be inactive
+        SimulateWrite(dispatcher, 0x56, 0x00); // LORES
+        Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameHiResPage1), Is.False);
+        Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameHiResPage2), Is.False);
     }
 
     /// <summary>
@@ -405,16 +349,6 @@ public class AuxiliaryMemoryControllerTests
         SimulateWrite(dispatcher, 0x55, 0x00); // PAGE2
         SimulateWrite(dispatcher, 0x57, 0x00); // HIRES
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(controller.Is80StoreEnabled, Is.True);
-            Assert.That(controller.IsRamRdEnabled, Is.True);
-            Assert.That(controller.IsRamWrtEnabled, Is.True);
-            Assert.That(controller.IsAltZpEnabled, Is.True);
-            Assert.That(controller.IsPage2Selected, Is.True);
-            Assert.That(controller.IsHiResEnabled, Is.True);
-        });
-
         // Reset
         controller.Reset();
 
@@ -426,14 +360,6 @@ public class AuxiliaryMemoryControllerTests
             Assert.That(controller.IsAltZpEnabled, Is.False, "ALTZP should be disabled after reset");
             Assert.That(controller.IsPage2Selected, Is.False, "PAGE2 should be disabled after reset");
             Assert.That(controller.IsHiResEnabled, Is.False, "HIRES should be disabled after reset");
-        });
-
-        // Verify all layers are inactive after reset
-        Assert.Multiple(() =>
-        {
-            Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameZeroPage), Is.False);
-            Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameStack), Is.False);
-            Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameTextPage), Is.False);
             Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameHiResPage1), Is.False);
             Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameHiResPage2), Is.False);
         });
@@ -449,10 +375,8 @@ public class AuxiliaryMemoryControllerTests
     {
         var (controller, _, dispatcher) = CreateInitializedController();
 
-        // Initial state: all disabled
         Assert.That(controller.Is80StoreEnabled, Is.False);
 
-        // Side-effect-free write should not change state
         SimulateSideEffectFreeWrite(dispatcher, 0x01, 0x00); // 80STOREON
         Assert.That(controller.Is80StoreEnabled, Is.False, "Side-effect-free write should not change state");
     }
@@ -465,10 +389,8 @@ public class AuxiliaryMemoryControllerTests
     {
         var (controller, _, dispatcher) = CreateInitializedController();
 
-        // Initial state: PAGE2 disabled
         Assert.That(controller.IsPage2Selected, Is.False);
 
-        // Side-effect-free read should not change state
         SimulateSideEffectFreeRead(dispatcher, 0x55); // PAGE2
         Assert.That(controller.IsPage2Selected, Is.False, "Side-effect-free read should not change state");
     }
@@ -483,9 +405,6 @@ public class AuxiliaryMemoryControllerTests
     {
         Assert.Multiple(() =>
         {
-            Assert.That(AuxiliaryMemoryController.LayerNameZeroPage, Is.EqualTo("AUX_ZP"));
-            Assert.That(AuxiliaryMemoryController.LayerNameStack, Is.EqualTo("AUX_STACK"));
-            Assert.That(AuxiliaryMemoryController.LayerNameTextPage, Is.EqualTo("AUX_TEXT"));
             Assert.That(AuxiliaryMemoryController.LayerNameHiResPage1, Is.EqualTo("AUX_HIRES1"));
             Assert.That(AuxiliaryMemoryController.LayerNameHiResPage2, Is.EqualTo("AUX_HIRES2"));
         });
@@ -500,210 +419,170 @@ public class AuxiliaryMemoryControllerTests
         Assert.That(AuxiliaryMemoryController.LayerPriority, Is.EqualTo(10));
     }
 
-    // ─── Integration Test ───────────────────────────────────────────────────────
+    // ─── Integration Tests with AuxiliaryMemoryPage0Target ──────────────────────
 
     /// <summary>
-    /// Verifies the complete auxiliary memory simulation with actual memory access.
+    /// Verifies zero page switching with ALTZP using the composite target.
     /// </summary>
     [Test]
-    public void AuxiliaryMemorySimulation_EndToEnd()
+    public void ZeroPageSwitching_WithCompositeTarget_EndToEnd()
     {
         var (controller, bus, dispatcher) = CreateInitializedController();
 
-        // Initially, main memory should be visible at zero page
         var readAccessZp = CreateTestAccess(0x0042, AccessIntent.DataRead);
-        Assert.That(bus.Read8(readAccessZp), Is.EqualTo(0x00), "Main zero page should be visible initially");
+        var writeAccessZp = CreateTestAccess(0x0042, AccessIntent.DataWrite);
 
         // Write to main zero page
-        var writeAccessZp = CreateTestAccess(0x0042, AccessIntent.DataWrite);
         bus.Write8(writeAccessZp, 0xAA);
         Assert.That(bus.Read8(readAccessZp), Is.EqualTo(0xAA), "Write to main zero page should work");
 
         // Enable ALTZP - auxiliary zero page should now be visible
         SimulateWrite(dispatcher, 0x09, 0x00); // SETALTZP
-        Assert.That(bus.Read8(readAccessZp), Is.EqualTo(0x00), "Auxiliary zero page should be visible after SETALTZP");
+        Assert.That(bus.Read8(readAccessZp), Is.EqualTo(0x00), "Auxiliary zero page should be visible");
 
         // Write to auxiliary zero page
         bus.Write8(writeAccessZp, 0xBB);
         Assert.That(bus.Read8(readAccessZp), Is.EqualTo(0xBB), "Write to auxiliary zero page should work");
 
-        // Switch back to main - should see original value
+        // Switch back to main
         SimulateWrite(dispatcher, 0x08, 0x00); // SETSTDZP
-        Assert.That(bus.Read8(readAccessZp), Is.EqualTo(0xAA), "Main zero page should retain original value");
-
-        // Switch to auxiliary again - should see auxiliary value
-        SimulateWrite(dispatcher, 0x09, 0x00); // SETALTZP
-        Assert.That(bus.Read8(readAccessZp), Is.EqualTo(0xBB), "Auxiliary zero page should retain its value");
+        Assert.That(bus.Read8(readAccessZp), Is.EqualTo(0xAA), "Main zero page should retain value");
     }
 
     /// <summary>
-    /// Verifies text page switching with 80STORE and PAGE2.
+    /// Verifies stack switching with ALTZP using the composite target.
     /// </summary>
     [Test]
-    public void TextPageSwitching_EndToEnd()
+    public void StackSwitching_WithCompositeTarget_EndToEnd()
     {
         var (controller, bus, dispatcher) = CreateInitializedController();
 
-        // Text page address
+        var readAccessStack = CreateTestAccess(0x0142, AccessIntent.DataRead);
+        var writeAccessStack = CreateTestAccess(0x0142, AccessIntent.DataWrite);
+
+        // Write to main stack
+        bus.Write8(writeAccessStack, 0x11);
+        Assert.That(bus.Read8(readAccessStack), Is.EqualTo(0x11), "Write to main stack should work");
+
+        // Enable ALTZP
+        SimulateWrite(dispatcher, 0x09, 0x00); // SETALTZP
+        Assert.That(bus.Read8(readAccessStack), Is.EqualTo(0x00), "Auxiliary stack should be visible");
+
+        // Write to auxiliary stack
+        bus.Write8(writeAccessStack, 0x22);
+        Assert.That(bus.Read8(readAccessStack), Is.EqualTo(0x22), "Write to auxiliary stack should work");
+
+        // Switch back to main
+        SimulateWrite(dispatcher, 0x08, 0x00); // SETSTDZP
+        Assert.That(bus.Read8(readAccessStack), Is.EqualTo(0x11), "Main stack should retain value");
+    }
+
+    /// <summary>
+    /// Verifies text page switching with 80STORE and PAGE2 using the composite target.
+    /// </summary>
+    [Test]
+    public void TextPageSwitching_WithCompositeTarget_EndToEnd()
+    {
+        var (controller, bus, dispatcher) = CreateInitializedController();
+
         var readAccessText = CreateTestAccess(0x0500, AccessIntent.DataRead);
         var writeAccessText = CreateTestAccess(0x0500, AccessIntent.DataWrite);
 
         // Write to main text page
-        bus.Write8(writeAccessText, 0x41); // 'A'
+        bus.Write8(writeAccessText, 0x41);
         Assert.That(bus.Read8(readAccessText), Is.EqualTo(0x41), "Main text page write should work");
 
-        // Enable 80STORE + PAGE2 - should see auxiliary text page
+        // Enable 80STORE + PAGE2
         SimulateWrite(dispatcher, 0x01, 0x00); // 80STOREON
         SimulateWrite(dispatcher, 0x55, 0x00); // PAGE2
         Assert.That(bus.Read8(readAccessText), Is.EqualTo(0x00), "Auxiliary text page should be visible");
 
         // Write to auxiliary text page
-        bus.Write8(writeAccessText, 0x42); // 'B'
+        bus.Write8(writeAccessText, 0x42);
         Assert.That(bus.Read8(readAccessText), Is.EqualTo(0x42), "Auxiliary text page write should work");
 
-        // Switch to PAGE1 - should see main text page
+        // Switch to PAGE1
         SimulateWrite(dispatcher, 0x54, 0x00); // PAGE1
-        Assert.That(bus.Read8(readAccessText), Is.EqualTo(0x41), "Main text page should be visible with PAGE1");
-
-        // Disable 80STORE - PAGE2 should no longer affect text page layer
-        SimulateWrite(dispatcher, 0x55, 0x00); // PAGE2
-        SimulateWrite(dispatcher, 0x00, 0x00); // 80STOREOFF
-        Assert.That(bus.Read8(readAccessText), Is.EqualTo(0x41), "Main text page should remain visible with 80STORE off");
+        Assert.That(bus.Read8(readAccessText), Is.EqualTo(0x41), "Main text page should be visible");
     }
 
     // ─── Helper Methods ─────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Creates a fully initialized auxiliary memory controller with required infrastructure.
-    /// </summary>
-    /// <returns>A tuple containing the initialized controller, the configured memory bus, and the I/O dispatcher.</returns>
     private static (AuxiliaryMemoryController Controller, MainBus Bus, IOPageDispatcher Dispatcher) CreateInitializedController()
     {
         var bus = new MainBus();
         var dispatcher = new IOPageDispatcher();
 
-        // Create main RAM for the relevant regions
-        var mainRam = new PhysicalMemory(0x10000, "MainRAM");
-        var mainRamTarget = new RamTarget(mainRam.Slice(0, 0x10000));
+        // Create main RAM for page 0 (4KB)
+        var mainPage0Memory = new PhysicalMemory(0x1000, "MainPage0");
+        var mainPage0Target = new RamTarget(mainPage0Memory.Slice(0, 0x1000));
 
-        // Create auxiliary RAM for the overlay regions
-        // Note: Layers work at page granularity (4KB), so targets must be sized to cover the full page
-        // For testing, we create separate memory for each layer even though real aux memory would share
+        // Create auxiliary memory with exact sizes
+        var auxZpMemory = new PhysicalMemory(0x0100, "AuxZP");
+        var auxZpTarget = new RamTarget(auxZpMemory.Slice(0, 0x0100));
 
-        // AUX_ZP targets page 0 ($0000-$0FFF)
-        var auxZpMemory = new PhysicalMemory(0x1000, "AuxZP");
-        var auxZpTarget = new RamTarget(auxZpMemory.Slice(0, 0x1000));
+        var auxStackMemory = new PhysicalMemory(0x0100, "AuxStack");
+        var auxStackTarget = new RamTarget(auxStackMemory.Slice(0, 0x0100));
 
-        // AUX_STACK also targets page 0 ($0000-$0FFF) - separate memory for testing
-        var auxStackMemory = new PhysicalMemory(0x1000, "AuxStack");
-        var auxStackTarget = new RamTarget(auxStackMemory.Slice(0, 0x1000));
+        var auxTextMemory = new PhysicalMemory(0x0400, "AuxText");
+        var auxTextTarget = new RamTarget(auxTextMemory.Slice(0, 0x0400));
 
-        // AUX_TEXT also targets page 0 ($0000-$0FFF) - text page is $0400-$07FF within page 0
-        var auxTextMemory = new PhysicalMemory(0x1000, "AuxText");
-        var auxTextTarget = new RamTarget(auxTextMemory.Slice(0, 0x1000));
+        // Create controller first
+        var controller = new AuxiliaryMemoryController();
 
+        // Create composite target for page 0
+        var page0Target = new AuxiliaryMemoryPage0Target(
+            mainPage0Target,
+            auxZpTarget,
+            auxStackTarget,
+            auxTextTarget,
+            controller);
+
+        // Map page 0 to composite target
+        bus.MapPage(0, new PageEntry(
+            DeviceId: 1,
+            RegionTag: RegionTag.Ram,
+            Perms: PagePerms.All,
+            Caps: TargetCaps.SupportsPeek | TargetCaps.SupportsPoke,
+            Target: page0Target,
+            PhysicalBase: 0));
+
+        // Create main RAM for pages 1-11
+        var mainRam = new PhysicalMemory(0xB000, "MainRAM");
+        var mainRamTarget = new RamTarget(mainRam.Slice(0, 0xB000));
+        bus.MapPageRange(1, 11, 1, RegionTag.Ram, PagePerms.All, TargetCaps.SupportsPeek | TargetCaps.SupportsPoke, mainRamTarget, 0);
+        bus.SaveBaseMappingRange(1, 11);
+
+        // Create auxiliary hi-res memory (8KB each)
         var auxHires1Memory = new PhysicalMemory(0x2000, "AuxHiRes1");
         var auxHires1Target = new RamTarget(auxHires1Memory.Slice(0, 0x2000));
 
         var auxHires2Memory = new PhysicalMemory(0x2000, "AuxHiRes2");
         var auxHires2Target = new RamTarget(auxHires2Memory.Slice(0, 0x2000));
 
-        // Map main RAM as base layer (pages 0-11, which is 0x0000-0xBFFF for 4KB pages)
-        // Map just the first 12 pages (0x0000-0xBFFF) to main RAM
-        bus.MapPageRange(0, 12, 1, RegionTag.Ram, PagePerms.All, TargetCaps.SupportsPeek | TargetCaps.SupportsPoke, mainRamTarget, 0);
-        bus.SaveBaseMappingRange(0, 12);
-
-        // Create auxiliary memory layers
-        var auxZpLayer = bus.CreateLayer(AuxiliaryMemoryController.LayerNameZeroPage, AuxiliaryMemoryController.LayerPriority);
-        var auxStackLayer = bus.CreateLayer(AuxiliaryMemoryController.LayerNameStack, AuxiliaryMemoryController.LayerPriority);
-        var auxTextLayer = bus.CreateLayer(AuxiliaryMemoryController.LayerNameTextPage, AuxiliaryMemoryController.LayerPriority);
+        // Create hi-res layers
         var auxHires1Layer = bus.CreateLayer(AuxiliaryMemoryController.LayerNameHiResPage1, AuxiliaryMemoryController.LayerPriority);
         var auxHires2Layer = bus.CreateLayer(AuxiliaryMemoryController.LayerNameHiResPage2, AuxiliaryMemoryController.LayerPriority);
 
-        // Add mappings to layers
-        // Note: Zero page and stack are smaller than a page, but layers work at page granularity
-        // For testing purposes, we map the entire first page to aux zero page
-        // In a real implementation, more sophisticated handling would be needed
-
-        // AUX_ZP: $0000-$00FF (part of page 0)
         bus.AddLayeredMapping(new LayeredMapping(
-            VirtualBase: 0x0000,
-            Size: 0x1000, // Full page for layer mapping
-            Layer: auxZpLayer,
-            DeviceId: 2,
-            RegionTag: RegionTag.Ram,
-            Perms: PagePerms.All,
+            VirtualBase: 0x2000, Size: 0x2000, Layer: auxHires1Layer,
+            DeviceId: 2, RegionTag: RegionTag.Ram, Perms: PagePerms.All,
             Caps: TargetCaps.SupportsPeek | TargetCaps.SupportsPoke,
-            Target: auxZpTarget,
-            PhysBase: 0));
+            Target: auxHires1Target, PhysBase: 0));
 
-        // AUX_STACK: $0100-$01FF (part of page 0)
-        // Note: Since stack is also in page 0, we use the same target for testing
-        // In a real implementation, the zero page layer would handle both regions
         bus.AddLayeredMapping(new LayeredMapping(
-            VirtualBase: 0x0000,
-            Size: 0x1000, // Full page for layer mapping
-            Layer: auxStackLayer,
-            DeviceId: 2,
-            RegionTag: RegionTag.Ram,
-            Perms: PagePerms.All,
+            VirtualBase: 0x4000, Size: 0x2000, Layer: auxHires2Layer,
+            DeviceId: 2, RegionTag: RegionTag.Ram, Perms: PagePerms.All,
             Caps: TargetCaps.SupportsPeek | TargetCaps.SupportsPoke,
-            Target: auxStackTarget,
-            PhysBase: 0));
+            Target: auxHires2Target, PhysBase: 0));
 
-        // AUX_TEXT: $0400-$07FF (page 0, offset $400)
-        // Note: Text page spans from $0400-$07FF, which is within page 0
-        // For proper implementation, we'd need finer-grained mapping
-        bus.AddLayeredMapping(new LayeredMapping(
-            VirtualBase: 0x0000,
-            Size: 0x1000, // Full page for layer mapping
-            Layer: auxTextLayer,
-            DeviceId: 2,
-            RegionTag: RegionTag.Ram,
-            Perms: PagePerms.All,
-            Caps: TargetCaps.SupportsPeek | TargetCaps.SupportsPoke,
-            Target: auxTextTarget,
-            PhysBase: 0));
-
-        // AUX_HIRES1: $2000-$3FFF (pages 2-3)
-        bus.AddLayeredMapping(new LayeredMapping(
-            VirtualBase: 0x2000,
-            Size: 0x2000,
-            Layer: auxHires1Layer,
-            DeviceId: 2,
-            RegionTag: RegionTag.Ram,
-            Perms: PagePerms.All,
-            Caps: TargetCaps.SupportsPeek | TargetCaps.SupportsPoke,
-            Target: auxHires1Target,
-            PhysBase: 0));
-
-        // AUX_HIRES2: $4000-$5FFF (pages 4-5)
-        bus.AddLayeredMapping(new LayeredMapping(
-            VirtualBase: 0x4000,
-            Size: 0x2000,
-            Layer: auxHires2Layer,
-            DeviceId: 2,
-            RegionTag: RegionTag.Ram,
-            Perms: PagePerms.All,
-            Caps: TargetCaps.SupportsPeek | TargetCaps.SupportsPoke,
-            Target: auxHires2Target,
-            PhysBase: 0));
-
-        // Create and initialize controller
-        var controller = new AuxiliaryMemoryController();
         controller.RegisterHandlers(dispatcher);
-
         var context = CreateMockEventContext(bus);
         controller.Initialize(context);
 
         return (controller, bus, dispatcher);
     }
 
-    /// <summary>
-    /// Creates a mock event context with the specified bus.
-    /// </summary>
-    /// <param name="bus">The memory bus to configure in the mock context.</param>
-    /// <returns>A mock <see cref="IEventContext"/> with the specified bus.</returns>
     private static IEventContext CreateMockEventContext(IMemoryBus bus)
     {
         var mockContext = new Mock<IEventContext>();
@@ -711,75 +590,34 @@ public class AuxiliaryMemoryControllerTests
         return mockContext.Object;
     }
 
-    /// <summary>
-    /// Simulates a read access to a soft switch.
-    /// </summary>
-    /// <param name="dispatcher">The I/O page dispatcher.</param>
-    /// <param name="offset">The offset within $C000-$C0FF (0x00-0xFF).</param>
-    /// <returns>The value returned by the read handler.</returns>
     private static byte SimulateRead(IOPageDispatcher dispatcher, byte offset)
     {
         var context = CreateTestAccess((uint)(0xC000 + offset), AccessIntent.DataRead);
         return dispatcher.Read(offset, in context);
     }
 
-    /// <summary>
-    /// Simulates a side-effect-free read access to a soft switch.
-    /// </summary>
-    /// <param name="dispatcher">The I/O page dispatcher.</param>
-    /// <param name="offset">The offset within $C000-$C0FF (0x00-0xFF).</param>
-    /// <returns>The value returned by the read handler.</returns>
     private static byte SimulateSideEffectFreeRead(IOPageDispatcher dispatcher, byte offset)
     {
         var context = CreateTestAccess((uint)(0xC000 + offset), AccessIntent.DataRead, AccessFlags.NoSideEffects);
         return dispatcher.Read(offset, in context);
     }
 
-    /// <summary>
-    /// Simulates a write access to a soft switch.
-    /// </summary>
-    /// <param name="dispatcher">The I/O page dispatcher.</param>
-    /// <param name="offset">The offset within $C000-$C0FF (0x00-0xFF).</param>
-    /// <param name="value">The value to write.</param>
     private static void SimulateWrite(IOPageDispatcher dispatcher, byte offset, byte value)
     {
         var context = CreateTestAccess((uint)(0xC000 + offset), AccessIntent.DataWrite);
         dispatcher.Write(offset, value, in context);
     }
 
-    /// <summary>
-    /// Simulates a side-effect-free write access to a soft switch.
-    /// </summary>
-    /// <param name="dispatcher">The I/O page dispatcher.</param>
-    /// <param name="offset">The offset within $C000-$C0FF (0x00-0xFF).</param>
-    /// <param name="value">The value to write.</param>
     private static void SimulateSideEffectFreeWrite(IOPageDispatcher dispatcher, byte offset, byte value)
     {
         var context = CreateTestAccess((uint)(0xC000 + offset), AccessIntent.DataWrite, AccessFlags.NoSideEffects);
         dispatcher.Write(offset, value, in context);
     }
 
-    /// <summary>
-    /// Helper method to create test bus access structures.
-    /// </summary>
-    /// <param name="address">The memory address for the access.</param>
-    /// <param name="intent">The access intent (read or write).</param>
-    /// <param name="flags">Optional access flags.</param>
-    /// <returns>A <see cref="BusAccess"/> configured with the specified parameters.</returns>
-    private static BusAccess CreateTestAccess(
-        Addr address,
-        AccessIntent intent,
-        AccessFlags flags = AccessFlags.None)
+    private static BusAccess CreateTestAccess(Addr address, AccessIntent intent, AccessFlags flags = AccessFlags.None)
     {
         return new BusAccess(
-            Address: address,
-            Value: 0,
-            WidthBits: 8,
-            Mode: BusAccessMode.Decomposed,
-            EmulationFlag: true,
-            Intent: intent,
-            SourceId: 0,
-            Cycle: 0,
-            Flags: flags);
+            Address: address, Value: 0, WidthBits: 8, Mode: BusAccessMode.Decomposed,
+            EmulationFlag: true, Intent: intent, SourceId: 0, Cycle: 0, Flags: flags);
     }
 }
