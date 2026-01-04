@@ -167,11 +167,15 @@ public sealed class KeyboardController : IKeyboardDevice
             var cyclesPerMs = 1020; // Approximately 1.02 MHz
             var delayCycles = (ulong)(entry.DelayMs * cyclesPerMs);
 
-            scheduler.ScheduleAt(scheduler.Now + delayCycles, _ =>
-            {
-                KeyUp();
-                ProcessTypeQueue();
-            });
+            scheduler.ScheduleAt(
+                scheduler.Now + delayCycles,
+                ScheduledEventKind.DeviceTimer,
+                0,
+                _ =>
+                {
+                    KeyUp();
+                    ProcessTypeQueue();
+                });
         }
     }
 
