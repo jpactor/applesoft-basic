@@ -35,6 +35,7 @@ using Interfaces;
 /// </remarks>
 public sealed class VideoModeController : IVideoModeDevice
 {
+    private readonly bool[] annunciators = new bool[4];
     private bool textMode = true;
     private bool mixedMode;
     private bool page2;
@@ -42,7 +43,6 @@ public sealed class VideoModeController : IVideoModeDevice
     private bool col80Mode;
     private bool doubleHiResMode;
     private bool altCharSet;
-    private readonly bool[] annunciators = new bool[4];
 
     /// <inheritdoc />
     public event Action<VideoMode>? ModeChanged;

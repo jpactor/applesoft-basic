@@ -153,16 +153,17 @@ public sealed class DiskIIControllerStub : ISlotCard
         q7High = false;
     }
 
-    // ─── Handler implementations (stubs) ────────────────────────────────
-
     private byte PhaseRead(byte offset, in BusAccess ctx)
     {
         if (!ctx.IsSideEffectFree)
         {
+            // Get the relative offset within the slot (0-15)
+            byte relativeOffset = (byte)(offset & 0x0F);
+
             // Update phase based on offset
             // Even offsets turn phase off, odd offsets turn phase on
-            int phase = offset >> 1;
-            bool turnOn = (offset & 1) != 0;
+            int phase = relativeOffset >> 1;
+            bool turnOn = (relativeOffset & 1) != 0;
 
             if (turnOn)
             {
@@ -177,9 +178,12 @@ public sealed class DiskIIControllerStub : ISlotCard
     {
         if (!ctx.IsSideEffectFree)
         {
+            // Get the relative offset within the slot (0-15)
+            byte relativeOffset = (byte)(offset & 0x0F);
+
             // Same logic as read - Disk II responds to both read and write
-            int phase = offset >> 1;
-            bool turnOn = (offset & 1) != 0;
+            int phase = relativeOffset >> 1;
+            bool turnOn = (relativeOffset & 1) != 0;
 
             if (turnOn)
             {
@@ -275,6 +279,7 @@ public sealed class DiskIIControllerStub : ISlotCard
         if (!ctx.IsSideEffectFree)
         {
             q7High = true;
+
             // Q6L + Q7H write = write data byte
             // In stub, we ignore the write
         }

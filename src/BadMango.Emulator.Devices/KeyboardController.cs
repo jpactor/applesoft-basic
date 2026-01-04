@@ -32,11 +32,11 @@ public sealed class KeyboardController : IKeyboardDevice
     private const byte StrobeBit = 0x80;
     private const byte KeyDownBit = 0x80;
 
+    private readonly Queue<(byte Key, int DelayMs)> typeQueue = new();
     private byte lastKey;
     private bool strobe;
     private bool keyDown;
     private KeyboardModifiers modifiers;
-    private readonly Queue<(byte Key, int DelayMs)> typeQueue = new();
     private IScheduler? scheduler;
 
     /// <inheritdoc />
@@ -98,6 +98,7 @@ public sealed class KeyboardController : IKeyboardDevice
     public void KeyUp()
     {
         keyDown = false;
+
         // Note: lastKey and strobe remain unchanged until strobe is cleared
     }
 
@@ -124,6 +125,20 @@ public sealed class KeyboardController : IKeyboardDevice
 
         // Start processing the queue if not already in progress
         ProcessTypeQueue();
+    }
+
+    private static byte ConvertToAppleAscii(char c)
+    {
+        // Handle common character conversions
+        return c switch
+        {
+            '\n' or '\r' => 0x0D, // Carriage return
+            '\b' => 0x08,         // Backspace
+            '\t' => 0x09,         // Tab (not common on Apple II, but supported)
+            '\x1B' => 0x1B,       // Escape
+            >= ' ' and <= '~' => (byte)c, // Printable ASCII
+            _ => 0,               // Unsupported characters
+        };
     }
 
     private byte ReadKeyboardData(byte offset, in BusAccess context)
@@ -177,19 +192,5 @@ public sealed class KeyboardController : IKeyboardDevice
                     ProcessTypeQueue();
                 });
         }
-    }
-
-    private static byte ConvertToAppleAscii(char c)
-    {
-        // Handle common character conversions
-        return c switch
-        {
-            '\n' or '\r' => 0x0D, // Carriage return
-            '\b' => 0x08,         // Backspace
-            '\t' => 0x09,         // Tab (not common on Apple II, but supported)
-            '\x1B' => 0x1B,       // Escape
-            >= ' ' and <= '~' => (byte)c, // Printable ASCII
-            _ => 0,               // Unsupported characters
-        };
     }
 }

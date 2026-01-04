@@ -27,8 +27,8 @@ public sealed class SpeakerController : ISpeakerDevice
 {
     private const byte SpeakerToggleOffset = 0x30;
 
-    private bool state;
     private readonly List<(ulong Cycle, bool State)> pendingToggles = [];
+    private bool state;
     private IScheduler? scheduler;
 
     /// <inheritdoc />
