@@ -47,7 +47,7 @@ public class RomTargetTests
         Assert.Multiple(() =>
         {
             Assert.That(rom.Capabilities.HasFlag(TargetCaps.SupportsPeek), Is.True);
-            Assert.That(rom.Capabilities.HasFlag(TargetCaps.SupportsPoke), Is.False, "ROM should not support Poke");
+            Assert.That(rom.Capabilities.HasFlag(TargetCaps.SupportsPoke), Is.True, "ROM supports debug writes (Poke)");
             Assert.That(rom.Capabilities.HasFlag(TargetCaps.SupportsWide), Is.True);
             Assert.That(rom.Capabilities.HasFlag(TargetCaps.HasSideEffects), Is.False);
         });
@@ -246,6 +246,138 @@ public class RomTargetTests
     }
 
     /// <summary>
+    /// Verifies that RomTarget can be created with a writable memory slice.
+    /// </summary>
+    [Test]
+    public void RomTarget_CanBeCreatedWithWritableMemorySlice()
+    {
+        var data = new byte[] { 0xEA, 0x00, 0xFF };
+        var physicalMemory = new PhysicalMemory(data, "Test ROM");
+        var rom = new RomTarget(physicalMemory.Slice(0, 3));
+
+        Assert.That(rom.Size, Is.EqualTo(3));
+    }
+
+    /// <summary>
+    /// Verifies that debug Write8 modifies ROM when using writable memory slice.
+    /// </summary>
+    [Test]
+    public void RomTarget_DebugWrite8_ModifiesRom_WhenWritableSlice()
+    {
+        var data = new byte[] { 0xAA, 0xBB };
+        var physicalMemory = new PhysicalMemory(data, "Test ROM");
+        var rom = new RomTarget(physicalMemory.Slice(0, 2));
+        var debugAccess = CreateDebugWriteAccess();
+        var readAccess = CreateDefaultAccess();
+
+        rom.Write8(0, 0xFF, in debugAccess);
+
+        Assert.That(rom.Read8(0, in readAccess), Is.EqualTo(0xFF), "ROM should be modified by debug writes");
+    }
+
+    /// <summary>
+    /// Verifies that normal Write8 is ignored even when using writable memory slice.
+    /// </summary>
+    [Test]
+    public void RomTarget_NormalWrite8_IsIgnored_WhenWritableSlice()
+    {
+        var data = new byte[] { 0xAA, 0xBB };
+        var physicalMemory = new PhysicalMemory(data, "Test ROM");
+        var rom = new RomTarget(physicalMemory.Slice(0, 2));
+        var normalAccess = CreateNormalWriteAccess();
+        var readAccess = CreateDefaultAccess();
+
+        rom.Write8(0, 0xFF, in normalAccess);
+
+        Assert.That(rom.Read8(0, in readAccess), Is.EqualTo(0xAA), "ROM should not be modified by normal writes");
+    }
+
+    /// <summary>
+    /// Verifies that debug Write8 does not modify ROM when using ReadOnlyMemory slice.
+    /// </summary>
+    [Test]
+    public void RomTarget_DebugWrite8_IsIgnored_WhenReadOnlySlice()
+    {
+        var data = new byte[] { 0xAA, 0xBB };
+        var physicalMemory = new PhysicalMemory(data, "Test ROM");
+        var rom = new RomTarget(physicalMemory.ReadOnlySlice(0, 2));
+        var debugAccess = CreateDebugWriteAccess();
+        var readAccess = CreateDefaultAccess();
+
+        rom.Write8(0, 0xFF, in debugAccess);
+
+        Assert.That(rom.Read8(0, in readAccess), Is.EqualTo(0xAA), "ROM created with ReadOnlyMemory cannot be modified even by debug writes");
+    }
+
+    /// <summary>
+    /// Verifies that debug Write16 modifies ROM when using writable memory slice.
+    /// </summary>
+    [Test]
+    public void RomTarget_DebugWrite16_ModifiesRom_WhenWritableSlice()
+    {
+        var data = new byte[] { 0x34, 0x12 };
+        var physicalMemory = new PhysicalMemory(data, "Test ROM");
+        var rom = new RomTarget(physicalMemory.Slice(0, 2));
+        var debugAccess = CreateDebugWriteAccess();
+        var readAccess = CreateDefaultAccess();
+
+        rom.Write16(0, 0xFFFF, in debugAccess);
+
+        Assert.That(rom.Read16(0, in readAccess), Is.EqualTo(0xFFFF), "ROM should be modified by debug writes");
+    }
+
+    /// <summary>
+    /// Verifies that normal Write16 is ignored even when using writable memory slice.
+    /// </summary>
+    [Test]
+    public void RomTarget_NormalWrite16_IsIgnored_WhenWritableSlice()
+    {
+        var data = new byte[] { 0x34, 0x12 };
+        var physicalMemory = new PhysicalMemory(data, "Test ROM");
+        var rom = new RomTarget(physicalMemory.Slice(0, 2));
+        var normalAccess = CreateNormalWriteAccess();
+        var readAccess = CreateDefaultAccess();
+
+        rom.Write16(0, 0xFFFF, in normalAccess);
+
+        Assert.That(rom.Read16(0, in readAccess), Is.EqualTo(0x1234), "ROM should not be modified by normal writes");
+    }
+
+    /// <summary>
+    /// Verifies that debug Write32 modifies ROM when using writable memory slice.
+    /// </summary>
+    [Test]
+    public void RomTarget_DebugWrite32_ModifiesRom_WhenWritableSlice()
+    {
+        var data = new byte[] { 0x78, 0x56, 0x34, 0x12 };
+        var physicalMemory = new PhysicalMemory(data, "Test ROM");
+        var rom = new RomTarget(physicalMemory.Slice(0, 4));
+        var debugAccess = CreateDebugWriteAccess();
+        var readAccess = CreateDefaultAccess();
+
+        rom.Write32(0, 0xDEADBEEFu, in debugAccess);
+
+        Assert.That(rom.Read32(0, in readAccess), Is.EqualTo(0xDEADBEEFu), "ROM should be modified by debug writes");
+    }
+
+    /// <summary>
+    /// Verifies that normal Write32 is ignored even when using writable memory slice.
+    /// </summary>
+    [Test]
+    public void RomTarget_NormalWrite32_IsIgnored_WhenWritableSlice()
+    {
+        var data = new byte[] { 0x78, 0x56, 0x34, 0x12 };
+        var physicalMemory = new PhysicalMemory(data, "Test ROM");
+        var rom = new RomTarget(physicalMemory.Slice(0, 4));
+        var normalAccess = CreateNormalWriteAccess();
+        var readAccess = CreateDefaultAccess();
+
+        rom.Write32(0, 0xDEADBEEFu, in normalAccess);
+
+        Assert.That(rom.Read32(0, in readAccess), Is.EqualTo(0x12345678u), "ROM should not be modified by normal writes");
+    }
+
+    /// <summary>
     /// Creates a default BusAccess for testing.
     /// </summary>
     /// <returns>A default BusAccess instance.</returns>
@@ -256,6 +388,38 @@ public class RomTargetTests
         Mode: BusAccessMode.Decomposed,
         EmulationFlag: true,
         Intent: AccessIntent.DataRead,
+        SourceId: 0,
+        Cycle: 0,
+        Flags: AccessFlags.None,
+        PrivilegeLevel: PrivilegeLevel.Ring0);
+
+    /// <summary>
+    /// Creates a debug write BusAccess for testing.
+    /// </summary>
+    /// <returns>A debug write BusAccess instance.</returns>
+    private static BusAccess CreateDebugWriteAccess() => new(
+        Address: 0,
+        Value: 0,
+        WidthBits: 8,
+        Mode: BusAccessMode.Decomposed,
+        EmulationFlag: true,
+        Intent: AccessIntent.DebugWrite,
+        SourceId: 0,
+        Cycle: 0,
+        Flags: AccessFlags.None,
+        PrivilegeLevel: PrivilegeLevel.Ring0);
+
+    /// <summary>
+    /// Creates a normal write BusAccess for testing.
+    /// </summary>
+    /// <returns>A normal write BusAccess instance.</returns>
+    private static BusAccess CreateNormalWriteAccess() => new(
+        Address: 0,
+        Value: 0,
+        WidthBits: 8,
+        Mode: BusAccessMode.Decomposed,
+        EmulationFlag: true,
+        Intent: AccessIntent.DataWrite,
         SourceId: 0,
         Cycle: 0,
         Flags: AccessFlags.None,
