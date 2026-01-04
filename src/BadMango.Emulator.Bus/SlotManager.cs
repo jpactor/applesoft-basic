@@ -41,6 +41,7 @@ public sealed class SlotManager : ISlotManager
     private readonly IOPageDispatcher dispatcher;
     private readonly IPeripheral?[] slots;
     private readonly Dictionary<int, IPeripheral> slotsView;
+    private readonly IReadOnlyDictionary<int, IPeripheral> slotsReadOnly;
     private int? activeExpansionSlot;
 
     /// <summary>
@@ -56,10 +57,11 @@ public sealed class SlotManager : ISlotManager
         this.dispatcher = dispatcher;
         this.slots = new IPeripheral?[SlotCount];
         this.slotsView = new Dictionary<int, IPeripheral>();
+        this.slotsReadOnly = new ReadOnlyDictionary<int, IPeripheral>(this.slotsView);
     }
 
     /// <inheritdoc />
-    public IReadOnlyDictionary<int, IPeripheral> Slots => new ReadOnlyDictionary<int, IPeripheral>(slotsView);
+    public IReadOnlyDictionary<int, IPeripheral> Slots => slotsReadOnly;
 
     /// <inheritdoc />
     public int? ActiveExpansionSlot => activeExpansionSlot;

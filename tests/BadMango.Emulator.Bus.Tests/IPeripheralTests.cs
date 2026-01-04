@@ -27,8 +27,6 @@ public class IPeripheralTests
     [Test]
     public void Interface_HasNameProperty()
     {
-        var property = typeof(IPeripheral).GetProperty(nameof(IPeripheral.Name));
-
         // Name is inherited from IScheduledDevice, so we check the base interface
         var baseProperty = typeof(IScheduledDevice).GetProperty(nameof(IScheduledDevice.Name));
         Assert.That(baseProperty, Is.Not.Null);
