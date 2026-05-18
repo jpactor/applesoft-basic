@@ -4,7 +4,10 @@
 
 namespace BadMango.Emulator.Debug.Infrastructure;
 
-using BadMango.Emulator.Core;
+using System.Text.Json;
+
+using BadMango.Emulator.Bus;
+using BadMango.Emulator.Bus.Interfaces;
 using BadMango.Emulator.Core.Cpu;
 using BadMango.Emulator.Core.Debugger;
 using BadMango.Emulator.Core.Interfaces.Cpu;
@@ -51,6 +54,7 @@ public sealed class WatchpointManager : IDebugStepListener
     private readonly Lock syncLock = new();
     private readonly Dictionary<uint, WatchpointEntry> entries = [];
     private ICpu? cpu;
+    private IMemoryBus? bus;
     private TextWriter? log;
 
     /// <summary>
@@ -79,6 +83,13 @@ public sealed class WatchpointManager : IDebugStepListener
     public WatchAccess LastHitAccess { get; private set; }
 
     /// <summary>
+    /// Gets the value that was read from or written to the watched address on the most
+    /// recent hit, or <see langword="null"/> if no watchpoint has fired or the bus was
+    /// not attached at the time of the hit.
+    /// </summary>
+    public byte? LastHitValue { get; private set; }
+
+    /// <summary>
     /// Attaches the manager to a CPU so hits can request a stop.
     /// </summary>
     /// <param name="cpu">The CPU to halt when a stop-on-hit watchpoint fires.</param>
@@ -92,11 +103,28 @@ public sealed class WatchpointManager : IDebugStepListener
     }
 
     /// <summary>
-    /// Detaches the manager from the CPU. Watchpoint definitions are retained.
+    /// Attaches the manager to a CPU and memory bus for watchpoint hit logging with value emission.
+    /// </summary>
+    /// <param name="cpu">The CPU to halt when a stop-on-hit watchpoint fires.</param>
+    /// <param name="bus">The memory bus for reading values at watched addresses.</param>
+    /// <exception cref="ArgumentNullException">
+    /// Thrown when <paramref name="cpu"/> or <paramref name="bus"/> is <see langword="null"/>.
+    /// </exception>
+    public void AttachWithBus(ICpu cpu, IMemoryBus bus)
+    {
+        ArgumentNullException.ThrowIfNull(cpu);
+        ArgumentNullException.ThrowIfNull(bus);
+        this.cpu = cpu;
+        this.bus = bus;
+    }
+
+    /// <summary>
+    /// Detaches the manager from the CPU and bus. Watchpoint definitions are retained.
     /// </summary>
     public void Detach()
     {
         cpu = null;
+        bus = null;
     }
 
     /// <summary>
@@ -205,6 +233,112 @@ public sealed class WatchpointManager : IDebugStepListener
     {
         LastHitAddress = null;
         LastHitAccess = WatchAccess.None;
+        LastHitValue = null;
+    }
+
+    /// <summary>
+    /// Saves the current watchpoint configuration to a JSON file.
+    /// </summary>
+    /// <param name="filePath">The path where the configuration should be saved.</param>
+    /// <exception cref="IOException">Thrown if the file cannot be written.</exception>
+    public void SaveToFile(string filePath)
+    {
+        ArgumentNullException.ThrowIfNull(filePath);
+
+        lock (syncLock)
+        {
+            var data = new
+            {
+                watchpoints = entries.Values.Select(wp => new
+                {
+                    address = $"0x{wp.Address:X4}",
+                    access = wp.Access.ToString(),
+                    stopOnHit = wp.StopOnHit,
+                    label = wp.Label,
+                    enabled = wp.Enabled,
+                }).ToList(),
+            };
+
+            var json = JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText(filePath, json);
+        }
+    }
+
+    /// <summary>
+    /// Loads watchpoint configuration from a JSON file and adds them to the manager.
+    /// </summary>
+    /// <param name="filePath">The path to the configuration file to load.</param>
+    /// <exception cref="IOException">Thrown if the file cannot be read.</exception>
+    /// <exception cref="JsonException">Thrown if the file is not valid JSON.</exception>
+    public void LoadFromFile(string filePath)
+    {
+        ArgumentNullException.ThrowIfNull(filePath);
+
+        if (!File.Exists(filePath))
+        {
+            throw new FileNotFoundException($"Watchpoint configuration file not found: {filePath}");
+        }
+
+        var json = File.ReadAllText(filePath);
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+
+        if (!root.TryGetProperty("watchpoints", out var wpsElement))
+        {
+            return;
+        }
+
+        lock (syncLock)
+        {
+            foreach (var wpElement in wpsElement.EnumerateArray())
+            {
+                if (!wpElement.TryGetProperty("address", out var addrElement))
+                {
+                    continue;
+                }
+
+                var addrStr = addrElement.GetString();
+                if (string.IsNullOrEmpty(addrStr) || !uint.TryParse(addrStr.StartsWith("0x") ? addrStr[2..] : addrStr, System.Globalization.NumberStyles.HexNumber, null, out uint address))
+                {
+                    continue;
+                }
+
+                WatchAccess access = WatchAccess.ReadWrite;
+                if (wpElement.TryGetProperty("access", out var accessElement))
+                {
+                    var accessStr = accessElement.GetString();
+                    if (!string.IsNullOrEmpty(accessStr) && Enum.TryParse<WatchAccess>(accessStr, out var parsed))
+                    {
+                        access = parsed;
+                    }
+                }
+
+                bool stopOnHit = false;
+                if (wpElement.TryGetProperty("stopOnHit", out var stopElement))
+                {
+                    stopOnHit = stopElement.GetBoolean();
+                }
+
+                string? label = null;
+                if (wpElement.TryGetProperty("label", out var labelElement) && labelElement.ValueKind != JsonValueKind.Null)
+                {
+                    label = labelElement.GetString();
+                }
+
+                bool enabled = true;
+                if (wpElement.TryGetProperty("enabled", out var enabledElement))
+                {
+                    enabled = enabledElement.GetBoolean();
+                }
+
+                // Add the watchpoint
+                if (!entries.ContainsKey(address))
+                {
+                    var entry = new WatchpointEntry(address, access, stopOnHit, label, enabled);
+                    entries[address] = entry;
+                }
+            }
+        }
     }
 
     /// <inheritdoc/>
@@ -253,9 +387,39 @@ public sealed class WatchpointManager : IDebugStepListener
         LastHitAddress = addr;
         LastHitAccess = access;
 
+        // Attempt to read the value at the effective address for emit logging
+        byte value = 0;
+        bool hasValue = false;
+        if (bus is not null)
+        {
+            try
+            {
+                var busAccess = new BusAccess(
+                    Address: addr,
+                    Value: 0,
+                    WidthBits: 8,
+                    Mode: BusAccessMode.Atomic,
+                    EmulationFlag: false,
+                    Intent: AccessIntent.DebugRead,
+                    SourceId: 0,
+                    Cycle: 0,
+                    Flags: AccessFlags.NoSideEffects,
+                    PrivilegeLevel: Bus.PrivilegeLevel.Ring0);
+                value = bus.Read8(in busAccess);
+                hasValue = true;
+            }
+            catch
+            {
+                // If we can't read the value, continue without it
+            }
+        }
+
+        LastHitValue = hasValue ? value : null;
+
         logSnapshot?.WriteLine(
-            $"[watch] {(access == WatchAccess.Read ? "R" : "W")} ${addr:X4} " +
-            $"by ${eventData.PC:X4} ({eventData.Instruction}) " +
+            $"[watch] {(access == WatchAccess.Read ? "R" : "W")} ${addr:X4}" +
+            (hasValue ? $" Val=${value:X2}" : string.Empty) +
+            $" by ${eventData.PC:X4} ({eventData.Instruction}) " +
             $"A={eventData.Registers.A.GetByte():X2} " +
             $"X={eventData.Registers.X.GetByte():X2} " +
             $"Y={eventData.Registers.Y.GetByte():X2}" +

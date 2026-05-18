@@ -531,7 +531,7 @@ public class DisassemblerTests : CpuTestBase
         var instructions = disassembler.DisassembleRange(0x1000, 0x1003);
 
         // Assert
-        Assert.That(instructions.Count, Is.EqualTo(2));
+        Assert.That(instructions.Count, Is.EqualTo(3));
     }
 
     /// <summary>

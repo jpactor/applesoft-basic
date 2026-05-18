@@ -28,7 +28,7 @@ public sealed class WatchCommand : CommandHandlerBase, ICommandHelp
     public override IReadOnlyList<string> Aliases { get; } = ["wp"];
 
     /// <inheritdoc/>
-    public override string Usage => "watch <add|remove|list|clear|enable|disable|log> [address] [r|w|rw] [--stop] [label]";
+    public override string Usage => "watch <add|remove|list|clear|enable|disable|log|save|load> [address] [r|w|rw] [--stop] [label]";
 
     /// <inheritdoc/>
     public string Synopsis => "watch <subcommand> [args]";
@@ -49,6 +49,8 @@ public sealed class WatchCommand : CommandHandlerBase, ICommandHelp
         "watch add $3D0 rw --stop boot-vector  Stop on any access to $3D0",
         "watch add $C0E9 w                     Log writes to motor-on switch",
         "watch list                            Show all watchpoints",
+        "watch save config.json                Save watchpoints to file",
+        "watch load config.json                Load watchpoints from file",
         "watch clear                           Remove every watchpoint",
         "watch log on                          Enable hit logging to console",
     ];
@@ -86,7 +88,9 @@ public sealed class WatchCommand : CommandHandlerBase, ICommandHelp
             "enable" => SetEnabled(debugContext, args, enabled: true),
             "disable" => SetEnabled(debugContext, args, enabled: false),
             "log" => Log(debugContext, args),
-            _ => CommandResult.Error($"Unknown subcommand: '{args[0]}'. Use add/remove/list/clear/enable/disable/log."),
+            "save" => Save(debugContext, args),
+            "load" => Load(debugContext, args),
+            _ => CommandResult.Error($"Unknown subcommand: '{args[0]}'. Use add/remove/list/clear/enable/disable/log/save/load."),
         };
     }
 
@@ -248,9 +252,89 @@ public sealed class WatchCommand : CommandHandlerBase, ICommandHelp
         if (lastHit is not null)
         {
             context.Output.WriteLine();
-            context.Output.WriteLine($"Last hit: ${lastHit.Value:X4} ({context.Watchpoints.LastHitAccess})");
+            var lastValue = context.Watchpoints.LastHitValue;
+            var valueSuffix = lastValue.HasValue ? $" = ${lastValue.Value:X2}" : string.Empty;
+            context.Output.WriteLine($"Last hit: ${lastHit.Value:X4} ({context.Watchpoints.LastHitAccess}){valueSuffix}");
         }
 
         return CommandResult.Ok();
+    }
+
+    private static CommandResult Save(IDebugContext context, string[] args)
+    {
+        if (args.Length < 2)
+        {
+            return CommandResult.Error("Usage: watch save <filepath>");
+        }
+
+        string rawPath = args[1];
+        string resolvedPath = rawPath;
+        if (context.PathResolver is not null)
+        {
+            if (!context.PathResolver.TryResolve(rawPath, out string? resolved))
+            {
+                return CommandResult.Error($"Cannot resolve path: '{rawPath}'.");
+            }
+
+            resolvedPath = resolved!;
+        }
+
+        try
+        {
+            context.Watchpoints.SaveToFile(resolvedPath);
+            string displayPath = resolvedPath != rawPath
+                ? $"{rawPath} (resolved to '{resolvedPath}')"
+                : resolvedPath;
+            context.Output.WriteLine($"Saved {context.Watchpoints.Count} watchpoint(s) to {displayPath}");
+            return CommandResult.Ok();
+        }
+        catch (Exception ex)
+        {
+            return CommandResult.Error($"Failed to save watchpoints: {ex.Message}");
+        }
+    }
+
+    private static CommandResult Load(IDebugContext context, string[] args)
+    {
+        if (args.Length < 2)
+        {
+            return CommandResult.Error("Usage: watch load <filepath>");
+        }
+
+        string rawPath = args[1];
+        string resolvedPath = rawPath;
+        if (context.PathResolver is not null)
+        {
+            if (!context.PathResolver.TryResolve(rawPath, out string? resolved))
+            {
+                return CommandResult.Error($"Cannot resolve path: '{rawPath}'.");
+            }
+
+            resolvedPath = resolved!;
+        }
+
+        if (!File.Exists(resolvedPath))
+        {
+            string errorMessage = resolvedPath != rawPath
+                ? $"File not found: '{rawPath}' (resolved to '{resolvedPath}')"
+                : $"File not found: '{rawPath}'";
+            return CommandResult.Error(errorMessage);
+        }
+
+        try
+        {
+            int countBefore = context.Watchpoints.Count;
+            context.Watchpoints.LoadFromFile(resolvedPath);
+            int countAfter = context.Watchpoints.Count;
+            string displayPath = resolvedPath != rawPath
+                ? $"{rawPath} (resolved to '{resolvedPath}')"
+                : resolvedPath;
+            context.Output.WriteLine($"Loaded watchpoints from {displayPath} ({countAfter - countBefore} new watchpoint(s), {countAfter} total)");
+            return CommandResult.Ok();
+        }
+        catch (Exception ex)
+        {
+            return CommandResult.Error($"Failed to load watchpoints: {ex.Message}");
+        }
     }
 }

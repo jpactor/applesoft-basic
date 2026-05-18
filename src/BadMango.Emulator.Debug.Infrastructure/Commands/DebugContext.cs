@@ -331,6 +331,7 @@ public sealed class DebugContext : IDebugContext, IDisposable
         // Tear down debugger-side managers before the CPU/Machine references go away.
         this.Breakpoints.Detach();
         this.Watchpoints.Detach();
+        this.Watchpoints.SetLogOutput(null);
         this.Cpu?.DetachDebugger();
         this.StepListener = null;
 
@@ -376,7 +377,16 @@ public sealed class DebugContext : IDebugContext, IDisposable
             composite.Add(this.TracingListener);
         }
 
-        this.Watchpoints.Attach(this.Cpu);
+        if (this.Bus is not null)
+        {
+            this.Watchpoints.AttachWithBus(this.Cpu, this.Bus);
+        }
+        else
+        {
+            this.Watchpoints.Attach(this.Cpu);
+        }
+
+        this.Watchpoints.SetLogOutput(this.Output);
         composite.Add(this.Watchpoints);
 
         this.Cpu.AttachDebugger(composite);

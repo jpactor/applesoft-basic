@@ -10,8 +10,10 @@ using System.Globalization;
 /// Manages execution breakpoints backed by the trap registry.
 /// </summary>
 /// <remarks>
-/// Breakpoints register a <see cref="Bus.TrapOperation.Call"/> trap that requests
-/// the CPU to stop after the instruction at the breakpoint address completes.
+/// Breakpoints register a <see cref="Bus.TrapOperation.Call"/> trap that stops
+/// the CPU immediately when the program counter reaches the breakpoint address,
+/// *before* the instruction at that address executes. Resuming with <c>step</c>
+/// or <c>run</c> executes that instruction once and then continues normally.
 /// Use this with <c>run</c> to diagnose execution that reaches a specific PC.
 /// </remarks>
 public sealed class BreakCommand : CommandHandlerBase, ICommandHelp
@@ -28,16 +30,18 @@ public sealed class BreakCommand : CommandHandlerBase, ICommandHelp
     public override IReadOnlyList<string> Aliases { get; } = ["breakpoint"];
 
     /// <inheritdoc/>
-    public override string Usage => "bp <add|remove|list|clear|enable|disable> [address] [label]";
+    public override string Usage => "bp <add|remove|list|clear|enable|disable|save|load> [address] [label]";
 
     /// <inheritdoc/>
-    public string Synopsis => "bp <add|remove|list|clear|enable|disable> [address] [label]";
+    public string Synopsis => "bp <add|remove|list|clear|enable|disable|save|load> [args]";
 
     /// <inheritdoc/>
     public string DetailedDescription =>
         "Adds, removes, lists, enables, or disables execution breakpoints. " +
-        "Breakpoints fire when the CPU fetches an instruction at the given address " +
-        "and request a stop at the next instruction boundary.";
+        "Breakpoints stop the CPU immediately when the program counter reaches " +
+        "the given address, before the instruction at that address executes. " +
+        "Resuming with 'step' or 'run' executes that instruction once and then " +
+        "continues normally until the next breakpoint or stop condition.";
 
     /// <inheritdoc/>
     public IReadOnlyList<CommandOption> Options { get; } = [];
@@ -50,6 +54,8 @@ public sealed class BreakCommand : CommandHandlerBase, ICommandHelp
         "bp list                 Show all breakpoints",
         "bp remove $3A00         Remove a single breakpoint",
         "bp disable $3A00        Keep entry but stop matching",
+        "bp save config.json     Save breakpoints to file",
+        "bp load config.json     Load breakpoints from file",
         "bp clear                Remove every breakpoint",
     ];
 
@@ -85,7 +91,9 @@ public sealed class BreakCommand : CommandHandlerBase, ICommandHelp
             "clear" => Clear(debugContext),
             "enable" => SetEnabled(debugContext, args, enabled: true),
             "disable" => SetEnabled(debugContext, args, enabled: false),
-            _ => CommandResult.Error($"Unknown subcommand: '{args[0]}'. Use add/remove/list/clear/enable/disable."),
+            "save" => Save(debugContext, args),
+            "load" => Load(debugContext, args),
+            _ => CommandResult.Error($"Unknown subcommand: '{args[0]}'. Use add/remove/list/clear/enable/disable/save/load."),
         };
     }
 
@@ -197,5 +205,83 @@ public sealed class BreakCommand : CommandHandlerBase, ICommandHelp
         }
 
         return CommandResult.Ok();
+    }
+
+    private static CommandResult Save(IDebugContext context, string[] args)
+    {
+        if (args.Length < 2)
+        {
+            return CommandResult.Error("Usage: bp save <filepath>");
+        }
+
+        string rawPath = args[1];
+        string resolvedPath = rawPath;
+        if (context.PathResolver is not null)
+        {
+            if (!context.PathResolver.TryResolve(rawPath, out string? resolved))
+            {
+                return CommandResult.Error($"Cannot resolve path: '{rawPath}'.");
+            }
+
+            resolvedPath = resolved!;
+        }
+
+        try
+        {
+            context.Breakpoints.SaveToFile(resolvedPath);
+            string displayPath = resolvedPath != rawPath
+                ? $"{rawPath} (resolved to '{resolvedPath}')"
+                : resolvedPath;
+            context.Output.WriteLine($"Saved {context.Breakpoints.Count} breakpoint(s) to {displayPath}");
+            return CommandResult.Ok();
+        }
+        catch (Exception ex)
+        {
+            return CommandResult.Error($"Failed to save breakpoints: {ex.Message}");
+        }
+    }
+
+    private static CommandResult Load(IDebugContext context, string[] args)
+    {
+        if (args.Length < 2)
+        {
+            return CommandResult.Error("Usage: bp load <filepath>");
+        }
+
+        string rawPath = args[1];
+        string resolvedPath = rawPath;
+        if (context.PathResolver is not null)
+        {
+            if (!context.PathResolver.TryResolve(rawPath, out string? resolved))
+            {
+                return CommandResult.Error($"Cannot resolve path: '{rawPath}'.");
+            }
+
+            resolvedPath = resolved!;
+        }
+
+        if (!File.Exists(resolvedPath))
+        {
+            string errorMessage = resolvedPath != rawPath
+                ? $"File not found: '{rawPath}' (resolved to '{resolvedPath}')"
+                : $"File not found: '{rawPath}'";
+            return CommandResult.Error(errorMessage);
+        }
+
+        try
+        {
+            int countBefore = context.Breakpoints.Count;
+            context.Breakpoints.LoadFromFile(resolvedPath);
+            int countAfter = context.Breakpoints.Count;
+            string displayPath = resolvedPath != rawPath
+                ? $"{rawPath} (resolved to '{resolvedPath}')"
+                : resolvedPath;
+            context.Output.WriteLine($"Loaded breakpoints from {displayPath} ({countAfter - countBefore} new breakpoint(s), {countAfter} total)");
+            return CommandResult.Ok();
+        }
+        catch (Exception ex)
+        {
+            return CommandResult.Error($"Failed to load breakpoints: {ex.Message}");
+        }
     }
 }

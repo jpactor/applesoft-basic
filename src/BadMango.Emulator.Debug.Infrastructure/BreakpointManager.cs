@@ -4,6 +4,8 @@
 
 namespace BadMango.Emulator.Debug.Infrastructure;
 
+using System.Text.Json;
+
 using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
 using BadMango.Emulator.Core;
@@ -15,18 +17,28 @@ using BadMango.Emulator.Core.Interfaces.Cpu;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Each breakpoint is implemented as a non-handling call trap: when the CPU fetches
-/// an instruction at the breakpoint address, the trap fires, the breakpoint's hit
-/// counter is incremented, <see cref="ICpu.RequestStop"/> is invoked, and the trap
-/// returns <see cref="TrapResult.NotHandled"/> so the original instruction still
-/// executes. The run loop then exits on the next iteration. This gives clean
-/// "execute-and-break" semantics and avoids the need for a skip-once mechanism on
-/// resume.
+/// Each breakpoint is implemented as a call trap that fires when the CPU fetches an
+/// instruction at the breakpoint address. When an armed breakpoint fires, the trap
+/// increments the hit counter, calls <see cref="ICpu.RequestStop"/>, marks the
+/// breakpoint as pending-skip-on-resume, and returns a handled trap result with
+/// <see cref="TrapReturnMethod.None"/> and zero cycles. Because the trap is
+/// reported as handled with no return-address override, the CPU leaves the program
+/// counter pointing at the breakpoint address and the run loop exits before the
+/// instruction at that address is executed. This gives "stop-before-execute"
+/// semantics, which preserves the original PC, opcode, and operand bytes for
+/// inspection -- especially important when the trapped instruction is a JMP, JSR,
+/// or branch that would otherwise change control flow.
+/// </para>
+/// <para>
+/// When the user resumes (via <c>step</c> or <c>run</c>), the trap fires again at
+/// the same PC. The pending-skip-on-resume flag is consumed and the trap returns
+/// <see cref="TrapResult.NotHandled"/>, allowing the original instruction to
+/// execute normally. The breakpoint is automatically rearmed for the next visit.
 /// </para>
 /// <para>
 /// Breakpoints can be temporarily disabled without being removed. Disabled
-/// breakpoints are still registered with the trap registry but skip the stop
-/// request.
+/// breakpoints are still registered with the trap registry but neither stop the
+/// CPU nor consume a skip-on-resume.
 /// </para>
 /// </remarks>
 public sealed class BreakpointManager
@@ -213,6 +225,94 @@ public sealed class BreakpointManager
         LastHitAddress = null;
     }
 
+    /// <summary>
+    /// Saves the current breakpoint configuration to a JSON file.
+    /// </summary>
+    /// <param name="filePath">The path where the configuration should be saved.</param>
+    /// <exception cref="IOException">Thrown if the file cannot be written.</exception>
+    public void SaveToFile(string filePath)
+    {
+        ArgumentNullException.ThrowIfNull(filePath);
+
+        lock (syncLock)
+        {
+            var data = new
+            {
+                breakpoints = entries.Values.Select(bp => new
+                {
+                    address = $"0x{bp.Address:X4}",
+                    label = bp.Label,
+                    enabled = bp.Enabled,
+                }).ToList(),
+            };
+
+            var json = JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText(filePath, json);
+        }
+    }
+
+    /// <summary>
+    /// Loads breakpoint configuration from a JSON file and adds them to the manager.
+    /// </summary>
+    /// <param name="filePath">The path to the configuration file to load.</param>
+    /// <exception cref="IOException">Thrown if the file cannot be read.</exception>
+    /// <exception cref="JsonException">Thrown if the file is not valid JSON.</exception>
+    public void LoadFromFile(string filePath)
+    {
+        ArgumentNullException.ThrowIfNull(filePath);
+
+        if (!File.Exists(filePath))
+        {
+            throw new FileNotFoundException($"Breakpoint configuration file not found: {filePath}");
+        }
+
+        var json = File.ReadAllText(filePath);
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+
+        if (!root.TryGetProperty("breakpoints", out var bpsElement))
+        {
+            return;
+        }
+
+        lock (syncLock)
+        {
+            foreach (var bpElement in bpsElement.EnumerateArray())
+            {
+                if (!bpElement.TryGetProperty("address", out var addrElement))
+                {
+                    continue;
+                }
+
+                var addrStr = addrElement.GetString();
+                if (string.IsNullOrEmpty(addrStr) || !uint.TryParse(addrStr.StartsWith("0x") ? addrStr[2..] : addrStr, System.Globalization.NumberStyles.HexNumber, null, out uint address))
+                {
+                    continue;
+                }
+
+                string? label = null;
+                if (bpElement.TryGetProperty("label", out var labelElement) && labelElement.ValueKind != JsonValueKind.Null)
+                {
+                    label = labelElement.GetString();
+                }
+
+                bool enabled = true;
+                if (bpElement.TryGetProperty("enabled", out var enabledElement))
+                {
+                    enabled = enabledElement.GetBoolean();
+                }
+
+                // Add the breakpoint
+                if (!entries.ContainsKey(address))
+                {
+                    var entry = new BreakpointEntry(address, label, enabled);
+                    entries[address] = entry;
+                    RegisterWithRegistry(entry);
+                }
+            }
+        }
+    }
+
     private void RegisterWithRegistry(BreakpointEntry entry)
     {
         if (registry is null)
@@ -233,10 +333,26 @@ public sealed class BreakpointManager
                 return TrapResult.NotHandled;
             }
 
+            // If this trap fired because the user just resumed from a stopped
+            // breakpoint, consume the skip-once flag and let the original
+            // instruction execute normally. The breakpoint rearms automatically.
+            if (snapshot.SkipNextHit)
+            {
+                snapshot.SkipNextHit = false;
+                return TrapResult.NotHandled;
+            }
+
+            // Armed hit: stop *before* the instruction executes. Mark the
+            // breakpoint to skip its very next trap (the resume) and report
+            // the trap as handled with no PC change and zero cycles. The CPU
+            // leaves PC at the breakpoint address, the run loop sees the stop
+            // request and exits, and the instruction at the breakpoint is
+            // preserved for inspection.
             snapshot.IncrementHits();
+            snapshot.SkipNextHit = true;
             LastHitAddress = entry.Address;
             cpu?.RequestStop();
-            return TrapResult.NotHandled;
+            return TrapResult.Success(Cycle.Zero, TrapReturnMethod.None);
         }
 
         registry.Register(
@@ -287,6 +403,14 @@ public sealed class BreakpointManager
         /// Gets the number of times this breakpoint has been hit.
         /// </summary>
         public long Hits => Interlocked.Read(ref hits);
+
+        /// <summary>
+        /// Gets or sets a value indicating whether the next trap firing at this
+        /// address should be skipped (i.e., the original instruction should execute
+        /// without re-triggering the breakpoint). Used to implement
+        /// stop-before-execute resume semantics.
+        /// </summary>
+        internal bool SkipNextHit { get; set; }
 
         /// <summary>
         /// Increments the hit counter for this breakpoint by one.
