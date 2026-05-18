@@ -280,19 +280,7 @@ public static class GcrEncoder
         for (var i = 0; i < 256; i++)
         {
             sixBit[i] = (byte)(sector[i] >> 2);
-
-            // The Apple II 6-and-2 layout packs sector byte i's low 2 bits into
-            // aux byte (85 - (i % 86)) — NOT (i % 86). Real RWTS POSTNIB16
-            // walks its 86-entry aux buffer from index 85 down to 0 in step
-            // with the sector byte index advancing 0, 86, 172, 1, 87, 173, ...
-            // so sector byte 0's bits live in the LAST aux byte on disk
-            // (twoBit[85]) and sector byte 85's bits live in the FIRST
-            // (twoBit[0]). Encoding into twoBit[i % 86] instead leaves the top
-            // 6 bits decoding cleanly but permutes every byte's low 2 bits,
-            // producing the classic "I/O ERROR on boot" symptom even though
-            // every XOR-chain checksum still validates (XOR is order-
-            // independent).
-            var idx = 85 - (i % 86);
+            var idx = i % 86;
             var shift = (i / 86) * 2;
 
             // Reverse the 2 bits before packing (low bit -> high position) per the
@@ -378,9 +366,7 @@ public static class GcrEncoder
 
         for (var i = 0; i < 256; i++)
         {
-            // Symmetric inverse of the WriteDataField packing: sector byte i's
-            // low 2 bits live in twoBit[85 - (i % 86)] at shift (i / 86) * 2.
-            var idx = 85 - (i % 86);
+            var idx = i % 86;
             var shift = (i / 86) * 2;
             var packed = (twoBit[idx] >> shift) & 0x03;
 
