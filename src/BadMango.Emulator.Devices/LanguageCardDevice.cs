@@ -49,14 +49,39 @@ public sealed class LanguageCardDevice : IMotherboardDevice, ISoftSwitchProvider
     public const string SwapGroupName = "LC_D000_BANK";
 
     /// <summary>
-    /// The name of the Bank 1 variant.
+    /// The name of the Bank 1 variant for full-RAM read mode on $D000-$DFFF.
     /// </summary>
     public const string Bank1VariantName = "BANK1";
 
     /// <summary>
-    /// The name of the Bank 2 variant.
+    /// The name of the Bank 2 variant for full-RAM read mode on $D000-$DFFF.
     /// </summary>
     public const string Bank2VariantName = "BANK2";
+
+    /// <summary>
+    /// The name of the split-mode variant for Bank 1 on $D000-$DFFF (reads from ROM, writes to Bank 1 RAM).
+    /// </summary>
+    public const string SplitBank1VariantName = "SPLIT_BANK1";
+
+    /// <summary>
+    /// The name of the split-mode variant for Bank 2 on $D000-$DFFF (reads from ROM, writes to Bank 2 RAM).
+    /// </summary>
+    public const string SplitBank2VariantName = "SPLIT_BANK2";
+
+    /// <summary>
+    /// The name of the swap group for the $E000-$FFFF mode selection (RAM vs. split).
+    /// </summary>
+    public const string HighSwapGroupName = "LC_E000_MODE";
+
+    /// <summary>
+    /// The name of the full-RAM variant for $E000-$FFFF.
+    /// </summary>
+    public const string HighRamVariantName = "RAM";
+
+    /// <summary>
+    /// The name of the split-mode variant for $E000-$FFFF (reads from ROM, writes to LC RAM).
+    /// </summary>
+    public const string HighSplitVariantName = "SPLIT";
 
     /// <summary>
     /// The layer priority for the Language Card layers.
@@ -88,13 +113,15 @@ public sealed class LanguageCardDevice : IMotherboardDevice, ISoftSwitchProvider
 
     private IMemoryBus? bus;
     private uint bankSwapGroupId;
+    private uint highSwapGroupId;
     private int deviceId;
+    private bool splitVariantsRegistered;
 
     private bool readRam;           // True = read from LC RAM
     private bool writeEnabled;      // True = writes go to LC RAM
     private bool bank2Selected;     // True = $D000 bank 2 (Bank 1 selected on power-on)
-    private bool preWrite;          // R�2 protocol state
-    private byte lastReadOffset;    // Last read offset for R�2
+    private bool preWrite;          // R*2 protocol state
+    private byte lastReadOffset;    // Last read offset for R*2
 
     /// <summary>
     /// Initializes a new instance of the <see cref="LanguageCardDevice"/> class.
@@ -296,17 +323,25 @@ public sealed class LanguageCardDevice : IMotherboardDevice, ISoftSwitchProvider
             mainBus.SaveBaseMappingRange(0xD, 3);
         }
 
-        // Get the swap group ID (created during configuration)
+        // Get the swap group IDs (created during configuration)
         try
         {
             bankSwapGroupId = bus.GetSwapGroupId(SwapGroupName);
+            highSwapGroupId = bus.GetSwapGroupId(HighSwapGroupName);
         }
-        catch (KeyNotFoundException)
+        catch (KeyNotFoundException ex)
         {
             throw new InvalidOperationException(
-                $"Language Card swap group '{SwapGroupName}' not found. " +
-                $"Ensure ConfigureMemory was called during machine configuration.");
+                $"Language Card swap groups not found. " +
+                $"Ensure ConfigureMemory was called during machine configuration. " +
+                $"Missing: {ex.Message}",
+                ex);
         }
+
+        // Now that ROMs are mapped, register the split-mode swap variants for both
+        // layers. These variants implement the hardware $C081/$C089 split mode where
+        // reads come from ROM and writes go to LC RAM.
+        RegisterSplitVariantsIfNeeded();
 
         // Set initial state: RAM disabled, Bank 1 selected (default power-on state)
         readRam = false;
@@ -409,7 +444,9 @@ public sealed class LanguageCardDevice : IMotherboardDevice, ISoftSwitchProvider
             Target: bank1Target,
             PhysBase: 0));
 
-        // Create swap group for D000-DFFF bank switching (Bank1/Bank2 within the layer)
+        // Create swap group for D000-DFFF bank switching (Bank1/Bank2 within the layer).
+        // The split-mode variants (SPLIT_BANK1 / SPLIT_BANK2) are registered later in
+        // Initialize() once the underlying ROM target is known.
         // Note: We don't select a variant here because the layer is inactive.
         // The swap group variants will be selected in ApplyState() when the layer becomes active.
         uint groupId = bus.CreateSwapGroup(SwapGroupName, virtualBase: 0xD000, size: D000BankSize);
@@ -419,6 +456,12 @@ public sealed class LanguageCardDevice : IMotherboardDevice, ISoftSwitchProvider
 
         // Add Bank2 variant
         bus.AddSwapVariant(groupId, Bank2VariantName, bank2Target, physBase: 0, perms: PagePerms.ReadExecute);
+
+        // Create swap group for E000-FFFF mode selection (RAM vs. split). The "RAM"
+        // variant is registered immediately and matches the default layer mapping;
+        // the "SPLIT" variant is registered in Initialize() once the ROM is mapped.
+        uint highGroupId = bus.CreateSwapGroup(HighSwapGroupName, virtualBase: 0xE000, size: E000Size);
+        bus.AddSwapVariant(highGroupId, HighRamVariantName, highTarget, physBase: 0, perms: PagePerms.ReadExecute);
 
         // DO NOT call SelectSwapVariant here - the layer is inactive and we don't want
         // to overwrite the base ROM mapping in the page table. The variant will be
@@ -552,6 +595,83 @@ public sealed class LanguageCardDevice : IMotherboardDevice, ISoftSwitchProvider
         ApplyState();
     }
 
+    private void RegisterSplitVariantsIfNeeded()
+    {
+        if (splitVariantsRegistered || bus is null)
+        {
+            return;
+        }
+
+        // Capture the underlying base mappings for $D000, $E000, $F000.
+        // At this point in Initialize, the LC layers have not yet been activated, so
+        // GetEffectiveMapping returns the base ROM mapping installed by WithRom().
+        PageEntry dRomPage = bus.GetEffectiveMapping(0xD000);
+        PageEntry eRomPage = bus.GetEffectiveMapping(0xE000);
+
+        // If there is no ROM under $D000-$FFFF (uncommon in tests but possible in
+        // bare-bones builders), there is nothing meaningful to read from in split mode.
+        // Skip variant registration; ApplyState will then fall back to write-only perms
+        // for those modes, which still prevents the zero-fill ROM-shadow bug.
+        if (dRomPage.Target is null || eRomPage.Target is null)
+        {
+            return;
+        }
+
+        // The bus computed PhysicalBase for each page already accounts for the page's
+        // virtual address relative to the ROM's load address (see MainBus.MapPageRange:
+        // pagePhysBase = physicalBase + i * PageSize). For $E000 with a 16 KB ROM at
+        // $C000 and physicalBase=0, eRomPage.PhysicalBase = $2000.
+        var highSplitTarget = new LanguageCardSplitTarget(
+            readTarget: eRomPage.Target,
+            readPhysBaseAtRegion: eRomPage.PhysicalBase,
+            writeTarget: highTarget,
+            writePhysBaseAtRegion: 0,
+            regionVirtualBase: 0xE000,
+            regionSize: E000Size,
+            name: "LC_E000_Split");
+
+        bus.AddSwapVariant(
+            highSwapGroupId,
+            HighSplitVariantName,
+            highSplitTarget,
+            physBase: 0,
+            perms: PagePerms.ReadWrite);
+
+        var lowSplitBank1Target = new LanguageCardSplitTarget(
+            readTarget: dRomPage.Target,
+            readPhysBaseAtRegion: dRomPage.PhysicalBase,
+            writeTarget: bank1Target,
+            writePhysBaseAtRegion: 0,
+            regionVirtualBase: 0xD000,
+            regionSize: D000BankSize,
+            name: "LC_D000_Bank1_Split");
+
+        bus.AddSwapVariant(
+            bankSwapGroupId,
+            SplitBank1VariantName,
+            lowSplitBank1Target,
+            physBase: 0,
+            perms: PagePerms.ReadWrite);
+
+        var lowSplitBank2Target = new LanguageCardSplitTarget(
+            readTarget: dRomPage.Target,
+            readPhysBaseAtRegion: dRomPage.PhysicalBase,
+            writeTarget: bank2Target,
+            writePhysBaseAtRegion: 0,
+            regionVirtualBase: 0xD000,
+            regionSize: D000BankSize,
+            name: "LC_D000_Bank2_Split");
+
+        bus.AddSwapVariant(
+            bankSwapGroupId,
+            SplitBank2VariantName,
+            lowSplitBank2Target,
+            physBase: 0,
+            perms: PagePerms.ReadWrite);
+
+        splitVariantsRegistered = true;
+    }
+
     private void ApplyState()
     {
         if (bus is null)
@@ -573,58 +693,81 @@ public sealed class LanguageCardDevice : IMotherboardDevice, ISoftSwitchProvider
         //// | $C082      | No       | No        | ROM                          | ROM                          |
         //// | $C083      | Yes      | Yes*      | Bank RAM (read/write)        | RAM (read/write)             |
         ////
-        //// We translate this directly into layer permissions:
-        ////   Read/Execute on the LC layer is gated by readRam.
-        ////   Write           on the LC layer is gated by writeEnabled.
-        //// Both layers use the same composition.
-        ////
-        //// LIMITATION: Our layer system cannot do true split read/write routing for a
-        //// single page (separate targets for reads vs writes). In the $C081/$C089
-        //// "split" mode (writeEnabled && !readRam), the LC layer is activated with
-        //// write-only permissions so that writes are correctly routed to LC RAM. CPU
-        //// reads in that state hit the LC page with no read permission and receive
-        //// floating-bus ($FF) via CpuBase.Read8 rather than reading from ROM. This is
-        //// a documented limitation; the important invariant restored by this code is
-        //// that ROM is NOT silently shadowed by zero-filled LC RAM when only
-        //// writeEnabled is true (the previous bug that caused DOS 3.3's R*2 sequence
-        //// at $BFCB to turn every subsequent monitor ROM call into cascading BRK $00).
+        //// The $C081/$C089 "split" mode is implemented via dedicated swap variants
+        //// (SPLIT / SPLIT_BANK1 / SPLIT_BANK2) backed by LanguageCardSplitTarget,
+        //// which forwards reads to the underlying system ROM and writes to LC RAM.
 
-        PagePerms layerPerms = PagePerms.None;
-        if (readRam)
-        {
-            layerPerms |= PagePerms.ReadExecute;
-        }
-
-        if (writeEnabled)
-        {
-            layerPerms |= PagePerms.Write;
-        }
-
-        bool lcLayerActive = layerPerms != PagePerms.None;
+        bool lcLayerActive = readRam || writeEnabled;
 
         if (lcLayerActive)
         {
-            // Activate $E000-$FFFF layer with the composed permissions
+            // Compose permissions for the full-RAM modes ($C080/$C083 family).
+            PagePerms fullRamPerms = PagePerms.None;
+            if (readRam)
+            {
+                fullRamPerms |= PagePerms.ReadExecute;
+            }
+
+            if (writeEnabled)
+            {
+                fullRamPerms |= PagePerms.Write;
+            }
+
+            // Activate both layers; the swap-variant selection below decides whether
+            // reads land in RAM or in ROM (via the split target).
             if (!bus.IsLayerActive(HighLayerName))
             {
                 bus.ActivateLayer(HighLayerName);
             }
 
-            bus.SetLayerPermissions(HighLayerName, layerPerms);
-
-            // Activate $D000-$DFFF layer with the same composed permissions
             if (!bus.IsLayerActive(LowLayerName))
             {
                 bus.ActivateLayer(LowLayerName);
             }
 
-            bus.SetLayerPermissions(LowLayerName, layerPerms);
-
-            // Select the appropriate bank variant for $D000-$DFFF
-            string variantName = bank2Selected ? Bank2VariantName : Bank1VariantName;
-            if (bus.GetActiveSwapVariant(bankSwapGroupId) != variantName)
+            if (readRam)
             {
-                bus.SelectSwapVariant(bankSwapGroupId, variantName);
+                // Full-RAM mode: route both reads and writes to the LC RAM targets.
+                bus.SetLayerPermissions(HighLayerName, fullRamPerms);
+                bus.SetLayerPermissions(LowLayerName, fullRamPerms);
+
+                SelectVariantIfChanged(highSwapGroupId, HighRamVariantName);
+                SelectVariantIfChanged(
+                    bankSwapGroupId,
+                    bank2Selected ? Bank2VariantName : Bank1VariantName);
+            }
+            else
+            {
+                // Split mode (writeEnabled && !readRam): reads from ROM, writes to LC RAM.
+                // The split-target swap variants encode both routings, so the layer needs
+                // full ReadWrite permissions to allow the target to receive the access.
+                // The variant itself routes reads to ROM and writes to RAM.
+                //
+                // If the split variants could not be registered (no ROM mapped under
+                // $D000-$FFFF), fall back to write-only RAM perms; this preserves the
+                // critical invariant that ROM is NEVER silently shadowed by zero-filled
+                // LC RAM (the previous bug that turned DOS 3.3's R*2 at $BFCB into a
+                // cascade of BRK $00 monitor calls).
+                if (splitVariantsRegistered)
+                {
+                    bus.SetLayerPermissions(HighLayerName, PagePerms.ReadWrite);
+                    bus.SetLayerPermissions(LowLayerName, PagePerms.ReadWrite);
+
+                    SelectVariantIfChanged(highSwapGroupId, HighSplitVariantName);
+                    SelectVariantIfChanged(
+                        bankSwapGroupId,
+                        bank2Selected ? SplitBank2VariantName : SplitBank1VariantName);
+                }
+                else
+                {
+                    bus.SetLayerPermissions(HighLayerName, PagePerms.Write);
+                    bus.SetLayerPermissions(LowLayerName, PagePerms.Write);
+
+                    SelectVariantIfChanged(highSwapGroupId, HighRamVariantName);
+                    SelectVariantIfChanged(
+                        bankSwapGroupId,
+                        bank2Selected ? Bank2VariantName : Bank1VariantName);
+                }
             }
         }
         else
@@ -640,6 +783,19 @@ public sealed class LanguageCardDevice : IMotherboardDevice, ISoftSwitchProvider
             {
                 bus.DeactivateLayer(LowLayerName);
             }
+        }
+    }
+
+    private void SelectVariantIfChanged(uint groupId, string variantName)
+    {
+        if (bus is null)
+        {
+            return;
+        }
+
+        if (bus.GetActiveSwapVariant(groupId) != variantName)
+        {
+            bus.SelectSwapVariant(groupId, variantName);
         }
     }
 }
