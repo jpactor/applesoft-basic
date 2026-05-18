@@ -77,6 +77,21 @@ public sealed class DiskIIController : ISlotCard, IDiskController
     private const int DriveCountValue = 2;
     private const byte FloatingByte = 0xFF;
 
+    /// <summary>
+    /// Number of bytes captured after a data-field prologue: 343 6-and-2 encoded
+    /// nibbles followed by two epilogue bytes (the third epilogue byte, <c>$EB</c>,
+    /// is not required for RWTS acceptance and is not validated).
+    /// </summary>
+    private const int DataFieldCaptureLength = 345;
+
+    /// <summary>
+    /// 256-byte GCR 6-and-2 inverse translate table cached locally so the live
+    /// stream parser never allocates per-byte. Indexed by the on-disk nibble value;
+    /// returns the original 6-bit data value, or <c>0xFF</c> for nibbles that aren't
+    /// valid 6-and-2 encodings.
+    /// </summary>
+    private static readonly byte[] ReadTable = GcrEncoder.GetReadTable();
+
     private readonly SlotIOHandlers handlers = new();
     private readonly Drive525[] drives = new Drive525[DriveCountValue];
     private readonly IBusTarget expansionRomRegion;
@@ -471,7 +486,15 @@ public sealed class DiskIIController : ISlotCard, IDiskController
                 LastObservedSector: d.HasObservedAddressField ? d.LastObservedSector : null,
                 LastObservedChecksum: d.HasObservedAddressField ? d.LastObservedChecksum : null,
                 LastObservedChecksumValid: d.HasObservedAddressField ? d.LastObservedChecksumValid : null,
-                BytesServedOnCurrentTrack: d.BytesServedOnCurrentTrack);
+                BytesServedOnCurrentTrack: d.BytesServedOnCurrentTrack,
+                ObservedDataPrologues: d.ObservedDataPrologues,
+                ObservedDataFieldDecodeSuccesses: d.ObservedDataFieldDecodeSuccesses,
+                ObservedDataFieldChecksumErrors: d.ObservedDataFieldChecksumErrors,
+                ObservedDataFieldDecodeErrors: d.ObservedDataFieldDecodeErrors,
+                ObservedDataFieldEpilogueMismatches: d.ObservedDataFieldEpilogueMismatches,
+                LastDataPrologueGapBytes: d.HasMeasuredDataPrologueGap ? d.LastDataPrologueGapBytes : null,
+                MinDataPrologueGapBytes: d.HasMeasuredDataPrologueGap ? d.MinDataPrologueGapBytes : null,
+                MaxDataPrologueGapBytes: d.HasMeasuredDataPrologueGap ? d.MaxDataPrologueGapBytes : null);
         }
 
         return new DiskActivitySnapshot(
@@ -939,19 +962,30 @@ public sealed class DiskIIController : ISlotCard, IDiskController
     }
 
     /// <summary>
-    /// Feeds a freshly clocked nibble into the per-drive address-field stream
-    /// parser. Maintains a sliding three-byte window matching the GCR
-    /// <c>$D5 $AA $96</c> address-prologue; on a hit, the next eight bytes are
-    /// decoded as 4-and-4 volume/track/sector/checksum and recorded for the
-    /// <c>diskmon</c> diagnostic surface.
+    /// Feeds a freshly clocked nibble into the per-drive stream parser. Maintains a
+    /// sliding three-byte window matching both the GCR address-field prologue
+    /// (<c>$D5 $AA $96</c>) and the GCR data-field prologue (<c>$D5 $AA $AD</c>).
     /// </summary>
     /// <param name="drive">The drive whose stream is being observed.</param>
     /// <param name="value">The fresh byte being served to the CPU.</param>
     /// <remarks>
+    /// <para>
+    /// On an address-prologue hit the next eight bytes are decoded as 4-and-4
+    /// volume / track / sector / checksum; on a data-prologue hit the next 345 bytes
+    /// (343 data + 2 epilogue) are captured, run through the 6-and-2 XOR-chain
+    /// decode using <see cref="GcrEncoder.GetReadTable"/>, and classified as
+    /// success / decode-error (bad 6-and-2 nibble) / checksum-error (non-zero XOR
+    /// residual) / epilogue-mismatch (bytes after the 343 weren't <c>$DE $AA</c>).
+    /// The bytes between an address-field decode and the next data prologue are
+    /// recorded as a paired gap so the <c>diskmon</c> surface can show whether
+    /// the data prologue lands inside RWTS's ~60-byte scan window.
+    /// </para>
+    /// <para>
     /// Parses what the CPU actually sees, not what is on disk: if the byte-ready
     /// timing model serves duplicate or skipped bytes, the parser sees that too,
     /// which is exactly what makes this signal useful for diagnosing seek / settle
     /// bugs where the byte stream the CPU consumes differs from the encoded image.
+    /// </para>
     /// </remarks>
     private void ObserveStreamByte(Drive525 drive, byte value)
     {
@@ -959,6 +993,16 @@ public sealed class DiskIIController : ISlotCard, IDiskController
         drive.SlidingW2 = drive.SlidingW1;
         drive.SlidingW1 = drive.SlidingW0;
         drive.SlidingW0 = value;
+
+        // If we are tracking the gap to the next data prologue, count this fresh byte.
+        if (drive.DataPrologueGapActive)
+        {
+            // Cap at int.MaxValue so the counter never wraps; any sane gap is < 10000.
+            if (drive.DataPrologueGapBytes < int.MaxValue)
+            {
+                drive.DataPrologueGapBytes++;
+            }
+        }
 
         if (drive.AddressParseStage > 0)
         {
@@ -988,14 +1032,123 @@ public sealed class DiskIIController : ISlotCard, IDiskController
                 }
 
                 drive.AddressParseStage = 0;
+
+                // Start a fresh gap measurement: bytes from here to the next data
+                // prologue. Reset any in-flight data-field parse — RWTS only honours
+                // the data field that follows the most recent address field.
+                drive.DataPrologueGapActive = true;
+                drive.DataPrologueGapBytes = 0;
+                drive.DataParseStage = 0;
             }
 
             return;
         }
 
-        if (drive.SlidingW2 == 0xD5 && drive.SlidingW1 == 0xAA && drive.SlidingW0 == 0x96)
+        if (drive.DataParseStage > 0)
         {
-            drive.AddressParseStage = 1;
+            // Collecting 345 bytes after $D5 $AA $AD: 343 encoded nibbles + 2 epilogue.
+            drive.DataParseBuffer[drive.DataParseStage - 1] = value;
+            drive.DataParseStage++;
+            if (drive.DataParseStage > DataFieldCaptureLength)
+            {
+                FinaliseDataField(drive);
+                drive.DataParseStage = 0;
+            }
+
+            return;
+        }
+
+        if (drive.SlidingW2 == 0xD5 && drive.SlidingW1 == 0xAA)
+        {
+            if (drive.SlidingW0 == 0x96)
+            {
+                drive.AddressParseStage = 1;
+            }
+            else if (drive.SlidingW0 == 0xAD)
+            {
+                drive.ObservedDataPrologues++;
+                if (drive.DataPrologueGapActive)
+                {
+                    var gap = drive.DataPrologueGapBytes;
+
+                    // The gap counter started incrementing on the byte after the
+                    // 8th 4-and-4 address byte and includes the trailing $DE $AA
+                    // $EB address-field epilogue (3 bytes), the inter-field gap
+                    // proper, and the leading $D5 $AA $AD data prologue (3 bytes)
+                    // itself. Subtract 6 so the reported gap equals the bytes
+                    // RWTS would actually scan past after the address field's
+                    // epilogue (the standard track layout puts the data prologue
+                    // exactly 5 bytes after the address epilogue; RWTS's scan
+                    // window is ~60 bytes, so any gap > ~50 here is a smoking gun
+                    // for the encoder laying fields outside the scan window).
+                    var paired = gap > 6 ? gap - 6 : 0;
+                    drive.LastDataPrologueGapBytes = paired;
+                    if (!drive.HasMeasuredDataPrologueGap || paired < drive.MinDataPrologueGapBytes)
+                    {
+                        drive.MinDataPrologueGapBytes = paired;
+                    }
+
+                    if (!drive.HasMeasuredDataPrologueGap || paired > drive.MaxDataPrologueGapBytes)
+                    {
+                        drive.MaxDataPrologueGapBytes = paired;
+                    }
+
+                    drive.HasMeasuredDataPrologueGap = true;
+                    drive.DataPrologueGapActive = false;
+                }
+
+                drive.DataParseStage = 1;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Runs the GCR 6-and-2 XOR-chain decode on the 343 nibbles captured after a
+    /// <c>$D5 $AA $AD</c> data prologue, validates the trailing two-byte epilogue,
+    /// and updates the per-drive data-field counters accordingly.
+    /// </summary>
+    /// <param name="drive">The drive whose captured data field should be decoded.</param>
+    private void FinaliseDataField(Drive525 drive)
+    {
+        var buf = drive.DataParseBuffer;
+
+        // First decode all 343 nibbles via the inverse 6-and-2 read table. Any byte
+        // that isn't a valid 6-and-2 nibble (read table returns 0xFF) means RWTS
+        // would have rejected the field outright.
+        var readTable = ReadTable;
+        for (var i = 0; i < 343; i++)
+        {
+            if (readTable[buf[i]] == 0xFF)
+            {
+                drive.ObservedDataFieldDecodeErrors++;
+                return;
+            }
+        }
+
+        // XOR-chain decode: each nibble's 6-bit value is XOR'd with a running
+        // accumulator; the chain's final residual must be zero for the checksum to
+        // verify.
+        byte last = 0;
+        for (var i = 0; i < 343; i++)
+        {
+            last ^= readTable[buf[i]];
+        }
+
+        var checksumValid = last == 0;
+        var epilogueValid = buf[343] == 0xDE && buf[344] == 0xAA;
+
+        if (checksumValid)
+        {
+            drive.ObservedDataFieldDecodeSuccesses++;
+        }
+        else
+        {
+            drive.ObservedDataFieldChecksumErrors++;
+        }
+
+        if (!epilogueValid)
+        {
+            drive.ObservedDataFieldEpilogueMismatches++;
         }
     }
 
@@ -1250,6 +1403,39 @@ public sealed class DiskIIController : ISlotCard, IDiskController
 
         public long BytesServedOnCurrentTrack { get; set; }
 
+        // ─── Instrumentation: stream-observed data-field parser state ────────
+
+        /// <summary>Gets the 345-byte rolling buffer used to capture the 343 nibbles + 2 epilogue bytes that follow a <c>$D5 $AA $AD</c> data prologue.</summary>
+        public byte[] DataParseBuffer { get; } = new byte[DataFieldCaptureLength];
+
+        /// <summary>Gets or sets the data-field decode stage: <c>0</c> = idle (watching for prologue); <c>1..345</c> = collecting bytes after prologue.</summary>
+        public int DataParseStage { get; set; }
+
+        /// <summary>Gets or sets a value indicating whether a paired address→data gap is currently being measured (set after a successful address-field decode, cleared on the next data prologue).</summary>
+        public bool DataPrologueGapActive { get; set; }
+
+        /// <summary>Gets or sets the running byte count for the in-flight paired address→data gap.</summary>
+        public int DataPrologueGapBytes { get; set; }
+
+        /// <summary>Gets or sets a value indicating whether any paired address→data gap has been recorded.</summary>
+        public bool HasMeasuredDataPrologueGap { get; set; }
+
+        public int LastDataPrologueGapBytes { get; set; }
+
+        public int MinDataPrologueGapBytes { get; set; }
+
+        public int MaxDataPrologueGapBytes { get; set; }
+
+        public long ObservedDataPrologues { get; set; }
+
+        public long ObservedDataFieldDecodeSuccesses { get; set; }
+
+        public long ObservedDataFieldChecksumErrors { get; set; }
+
+        public long ObservedDataFieldDecodeErrors { get; set; }
+
+        public long ObservedDataFieldEpilogueMismatches { get; set; }
+
         public void ResetTransientState()
         {
             QuarterTrack = 0;
@@ -1264,6 +1450,10 @@ public sealed class DiskIIController : ISlotCard, IDiskController
             AddressParseStage = 0;
             HasObservedAddressField = false;
             BytesServedOnCurrentTrack = 0;
+            DataParseStage = 0;
+            DataPrologueGapActive = false;
+            DataPrologueGapBytes = 0;
+            HasMeasuredDataPrologueGap = false;
         }
 
         /// <summary>

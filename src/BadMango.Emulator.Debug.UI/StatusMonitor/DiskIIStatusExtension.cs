@@ -187,9 +187,36 @@ public sealed class DiskIIStatusExtension : IStatusWindowExtension
                 addressLine = "last-addr: none";
             }
 
+            string dataLine;
+            if (activity.LastDataPrologueGapBytes is { } lastGap
+                && activity.MaxDataPrologueGapBytes is { } maxGap)
+            {
+                dataLine = string.Format(
+                    CultureInfo.InvariantCulture,
+                    "data: prolog={0} ok={1} csum-err={2} dec-err={3} epi-mis={4} gap={5}(max {6})",
+                    activity.ObservedDataPrologues,
+                    activity.ObservedDataFieldDecodeSuccesses,
+                    activity.ObservedDataFieldChecksumErrors,
+                    activity.ObservedDataFieldDecodeErrors,
+                    activity.ObservedDataFieldEpilogueMismatches,
+                    lastGap,
+                    maxGap);
+            }
+            else
+            {
+                dataLine = string.Format(
+                    CultureInfo.InvariantCulture,
+                    "data: prolog={0} ok={1} csum-err={2} dec-err={3} epi-mis={4} gap=-",
+                    activity.ObservedDataPrologues,
+                    activity.ObservedDataFieldDecodeSuccesses,
+                    activity.ObservedDataFieldChecksumErrors,
+                    activity.ObservedDataFieldDecodeErrors,
+                    activity.ObservedDataFieldEpilogueMismatches);
+            }
+
             block.Text = string.Format(
                 CultureInfo.InvariantCulture,
-                "Drive {0}: {1} motor={2} qt={3} on-track={4}b addr-fields={5} ({6} bad)\n  {7}",
+                "Drive {0}: {1} motor={2} qt={3} on-track={4}b addr-fields={5} ({6} bad)\n  {7}\n  {8}",
                 i + 1,
                 drive.HasMedia ? "mounted" : "empty",
                 drive.MotorOn ? "on" : "off",
@@ -197,7 +224,8 @@ public sealed class DiskIIStatusExtension : IStatusWindowExtension
                 activity.BytesServedOnCurrentTrack,
                 activity.ObservedAddressFields,
                 activity.ObservedAddressFieldChecksumErrors,
-                addressLine);
+                addressLine,
+                dataLine);
         }
     }
 }

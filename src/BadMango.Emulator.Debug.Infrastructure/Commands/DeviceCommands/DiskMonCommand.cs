@@ -60,9 +60,11 @@ public sealed class DiskMonCommand : CommandHandlerBase, ICommandHelp
         "data-path reads (fresh / stale / settle-suppressed), phase pulses, track " +
         "changes, motor and drive-select transitions, cache loads and flushes, plus, " +
         "for each drive, the most recently observed sector-address field (volume, " +
-        "track, sector, checksum-valid) as decoded from the live byte stream served " +
-        "to the CPU. Counters are monotonic since controller construction; call " +
-        "repeatedly to observe rate of change.";
+        "track, sector, checksum-valid) and a full data-field accounting " +
+        "(prologues seen, XOR-chain decode successes, checksum / decode / epilogue " +
+        "failures, and the address→data byte gap) as decoded from the live byte " +
+        "stream served to the CPU. Counters are monotonic since controller " +
+        "construction; call repeatedly to observe rate of change.";
 
     /// <inheritdoc/>
     public IReadOnlyList<CommandOption> Options { get; } = [];
@@ -213,6 +215,30 @@ public sealed class DiskMonCommand : CommandHandlerBase, ICommandHelp
                 else
                 {
                     output.WriteLine("      last address field: <none observed since reset>");
+                }
+
+                output.WriteLine(string.Format(
+                    CultureInfo.InvariantCulture,
+                    "      data fields  : prologues={0} decoded-ok={1} checksum-err={2} decode-err={3} epilogue-mismatch={4}",
+                    activity.ObservedDataPrologues,
+                    activity.ObservedDataFieldDecodeSuccesses,
+                    activity.ObservedDataFieldChecksumErrors,
+                    activity.ObservedDataFieldDecodeErrors,
+                    activity.ObservedDataFieldEpilogueMismatches));
+                if (activity.LastDataPrologueGapBytes is { } lastGap
+                    && activity.MinDataPrologueGapBytes is { } minGap
+                    && activity.MaxDataPrologueGapBytes is { } maxGap)
+                {
+                    output.WriteLine(string.Format(
+                        CultureInfo.InvariantCulture,
+                        "      addr→data gap (bytes): last={0} min={1} max={2}",
+                        lastGap,
+                        minGap,
+                        maxGap));
+                }
+                else
+                {
+                    output.WriteLine("      addr→data gap (bytes): <no paired gap measured>");
                 }
             }
         }

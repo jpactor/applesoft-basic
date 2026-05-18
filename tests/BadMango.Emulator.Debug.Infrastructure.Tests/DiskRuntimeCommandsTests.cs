@@ -903,7 +903,15 @@ public sealed class DiskRuntimeCommandsTests
                     LastObservedSector: 0x05,
                     LastObservedChecksum: 0xEA,
                     LastObservedChecksumValid: true,
-                    BytesServedOnCurrentTrack: 4200),
+                    BytesServedOnCurrentTrack: 4200,
+                    ObservedDataPrologues: 9,
+                    ObservedDataFieldDecodeSuccesses: 7,
+                    ObservedDataFieldChecksumErrors: 2,
+                    ObservedDataFieldDecodeErrors: 1,
+                    ObservedDataFieldEpilogueMismatches: 3,
+                    LastDataPrologueGapBytes: 5,
+                    MinDataPrologueGapBytes: 4,
+                    MaxDataPrologueGapBytes: 18),
                 default(DiskDriveActivity),
             }));
 
@@ -928,6 +936,9 @@ public sealed class DiskRuntimeCommandsTests
             Assert.That(text, Does.Contain("checksum ok"));
             Assert.That(text, Does.Contain("bytes-on-track=4200"));
             Assert.That(text, Does.Contain("<none observed since reset>"));
+            Assert.That(text, Does.Contain("data fields  : prologues=9 decoded-ok=7 checksum-err=2 decode-err=1 epilogue-mismatch=3"));
+            Assert.That(text, Does.Contain("addr→data gap (bytes): last=5 min=4 max=18"));
+            Assert.That(text, Does.Contain("<no paired gap measured>"));
         });
     }
 

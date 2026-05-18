@@ -918,6 +918,242 @@ public class DiskIIControllerTests
     }
 
     /// <summary>
+    /// Verifies that the live stream parser recognises the data-field prologue
+    /// (<c>$D5 $AA $AD</c>) following a well-formed address field and counts the
+    /// 343-nibble field as decoded with a valid XOR-chain checksum and matching
+    /// epilogue. This is the headline signal for confirming that the encoded data
+    /// field RWTS actually sees on the wire is structurally valid.
+    /// </summary>
+    [Test]
+    public void GetActivitySnapshot_StreamParser_DecodesValidDataField()
+    {
+        // Encode a full 6656-byte track using the production encoder; this lays
+        // down 16 well-formed address+data pairs at the standard 48/14/5/349
+        // sector stride, exercising the same prologues/gaps/epilogues RWTS sees.
+        var trackPattern = BuildEncodedTrack(volume: 0xFE, track: 0x11);
+        var media = new RepeatingPatternMedia(trackPattern);
+
+        var (controller, dispatcher, ctx, scheduler, _) = BuildHarness(motorSettleCycles: 0);
+        controller.Mount(0, media);
+        scheduler.Advance(new Cycle(2));
+
+        _ = dispatcher.Read(0xE9, in ctx); // motor on
+
+        // One full track is 6656 bytes; iterate enough fresh-byte reads to cover
+        // a couple of revolutions so every prologue is observed.
+        for (var i = 0; i < 14000; i++)
+        {
+            scheduler.Advance(new Cycle(DiskIIController.CyclesPerByte));
+            _ = dispatcher.Read(0xEC, in ctx);
+        }
+
+        var snap = controller.GetActivitySnapshot();
+        var drive = snap.Drives[0];
+        Assert.Multiple(() =>
+        {
+            Assert.That(drive.ObservedAddressFields, Is.GreaterThanOrEqualTo(16), "Two revolutions × 16 sectors should observe at least 16 address fields.");
+            Assert.That(drive.ObservedAddressFieldChecksumErrors, Is.Zero);
+            Assert.That(drive.ObservedDataPrologues, Is.GreaterThanOrEqualTo(16));
+            Assert.That(drive.ObservedDataFieldDecodeSuccesses, Is.GreaterThanOrEqualTo(16));
+            Assert.That(drive.ObservedDataFieldChecksumErrors, Is.Zero);
+            Assert.That(drive.ObservedDataFieldDecodeErrors, Is.Zero);
+            Assert.That(drive.ObservedDataFieldEpilogueMismatches, Is.Zero);
+
+            // The standard track layout puts the data prologue exactly 5 bytes
+            // after the address-field epilogue ($DE $AA $EB); the parser subtracts
+            // both the leading data prologue and the trailing address epilogue
+            // from its raw count so the reported gap equals that inter-field gap.
+            Assert.That(drive.LastDataPrologueGapBytes, Is.EqualTo(5));
+            Assert.That(drive.MinDataPrologueGapBytes, Is.EqualTo(5));
+            Assert.That(drive.MaxDataPrologueGapBytes, Is.EqualTo(5));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that a data field whose XOR-chain checksum has been corrupted is
+    /// counted under <see cref="DiskDriveActivity.ObservedDataFieldChecksumErrors"/>
+    /// rather than under decode-successes.
+    /// </summary>
+    [Test]
+    public void GetActivitySnapshot_StreamParser_FlagsDataFieldChecksumMismatch()
+    {
+        var trackPattern = BuildEncodedTrack(volume: 0xFE, track: 0x11);
+
+        // Flip one bit in the data-field checksum nibble (the 343rd byte after the
+        // $D5 $AA $AD prologue of every sector). The standard layout places the
+        // first data prologue at offset 48 + 14 + 5 = 67; the checksum nibble at
+        // offset 67 + 3 + 342 = 412 (last of the 343 encoded bytes). XOR the
+        // nibble with 0x02 — which swaps two valid 6-and-2 table entries — so
+        // the read table still finds a valid 6-bit value but the chain residual
+        // becomes non-zero (catches the checksum-error path rather than the
+        // decode-error path).
+        const int sectorStride = 416;
+        const int dataFieldStart = 48 + 14 + 5;
+        for (var physical = 0; physical < 16; physical++)
+        {
+            var checksumIndex = (physical * sectorStride) + dataFieldStart + 3 + 342;
+            var original = trackPattern[checksumIndex];
+            var corrupted = MapToDifferentValidNibble(original);
+            trackPattern[checksumIndex] = corrupted;
+        }
+
+        var media = new RepeatingPatternMedia(trackPattern);
+
+        var (controller, dispatcher, ctx, scheduler, _) = BuildHarness(motorSettleCycles: 0);
+        controller.Mount(0, media);
+        scheduler.Advance(new Cycle(2));
+
+        _ = dispatcher.Read(0xE9, in ctx); // motor on
+        for (var i = 0; i < 14000; i++)
+        {
+            scheduler.Advance(new Cycle(DiskIIController.CyclesPerByte));
+            _ = dispatcher.Read(0xEC, in ctx);
+        }
+
+        var snap = controller.GetActivitySnapshot();
+        var drive = snap.Drives[0];
+        Assert.Multiple(() =>
+        {
+            Assert.That(drive.ObservedDataPrologues, Is.GreaterThanOrEqualTo(16));
+            Assert.That(drive.ObservedDataFieldChecksumErrors, Is.GreaterThanOrEqualTo(16), "Every observed data field should have failed the XOR-chain checksum.");
+            Assert.That(drive.ObservedDataFieldDecodeSuccesses, Is.Zero);
+            Assert.That(drive.ObservedDataFieldDecodeErrors, Is.Zero, "The corruption was nibble-table-preserving, so no decode errors should be counted.");
+        });
+    }
+
+    /// <summary>
+    /// Verifies that a data field whose nibble stream contains a byte not in the
+    /// 6-and-2 read table is rejected as a decode error (the path RWTS would also
+    /// fail), distinct from the checksum-error path.
+    /// </summary>
+    [Test]
+    public void GetActivitySnapshot_StreamParser_FlagsDataFieldDecodeError()
+    {
+        var trackPattern = BuildEncodedTrack(volume: 0xFE, track: 0x11);
+
+        // Replace the first byte of every data field with $80 — clearly not a
+        // valid 6-and-2 nibble (no entry in the write table starts below $96).
+        const int sectorStride = 416;
+        const int dataFieldStart = 48 + 14 + 5;
+        for (var physical = 0; physical < 16; physical++)
+        {
+            var firstNibbleIndex = (physical * sectorStride) + dataFieldStart + 3;
+            trackPattern[firstNibbleIndex] = 0x80;
+        }
+
+        var media = new RepeatingPatternMedia(trackPattern);
+
+        var (controller, dispatcher, ctx, scheduler, _) = BuildHarness(motorSettleCycles: 0);
+        controller.Mount(0, media);
+        scheduler.Advance(new Cycle(2));
+
+        _ = dispatcher.Read(0xE9, in ctx); // motor on
+        for (var i = 0; i < 14000; i++)
+        {
+            scheduler.Advance(new Cycle(DiskIIController.CyclesPerByte));
+            _ = dispatcher.Read(0xEC, in ctx);
+        }
+
+        var snap = controller.GetActivitySnapshot();
+        var drive = snap.Drives[0];
+        Assert.Multiple(() =>
+        {
+            Assert.That(drive.ObservedDataPrologues, Is.GreaterThanOrEqualTo(16));
+            Assert.That(drive.ObservedDataFieldDecodeErrors, Is.GreaterThanOrEqualTo(16));
+            Assert.That(drive.ObservedDataFieldDecodeSuccesses, Is.Zero);
+            Assert.That(drive.ObservedDataFieldChecksumErrors, Is.Zero);
+        });
+    }
+
+    /// <summary>
+    /// Verifies that a structurally valid data field whose trailing two bytes are
+    /// not <c>$DE $AA</c> is counted under
+    /// <see cref="DiskDriveActivity.ObservedDataFieldEpilogueMismatches"/> while
+    /// still counting toward decode-success when the checksum is valid (these are
+    /// independent failure modes — RWTS validates each separately).
+    /// </summary>
+    [Test]
+    public void GetActivitySnapshot_StreamParser_FlagsDataFieldEpilogueMismatch()
+    {
+        var trackPattern = BuildEncodedTrack(volume: 0xFE, track: 0x11);
+
+        // Overwrite the first epilogue byte ($DE) of every data field with another
+        // valid 6-and-2 nibble that isn't $DE; this preserves checksum integrity
+        // (epilogue bytes are not part of the XOR chain) but breaks the epilogue
+        // recognition check.
+        const int sectorStride = 416;
+        const int dataFieldStart = 48 + 14 + 5;
+        for (var physical = 0; physical < 16; physical++)
+        {
+            var epilogueIndex = (physical * sectorStride) + dataFieldStart + 3 + 343;
+            trackPattern[epilogueIndex] = 0xFF;
+        }
+
+        var media = new RepeatingPatternMedia(trackPattern);
+
+        var (controller, dispatcher, ctx, scheduler, _) = BuildHarness(motorSettleCycles: 0);
+        controller.Mount(0, media);
+        scheduler.Advance(new Cycle(2));
+
+        _ = dispatcher.Read(0xE9, in ctx); // motor on
+        for (var i = 0; i < 14000; i++)
+        {
+            scheduler.Advance(new Cycle(DiskIIController.CyclesPerByte));
+            _ = dispatcher.Read(0xEC, in ctx);
+        }
+
+        var snap = controller.GetActivitySnapshot();
+        var drive = snap.Drives[0];
+        Assert.Multiple(() =>
+        {
+            Assert.That(drive.ObservedDataPrologues, Is.GreaterThanOrEqualTo(16));
+            Assert.That(drive.ObservedDataFieldDecodeSuccesses, Is.GreaterThanOrEqualTo(16), "Checksum is preserved so decode-success should still increment.");
+            Assert.That(drive.ObservedDataFieldEpilogueMismatches, Is.GreaterThanOrEqualTo(16));
+            Assert.That(drive.ObservedDataFieldChecksumErrors, Is.Zero);
+        });
+    }
+
+    /// <summary>
+    /// Encodes a full 6656-byte track with deterministic per-sector content so the
+    /// standard 48 / 14 / 5 / 349 sector stride is laid down for the live stream
+    /// parser tests to consume.
+    /// </summary>
+    /// <param name="volume">Volume number used for every address field.</param>
+    /// <param name="track">Track number used for every address field.</param>
+    /// <returns>A 6656-byte nibble buffer ready for <c>RepeatingPatternMedia</c>.</returns>
+    private static byte[] BuildEncodedTrack(byte volume, byte track)
+    {
+        var sectorData = new byte[16 * 256];
+        for (var i = 0; i < sectorData.Length; i++)
+        {
+            sectorData[i] = (byte)i;
+        }
+
+        var dest = new byte[GcrEncoder.StandardTrackLength];
+        GcrEncoder.EncodeTrack(volume, track, sectorData, dest);
+        return dest;
+    }
+
+    /// <summary>
+    /// Returns a 6-and-2 valid nibble that decodes to a different 6-bit value from
+    /// the input. Used to flip a checksum byte without falling into the
+    /// "invalid nibble" code path.
+    /// </summary>
+    /// <param name="original">A byte that must already be a valid 6-and-2 nibble.</param>
+    /// <returns>A different valid 6-and-2 nibble byte.</returns>
+    private static byte MapToDifferentValidNibble(byte original)
+    {
+        var readTable = GcrEncoder.GetReadTable();
+        var writeTable = GcrEncoder.GetWriteTable();
+        var sixBit = readTable[original];
+        Assert.That(sixBit, Is.Not.EqualTo(0xFF), "Test precondition: original byte must be a valid 6-and-2 nibble.");
+
+        // Use a different 6-bit value (XOR with 1 stays within [0, 64)).
+        var alternate = (byte)(sixBit ^ 0x01);
+        return writeTable[alternate];
+    }
+
+    /// <summary>
     /// Encodes an Apple GCR 4-and-4 address field (11 bytes total) for the given
     /// volume / track / sector triplet, with a checksum byte equal to vol XOR trk XOR sec.
     /// </summary>

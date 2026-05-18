@@ -27,6 +27,14 @@ namespace BadMango.Emulator.Storage.Media;
 /// <param name="LastObservedChecksum">Checksum nibble decoded from the most recent address field, or <see langword="null"/> if none observed.</param>
 /// <param name="LastObservedChecksumValid">Whether the most recent address field's checksum verified, or <see langword="null"/> if none observed.</param>
 /// <param name="BytesServedOnCurrentTrack">Nibbles served (fresh bytes) since the head last arrived at the current quarter-track.</param>
+/// <param name="ObservedDataPrologues">Total data-field prologues (<c>$D5 $AA $AD</c>) recognised in the live byte stream.</param>
+/// <param name="ObservedDataFieldDecodeSuccesses">Data fields whose 343-nibble XOR chain decoded with a zero-residual checksum (regardless of epilogue).</param>
+/// <param name="ObservedDataFieldChecksumErrors">Data fields whose 343 nibbles decoded but failed the XOR-chain checksum.</param>
+/// <param name="ObservedDataFieldDecodeErrors">Data fields where one or more of the 343 nibbles was not in the 6-and-2 read table.</param>
+/// <param name="ObservedDataFieldEpilogueMismatches">Data fields whose two bytes immediately after the 343 nibbles were not <c>$DE $AA</c>.</param>
+/// <param name="LastDataPrologueGapBytes">Bytes between the most recent address-field decode and the next data-field prologue, or <see langword="null"/> if no paired gap has been measured. RWTS scans only ~60 bytes after the address field; a gap larger than that indicates the encoder is laying the data prologue outside RWTS's scan window.</param>
+/// <param name="MinDataPrologueGapBytes">Smallest paired address→data gap observed since reset, or <see langword="null"/> if no paired gap has been measured.</param>
+/// <param name="MaxDataPrologueGapBytes">Largest paired address→data gap observed since reset, or <see langword="null"/> if no paired gap has been measured.</param>
 public readonly record struct DiskDriveActivity(
     long ObservedAddressFields,
     long ObservedAddressFieldChecksumErrors,
@@ -35,4 +43,12 @@ public readonly record struct DiskDriveActivity(
     int? LastObservedSector,
     int? LastObservedChecksum,
     bool? LastObservedChecksumValid,
-    long BytesServedOnCurrentTrack);
+    long BytesServedOnCurrentTrack,
+    long ObservedDataPrologues,
+    long ObservedDataFieldDecodeSuccesses,
+    long ObservedDataFieldChecksumErrors,
+    long ObservedDataFieldDecodeErrors,
+    long ObservedDataFieldEpilogueMismatches,
+    int? LastDataPrologueGapBytes,
+    int? MinDataPrologueGapBytes,
+    int? MaxDataPrologueGapBytes);
