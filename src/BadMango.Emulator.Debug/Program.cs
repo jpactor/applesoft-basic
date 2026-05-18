@@ -13,11 +13,13 @@ using Microsoft.Extensions.Hosting;
 
 using Serilog;
 using Serilog.Events;
+using Serilog.Sinks.File;
 
 // Configure Serilog
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Debug()
     .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+    ////.MinimumLevel.Override("BadMango.Emulator.Devices", LogEventLevel.Verbose) // Uncomment for verbose device-level logging
     .Enrich.FromLogContext()
     .WriteTo.Console(
         outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}",
@@ -39,18 +41,20 @@ try
         {
             builder.RegisterModule<DebugConsoleModule>();
             builder.RegisterModule<DebugUiModule>();
+            builder.RegisterInstance(Log.Logger).As<ILogger>().SingleInstance();
         })
-        .UseSerilog()
+        .UseSerilog(Log.Logger)
         .Build();
 
     // Run the REPL
     using var scope = host.Services.CreateScope();
     var repl = scope.ServiceProvider.GetRequiredService<DebugRepl>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger>();
 
-    Log.Information("Debug console initialized");
+    logger.Information("Debug console initialized");
     repl.Run();
 
-    Log.Information("Debug console exited normally");
+    logger.Information("Debug console exited normally");
     return 0;
 }
 catch (Exception ex)

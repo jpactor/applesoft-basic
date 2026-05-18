@@ -323,7 +323,7 @@ public static class DeviceFactoryRegistry
     {
         if (parameter.ParameterType == typeof(ILogger))
         {
-            return LoggerFactory?.Invoke(deviceType) ?? SilentLoggerInstance.Value;
+            return LoggerFactory?.Invoke(deviceType) ?? Log.Logger;
         }
 
         return parameter.DefaultValue;

@@ -852,6 +852,106 @@ public sealed class DiskRuntimeCommandsTests
         Assert.That(result.Success, Is.False);
     }
 
+    /// <summary>
+    /// Verifies that <c>diskmon</c> reports "no disk controllers installed" when the
+    /// slot manager has nothing wired in slots 1..7 (FR-D10 diagnostic surface).
+    /// </summary>
+    [Test]
+    public void DiskMonCommand_NoControllers_ReportsEmpty()
+    {
+        this.slotManager.Setup(m => m.GetCard(It.IsAny<int>())).Returns((ISlotCard?)null);
+
+        var result = new DiskMonCommand().Execute(this.debugContext, []);
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(this.outputWriter.ToString(), Does.Contain("No disk controllers installed."));
+    }
+
+    /// <summary>
+    /// Verifies that <c>diskmon</c> walks every installed controller, snapshots its
+    /// activity counters, and renders the controller-wide and per-drive sections —
+    /// including the decoded "last address field" when the stream parser has seen
+    /// at least one prologue.
+    /// </summary>
+    [Test]
+    public void DiskMonCommand_RendersControllerAndDriveActivity()
+    {
+        var (card, ctl) = MakeMockController(slot: 6, driveCount: 2);
+        this.slotManager.Setup(m => m.GetCard(6)).Returns(card.Object);
+        ctl.Setup(c => c.GetDriveSnapshot(It.IsAny<int>())).Returns(EmptySnapshot());
+        ctl.Setup(c => c.GetActivitySnapshot()).Returns(new DiskActivitySnapshot(
+            dataReadCount: 123,
+            freshByteCount: 80,
+            settleSuppressedReadCount: 30,
+            staleByteCount: 13,
+            dataWriteCount: 5,
+            phasePulseCount: 17,
+            phaseNoOpCount: 2,
+            trackChangeCount: 4,
+            motorOnCount: 1,
+            motorOffCount: 0,
+            driveSelectCount: 1,
+            cacheLoadCount: 6,
+            cacheFlushCount: 0,
+            drives: new[]
+            {
+                new DiskDriveActivity(
+                    ObservedAddressFields: 11,
+                    ObservedAddressFieldChecksumErrors: 1,
+                    LastObservedVolume: 0xFE,
+                    LastObservedTrack: 0x11,
+                    LastObservedSector: 0x05,
+                    LastObservedChecksum: 0xEA,
+                    LastObservedChecksumValid: true,
+                    BytesServedOnCurrentTrack: 4200,
+                    ObservedDataPrologues: 9,
+                    ObservedDataFieldDecodeSuccesses: 7,
+                    ObservedDataFieldChecksumErrors: 2,
+                    ObservedDataFieldDecodeErrors: 1,
+                    ObservedDataFieldEpilogueMismatches: 3,
+                    LastDataPrologueGapBytes: 5,
+                    MinDataPrologueGapBytes: 4,
+                    MaxDataPrologueGapBytes: 18),
+                default(DiskDriveActivity),
+            }));
+
+        var result = new DiskMonCommand().Execute(this.debugContext, []);
+
+        Assert.That(result.Success, Is.True);
+        var text = this.outputWriter.ToString();
+        Assert.Multiple(() =>
+        {
+            Assert.That(text, Does.Contain("Slot 6"));
+            Assert.That(text, Does.Contain("reads=123"));
+            Assert.That(text, Does.Contain("fresh=80"));
+            Assert.That(text, Does.Contain("stale=13"));
+            Assert.That(text, Does.Contain("settle=30"));
+            Assert.That(text, Does.Contain("phase-pulses=17"));
+            Assert.That(text, Does.Contain("track-changes=4"));
+            Assert.That(text, Does.Contain("motor-on=1"));
+            Assert.That(text, Does.Contain("cache     : loads=6 flushes=0"));
+            Assert.That(text, Does.Contain("vol=$FE"));
+            Assert.That(text, Does.Contain("trk=$11"));
+            Assert.That(text, Does.Contain("sec=$05"));
+            Assert.That(text, Does.Contain("checksum ok"));
+            Assert.That(text, Does.Contain("bytes-on-track=4200"));
+            Assert.That(text, Does.Contain("<none observed since reset>"));
+            Assert.That(text, Does.Contain("data fields  : prologues=9 decoded-ok=7 checksum-err=2 decode-err=1 epilogue-mismatch=3"));
+            Assert.That(text, Does.Contain("addr→data gap (bytes): last=5 min=4 max=18"));
+            Assert.That(text, Does.Contain("<no paired gap measured>"));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that <c>diskmon</c> takes no arguments and rejects extras.
+    /// </summary>
+    [Test]
+    public void DiskMonCommand_RejectsArguments()
+    {
+        var result = new DiskMonCommand().Execute(this.debugContext, ["unexpected"]);
+        Assert.That(result.Success, Is.False);
+    }
+
     private static (Mock<ISlotCard> Card, Mock<IDiskController> Controller) MakeMockController(int slot, int driveCount)
     {
         // Single mock object that implements both ISlotCard (for GetCard) and IDiskController

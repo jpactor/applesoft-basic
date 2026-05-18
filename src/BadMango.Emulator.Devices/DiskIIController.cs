@@ -11,6 +11,7 @@ using BadMango.Emulator.Storage.Gcr;
 using BadMango.Emulator.Storage.Media;
 
 using Serilog;
+using Serilog.Events;
 
 /// <summary>
 /// Working Disk II controller — replaces the body of <see cref="DiskIIControllerStub"/>
@@ -28,7 +29,7 @@ using Serilog;
 /// <item><description>16 soft switches at <c>$C0n0–$C0nF</c> using the table from
 /// <c>Disk II Controller Device Specification.md</c> §2.2 (FR-D3).</description></item>
 /// <item><description>Phase stepper that updates the head on valid phase-overlap sequences
-/// and clamps at 0 / <c>2 × trackCount − 2</c> (FR-D4).</description></item>
+/// and clamps at 0 / <c>4 × trackCount − 4</c> (FR-D4).</description></item>
 /// <item><description>Q6/Q7 dispatch covering read-data, write-protect sense, write-mode
 /// enable, and write-load (FR-D5).</description></item>
 /// <item><description>On-demand spin-position recompute on <c>$C0nC</c> reads — no
@@ -77,6 +78,21 @@ public sealed class DiskIIController : ISlotCard, IDiskController
     private const int DriveCountValue = 2;
     private const byte FloatingByte = 0xFF;
 
+    /// <summary>
+    /// Number of bytes captured after a data-field prologue: 343 6-and-2 encoded
+    /// nibbles followed by two epilogue bytes (the third epilogue byte, <c>$EB</c>,
+    /// is not required for RWTS acceptance and is not validated).
+    /// </summary>
+    private const int DataFieldCaptureLength = 345;
+
+    /// <summary>
+    /// 256-byte GCR 6-and-2 inverse translate table cached locally so the live
+    /// stream parser never allocates per-byte. Indexed by the on-disk nibble value;
+    /// returns the original 6-bit data value, or <c>0xFF</c> for nibbles that aren't
+    /// valid 6-and-2 encodings.
+    /// </summary>
+    private static readonly byte[] ReadTable = GcrEncoder.GetReadTable();
+
     private readonly SlotIOHandlers handlers = new();
     private readonly Drive525[] drives = new Drive525[DriveCountValue];
     private readonly IBusTarget expansionRomRegion;
@@ -99,6 +115,24 @@ public sealed class DiskIIController : ISlotCard, IDiskController
     private IEventContext? context;
     private EventHandle driftHandle;
     private bool driftScheduled;
+
+    // ─── Activity counters (FR-D10 diagnostic surface) ──────────────────
+    // These are intentionally raw long fields rather than properties to keep the
+    // per-access hot path branch-free; GetActivitySnapshot reads them under no
+    // lock because the controller is single-threaded with respect to the bus.
+    private long dataReadCount;
+    private long freshByteCount;
+    private long settleSuppressedReadCount;
+    private long staleByteCount;
+    private long dataWriteCount;
+    private long phasePulseCount;
+    private long phaseNoOpCount;
+    private long trackChangeCount;
+    private long motorOnCount;
+    private long motorOffCount;
+    private long driveSelectCount;
+    private long cacheLoadCount;
+    private long cacheFlushCount;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="DiskIIController"/> class.
@@ -438,6 +472,49 @@ public sealed class DiskIIController : ISlotCard, IDiskController
         return drives[driveIndex].Media;
     }
 
+    /// <inheritdoc />
+    public DiskActivitySnapshot GetActivitySnapshot()
+    {
+        var perDrive = new DiskDriveActivity[DriveCountValue];
+        for (var i = 0; i < DriveCountValue; i++)
+        {
+            var d = drives[i];
+            perDrive[i] = new DiskDriveActivity(
+                ObservedAddressFields: d.ObservedAddressFields,
+                ObservedAddressFieldChecksumErrors: d.ObservedAddressFieldChecksumErrors,
+                LastObservedVolume: d.HasObservedAddressField ? d.LastObservedVolume : null,
+                LastObservedTrack: d.HasObservedAddressField ? d.LastObservedTrack : null,
+                LastObservedSector: d.HasObservedAddressField ? d.LastObservedSector : null,
+                LastObservedChecksum: d.HasObservedAddressField ? d.LastObservedChecksum : null,
+                LastObservedChecksumValid: d.HasObservedAddressField ? d.LastObservedChecksumValid : null,
+                BytesServedOnCurrentTrack: d.BytesServedOnCurrentTrack,
+                ObservedDataPrologues: d.ObservedDataPrologues,
+                ObservedDataFieldDecodeSuccesses: d.ObservedDataFieldDecodeSuccesses,
+                ObservedDataFieldChecksumErrors: d.ObservedDataFieldChecksumErrors,
+                ObservedDataFieldDecodeErrors: d.ObservedDataFieldDecodeErrors,
+                ObservedDataFieldEpilogueMismatches: d.ObservedDataFieldEpilogueMismatches,
+                LastDataPrologueGapBytes: d.HasMeasuredDataPrologueGap ? d.LastDataPrologueGapBytes : null,
+                MinDataPrologueGapBytes: d.HasMeasuredDataPrologueGap ? d.MinDataPrologueGapBytes : null,
+                MaxDataPrologueGapBytes: d.HasMeasuredDataPrologueGap ? d.MaxDataPrologueGapBytes : null);
+        }
+
+        return new DiskActivitySnapshot(
+            dataReadCount: dataReadCount,
+            freshByteCount: freshByteCount,
+            settleSuppressedReadCount: settleSuppressedReadCount,
+            staleByteCount: staleByteCount,
+            dataWriteCount: dataWriteCount,
+            phasePulseCount: phasePulseCount,
+            phaseNoOpCount: phaseNoOpCount,
+            trackChangeCount: trackChangeCount,
+            motorOnCount: motorOnCount,
+            motorOffCount: motorOffCount,
+            driveSelectCount: driveSelectCount,
+            cacheLoadCount: cacheLoadCount,
+            cacheFlushCount: cacheFlushCount,
+            drives: perDrive);
+    }
+
     private static void ValidateDriveIndex(int driveIndex)
     {
         if ((uint)driveIndex >= DriveCountValue)
@@ -504,16 +581,23 @@ public sealed class DiskIIController : ISlotCard, IDiskController
 
         if (delta == 0)
         {
+            phaseNoOpCount++;
             return;
         }
 
         var media = drive.Media;
         var qtCount = media is not null ? media.Geometry.QuarterTrackCount : 4 * 35;
 
-        // FR-D4: clamp at track 0 and `2 * trackCount - 2`, i.e. the last even
-        // quarter-track since the stepper moves in two-quarter-track increments.
-        var trackCount = qtCount / 4;
-        var maxQuarter = (2 * trackCount) - 2;
+        // FR-D4: clamp at track 0 and the last even quarter-track that still maps
+        // to a real cylinder. For a 35-track disk this is qt=136 (= track 34); the
+        // stepper moves in two-quarter-track increments, so the highest reachable
+        // even index is `qtCount - 4` (the last whole-track boundary). An earlier
+        // formula clamped at `2 * trackCount - 2` which limited the head to qt=68
+        // (= track 17 / $11) on standard media, making the upper half of the disk
+        // unreachable — anything beyond DOS catalog track $11 silently became a
+        // permanent I/O ERROR because RWTS read back the address-field track of
+        // the clamp position instead of the requested track.
+        var maxQuarter = qtCount - 4;
         var newQuarter = drive.QuarterTrack + delta;
         if (newQuarter < 0)
         {
@@ -528,9 +612,32 @@ public sealed class DiskIIController : ISlotCard, IDiskController
         {
             // Track changed → flush the previous track if it was dirty (FR-D8) and
             // trigger a track-step settling delay (FR-D7).
-            drive.OnTrackChanging(logger);
+            if (drive.OnTrackChanging(logger))
+            {
+                cacheFlushCount++;
+            }
+
+            var oldQuarter = drive.QuarterTrack;
             drive.QuarterTrack = newQuarter;
+            drive.BytesServedOnCurrentTrack = 0;
+            phasePulseCount++;
+            trackChangeCount++;
             ScheduleTrackStepSettle(drive);
+
+            if (logger.IsEnabled(LogEventLevel.Verbose))
+            {
+                logger.Verbose(
+                    "DiskII (slot {Slot}): drive {Drive} track step qt={OldQuarterTrack}→{NewQuarterTrack} (delta {Delta}).",
+                    SlotNumber,
+                    currentDrive + 1,
+                    oldQuarter,
+                    newQuarter,
+                    delta);
+            }
+        }
+        else
+        {
+            phaseNoOpCount++;
         }
     }
 
@@ -596,13 +703,29 @@ public sealed class DiskIIController : ISlotCard, IDiskController
         if (!on)
         {
             // FR-D8: motor-off triggers a flush.
-            drives[currentDrive].Flush(logger);
+            if (drives[currentDrive].Flush(logger))
+            {
+                cacheFlushCount++;
+            }
+
             motorOn = false;
+            motorOffCount++;
             CancelDriftEvent();
+
+            if (logger.IsEnabled(LogEventLevel.Verbose))
+            {
+                logger.Verbose(
+                    "DiskII (slot {Slot}): motor OFF (active drive {Drive}, qt={QuarterTrack}).",
+                    SlotNumber,
+                    currentDrive + 1,
+                    drives[currentDrive].QuarterTrack);
+            }
+
             return;
         }
 
         motorOn = true;
+        motorOnCount++;
         var drive = drives[currentDrive];
         if (context is not null)
         {
@@ -613,6 +736,16 @@ public sealed class DiskIIController : ISlotCard, IDiskController
         else
         {
             drive.SettleUntil = (Cycle)(ulong)motorSettleCycles;
+        }
+
+        if (logger.IsEnabled(LogEventLevel.Verbose))
+        {
+            logger.Verbose(
+                "DiskII (slot {Slot}): motor ON (active drive {Drive}, qt={QuarterTrack}, settle={SettleCycles} cycles).",
+                SlotNumber,
+                currentDrive + 1,
+                drive.QuarterTrack,
+                motorSettleCycles);
         }
     }
 
@@ -660,8 +793,14 @@ public sealed class DiskIIController : ISlotCard, IDiskController
         }
 
         // FR-D8: drive deselect flushes the outgoing drive.
-        drives[currentDrive].Flush(logger);
+        if (drives[currentDrive].Flush(logger))
+        {
+            cacheFlushCount++;
+        }
+
+        var oldDrive = currentDrive;
         currentDrive = index;
+        driveSelectCount++;
 
         // Changing drives invalidates the spin-position recorded for byte-ready gating:
         // the new drive's position has no relation to the old one.
@@ -670,6 +809,16 @@ public sealed class DiskIIController : ISlotCard, IDiskController
         if (motorOn && context is not null)
         {
             drives[currentDrive].LastUpdateCycle = context.Now;
+        }
+
+        if (logger.IsEnabled(LogEventLevel.Verbose))
+        {
+            logger.Verbose(
+                "DiskII (slot {Slot}): drive select {OldDrive}→{NewDrive} (qt={QuarterTrack}).",
+                SlotNumber,
+                oldDrive + 1,
+                currentDrive + 1,
+                drives[currentDrive].QuarterTrack);
         }
     }
 
@@ -809,9 +958,26 @@ public sealed class DiskIIController : ISlotCard, IDiskController
         var current = drives[currentDrive];
         if (context is not null && current.SettleUntil > context.Now)
         {
-            // During settling, return the previously latched byte (or floating $FF
-            // when nothing has been latched yet). FR-D7.
-            return LatchedOrFloating();
+            // During settling (motor warm-up or post-step head settling), real
+            // Disk II hardware does not produce a stable byte-ready signal: the
+            // head may be over track gaps or unstable nibbles. Model this by
+            // clearing bit 7 of whatever is currently on the data latch so that
+            // DOS RWTS's `LDA $C08C,X / BPL *-3` polling loop spins waiting for
+            // a fresh byte instead of immediately consuming the stale latch
+            // contents. This is essential for multi-track loads: a track step
+            // sets SettleUntil = now + trackStepSettleCycles (~30 ms), and RWTS
+            // begins polling for address prologues almost immediately afterward;
+            // returning the latched byte with bit 7 set would cause RWTS to read
+            // the same non-$D5 nibble thousands of times per settle window,
+            // burning its 48-retry budget and producing a spurious "I/O ERROR"
+            // on any file that crosses tracks. FR-D7.
+            if (!ctx.IsSideEffectFree && !q6High && !q7High)
+            {
+                dataReadCount++;
+                settleSuppressedReadCount++;
+            }
+
+            return (byte)(LatchedOrFloating() & 0x7F);
         }
 
         // Model the Disk II shift-register byte-ready behavior in read mode
@@ -826,17 +992,261 @@ public sealed class DiskIIController : ISlotCard, IDiskController
         // than bytes arrive and we report bit 7 cleared so the BPL loop spins.
         if (!q6High && !q7High && dataLatchValid && !ctx.IsSideEffectFree)
         {
+            dataReadCount++;
             if (current.SpinPosition == lastReadSpinPosition)
             {
+                staleByteCount++;
                 return (byte)(dataLatch & 0x7F);
             }
 
             lastReadSpinPosition = current.SpinPosition;
+            freshByteCount++;
+            current.BytesServedOnCurrentTrack++;
+            ObserveStreamByte(current, dataLatch);
+            return dataLatch;
         }
 
         // For non-data-read modes (write enable, write load), reads return whatever
         // is on the floating bus; we return the last latched byte for determinism.
         return LatchedOrFloating();
+    }
+
+    /// <summary>
+    /// Feeds a freshly clocked nibble into the per-drive stream parser. Maintains a
+    /// sliding three-byte window matching both the GCR address-field prologue
+    /// (<c>$D5 $AA $96</c>) and the GCR data-field prologue (<c>$D5 $AA $AD</c>).
+    /// </summary>
+    /// <param name="drive">The drive whose stream is being observed.</param>
+    /// <param name="value">The fresh byte being served to the CPU.</param>
+    /// <remarks>
+    /// <para>
+    /// On an address-prologue hit the next eight bytes are decoded as 4-and-4
+    /// volume / track / sector / checksum; on a data-prologue hit the next 345 bytes
+    /// (343 data + 2 epilogue) are captured, run through the 6-and-2 XOR-chain
+    /// decode using <see cref="GcrEncoder.GetReadTable"/>, and classified as
+    /// success / decode-error (bad 6-and-2 nibble) / checksum-error (non-zero XOR
+    /// residual) / epilogue-mismatch (bytes after the 343 weren't <c>$DE $AA</c>).
+    /// The bytes between an address-field decode and the next data prologue are
+    /// recorded as a paired gap so the <c>diskmon</c> surface can show whether
+    /// the data prologue lands inside RWTS's ~60-byte scan window.
+    /// </para>
+    /// <para>
+    /// Parses what the CPU actually sees, not what is on disk: if the byte-ready
+    /// timing model serves duplicate or skipped bytes, the parser sees that too,
+    /// which is exactly what makes this signal useful for diagnosing seek / settle
+    /// bugs where the byte stream the CPU consumes differs from the encoded image.
+    /// </para>
+    /// </remarks>
+    private void ObserveStreamByte(Drive525 drive, byte value)
+    {
+        // Shift the 3-byte sliding window forward.
+        drive.SlidingW2 = drive.SlidingW1;
+        drive.SlidingW1 = drive.SlidingW0;
+        drive.SlidingW0 = value;
+
+        // If we are tracking the gap to the next data prologue, count this fresh byte.
+        if (drive.DataPrologueGapActive)
+        {
+            // Cap at int.MaxValue so the counter never wraps; any sane gap is < 10000.
+            if (drive.DataPrologueGapBytes < int.MaxValue)
+            {
+                drive.DataPrologueGapBytes++;
+            }
+        }
+
+        if (drive.AddressParseStage > 0)
+        {
+            // Collecting 8 bytes after $D5 $AA $96.
+            drive.AddressParseBuffer[drive.AddressParseStage - 1] = value;
+            drive.AddressParseStage++;
+            if (drive.AddressParseStage > 8)
+            {
+                // 4-and-4 decode: each pair (hi, lo) of nibbles encodes one byte as
+                // ((hi << 1) | 1) & lo. Bytes are vol, trk, sec, chk in that order.
+                var buf = drive.AddressParseBuffer;
+                var vol = (byte)(((buf[0] << 1) | 1) & buf[1]);
+                var trk = (byte)(((buf[2] << 1) | 1) & buf[3]);
+                var sec = (byte)(((buf[4] << 1) | 1) & buf[5]);
+                var chk = (byte)(((buf[6] << 1) | 1) & buf[7]);
+                drive.LastObservedVolume = vol;
+                drive.LastObservedTrack = trk;
+                drive.LastObservedSector = sec;
+                drive.LastObservedChecksum = chk;
+                var expected = (byte)(vol ^ trk ^ sec);
+                drive.LastObservedChecksumValid = expected == chk;
+                drive.HasObservedAddressField = true;
+                drive.ObservedAddressFields++;
+                if (!drive.LastObservedChecksumValid)
+                {
+                    drive.ObservedAddressFieldChecksumErrors++;
+                }
+
+                drive.AddressParseStage = 0;
+
+                if (logger.IsEnabled(LogEventLevel.Verbose))
+                {
+                    logger.Verbose(
+                        "DiskII (slot {Slot}): drive {Drive} qt={QuarterTrack} address field vol=${Volume:X2} trk=${Track:X2} sec=${Sector:X2} chk=${Checksum:X2} ({ChecksumStatus}).",
+                        SlotNumber,
+                        currentDrive + 1,
+                        drive.QuarterTrack,
+                        vol,
+                        trk,
+                        sec,
+                        chk,
+                        drive.LastObservedChecksumValid ? "ok" : "BAD");
+                }
+
+                // Start a fresh gap measurement: bytes from here to the next data
+                // prologue. Reset any in-flight data-field parse — RWTS only honours
+                // the data field that follows the most recent address field.
+                drive.DataPrologueGapActive = true;
+                drive.DataPrologueGapBytes = 0;
+                drive.DataParseStage = 0;
+            }
+
+            return;
+        }
+
+        if (drive.DataParseStage > 0)
+        {
+            // Collecting 345 bytes after $D5 $AA $AD: 343 encoded nibbles + 2 epilogue.
+            drive.DataParseBuffer[drive.DataParseStage - 1] = value;
+            drive.DataParseStage++;
+            if (drive.DataParseStage > DataFieldCaptureLength)
+            {
+                FinaliseDataField(drive);
+                drive.DataParseStage = 0;
+            }
+
+            return;
+        }
+
+        if (drive.SlidingW2 == 0xD5 && drive.SlidingW1 == 0xAA)
+        {
+            if (drive.SlidingW0 == 0x96)
+            {
+                drive.AddressParseStage = 1;
+            }
+            else if (drive.SlidingW0 == 0xAD)
+            {
+                drive.ObservedDataPrologues++;
+                if (drive.DataPrologueGapActive)
+                {
+                    var gap = drive.DataPrologueGapBytes;
+
+                    // The gap counter started incrementing on the byte after the
+                    // 8th 4-and-4 address byte and includes the trailing $DE $AA
+                    // $EB address-field epilogue (3 bytes), the inter-field gap
+                    // proper, and the leading $D5 $AA $AD data prologue (3 bytes)
+                    // itself. Subtract 6 so the reported gap equals the bytes
+                    // RWTS would actually scan past after the address field's
+                    // epilogue (the standard track layout puts the data prologue
+                    // exactly 5 bytes after the address epilogue; RWTS's scan
+                    // window is ~60 bytes, so any gap > ~50 here is a smoking gun
+                    // for the encoder laying fields outside the scan window).
+                    var paired = gap > 6 ? gap - 6 : 0;
+                    drive.LastDataPrologueGapBytes = paired;
+                    if (!drive.HasMeasuredDataPrologueGap || paired < drive.MinDataPrologueGapBytes)
+                    {
+                        drive.MinDataPrologueGapBytes = paired;
+                    }
+
+                    if (!drive.HasMeasuredDataPrologueGap || paired > drive.MaxDataPrologueGapBytes)
+                    {
+                        drive.MaxDataPrologueGapBytes = paired;
+                    }
+
+                    drive.HasMeasuredDataPrologueGap = true;
+                    drive.DataPrologueGapActive = false;
+                }
+
+                drive.DataParseStage = 1;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Runs the GCR 6-and-2 XOR-chain decode on the 343 nibbles captured after a
+    /// <c>$D5 $AA $AD</c> data prologue, validates the trailing two-byte epilogue,
+    /// and updates the per-drive data-field counters accordingly.
+    /// </summary>
+    /// <param name="drive">The drive whose captured data field should be decoded.</param>
+    private void FinaliseDataField(Drive525 drive)
+    {
+        var buf = drive.DataParseBuffer;
+
+        // First decode all 343 nibbles via the inverse 6-and-2 read table. Any byte
+        // that isn't a valid 6-and-2 nibble (read table returns 0xFF) means RWTS
+        // would have rejected the field outright.
+        var readTable = ReadTable;
+        for (var i = 0; i < 343; i++)
+        {
+            if (readTable[buf[i]] == 0xFF)
+            {
+                drive.ObservedDataFieldDecodeErrors++;
+                if (logger.IsEnabled(LogEventLevel.Verbose))
+                {
+                    logger.Verbose(
+                        "DiskII (slot {Slot}): drive {Drive} qt={QuarterTrack} data field after vol=${Volume:X2} trk=${Track:X2} sec=${Sector:X2} → DECODE-ERROR (invalid nibble ${BadNibble:X2} at offset {Offset}).",
+                        SlotNumber,
+                        currentDrive + 1,
+                        drive.QuarterTrack,
+                        drive.LastObservedVolume,
+                        drive.LastObservedTrack,
+                        drive.LastObservedSector,
+                        buf[i],
+                        i);
+                }
+
+                return;
+            }
+        }
+
+        // XOR-chain decode: each nibble's 6-bit value is XOR'd with a running
+        // accumulator; the chain's final residual must be zero for the checksum to
+        // verify.
+        byte last = 0;
+        for (var i = 0; i < 343; i++)
+        {
+            last ^= readTable[buf[i]];
+        }
+
+        var checksumValid = last == 0;
+        var epilogueValid = buf[343] == 0xDE && buf[344] == 0xAA;
+
+        if (checksumValid)
+        {
+            drive.ObservedDataFieldDecodeSuccesses++;
+        }
+        else
+        {
+            drive.ObservedDataFieldChecksumErrors++;
+        }
+
+        if (!epilogueValid)
+        {
+            drive.ObservedDataFieldEpilogueMismatches++;
+        }
+
+        if (logger.IsEnabled(LogEventLevel.Verbose))
+        {
+            string outcome = checksumValid
+                ? (epilogueValid ? "ok" : "ok (epilogue-mismatch)")
+                : (epilogueValid ? "CHECKSUM-ERROR" : "CHECKSUM-ERROR + epilogue-mismatch");
+
+            logger.Verbose(
+                "DiskII (slot {Slot}): drive {Drive} qt={QuarterTrack} data field after vol=${Volume:X2} trk=${Track:X2} sec=${Sector:X2} → {Outcome} (epilogue ${EpilogueByte0:X2} ${EpilogueByte1:X2}).",
+                SlotNumber,
+                currentDrive + 1,
+                drive.QuarterTrack,
+                drive.LastObservedVolume,
+                drive.LastObservedTrack,
+                drive.LastObservedSector,
+                outcome,
+                buf[343],
+                buf[344]);
+        }
     }
 
     private byte LatchedOrFloating() => dataLatchValid ? dataLatch : FloatingByte;
@@ -863,7 +1273,11 @@ public sealed class DiskIIController : ISlotCard, IDiskController
         }
 
         // FR-D6: on-demand spin advance.
-        drive.EnsureTrackLoaded();
+        if (drive.EnsureTrackLoaded())
+        {
+            cacheLoadCount++;
+        }
+
         if (context is not null)
         {
             var now = context.Now;
@@ -896,7 +1310,10 @@ public sealed class DiskIIController : ISlotCard, IDiskController
             return;
         }
 
-        drive.EnsureTrackLoaded();
+        if (drive.EnsureTrackLoaded())
+        {
+            cacheLoadCount++;
+        }
 
         // Advance the spin position for the staged write, then commit one byte to the
         // nibble cache and mark the track dirty (FR-D8 — sector images defer parse-
@@ -915,6 +1332,7 @@ public sealed class DiskIIController : ISlotCard, IDiskController
         drive.CachedTrack![drive.SpinPosition] = writeShift;
         drive.IsTrackDirty = true;
         drive.SpinPosition = (drive.SpinPosition + 1) % drive.CachedTrack!.Length;
+        dataWriteCount++;
     }
 
     private void ScheduleDriftEvent(Drive525 drive)
@@ -1051,6 +1469,70 @@ public sealed class DiskIIController : ISlotCard, IDiskController
 
         public Cycle SettleUntil { get; set; }
 
+        // ─── Instrumentation: stream-observed address-field parser state ─────
+        public byte SlidingW0 { get; set; }
+
+        public byte SlidingW1 { get; set; }
+
+        public byte SlidingW2 { get; set; }
+
+        /// <summary>Gets or sets the 8-byte rolling buffer used to capture the vol/trk/sec/chk pairs that follow a <c>$D5 $AA $96</c> prologue.</summary>
+        public byte[] AddressParseBuffer { get; } = new byte[8];
+
+        /// <summary>Gets or sets the address-field decode stage: <c>0</c> = idle (watching for prologue); <c>1..8</c> = collecting bytes after prologue.</summary>
+        public int AddressParseStage { get; set; }
+
+        public bool HasObservedAddressField { get; set; }
+
+        public int LastObservedVolume { get; set; }
+
+        public int LastObservedTrack { get; set; }
+
+        public int LastObservedSector { get; set; }
+
+        public int LastObservedChecksum { get; set; }
+
+        public bool LastObservedChecksumValid { get; set; }
+
+        public long ObservedAddressFields { get; set; }
+
+        public long ObservedAddressFieldChecksumErrors { get; set; }
+
+        public long BytesServedOnCurrentTrack { get; set; }
+
+        // ─── Instrumentation: stream-observed data-field parser state ────────
+
+        /// <summary>Gets the 345-byte rolling buffer used to capture the 343 nibbles + 2 epilogue bytes that follow a <c>$D5 $AA $AD</c> data prologue.</summary>
+        public byte[] DataParseBuffer { get; } = new byte[DataFieldCaptureLength];
+
+        /// <summary>Gets or sets the data-field decode stage: <c>0</c> = idle (watching for prologue); <c>1..345</c> = collecting bytes after prologue.</summary>
+        public int DataParseStage { get; set; }
+
+        /// <summary>Gets or sets a value indicating whether a paired address→data gap is currently being measured (set after a successful address-field decode, cleared on the next data prologue).</summary>
+        public bool DataPrologueGapActive { get; set; }
+
+        /// <summary>Gets or sets the running byte count for the in-flight paired address→data gap.</summary>
+        public int DataPrologueGapBytes { get; set; }
+
+        /// <summary>Gets or sets a value indicating whether any paired address→data gap has been recorded.</summary>
+        public bool HasMeasuredDataPrologueGap { get; set; }
+
+        public int LastDataPrologueGapBytes { get; set; }
+
+        public int MinDataPrologueGapBytes { get; set; }
+
+        public int MaxDataPrologueGapBytes { get; set; }
+
+        public long ObservedDataPrologues { get; set; }
+
+        public long ObservedDataFieldDecodeSuccesses { get; set; }
+
+        public long ObservedDataFieldChecksumErrors { get; set; }
+
+        public long ObservedDataFieldDecodeErrors { get; set; }
+
+        public long ObservedDataFieldEpilogueMismatches { get; set; }
+
         public void ResetTransientState()
         {
             QuarterTrack = 0;
@@ -1061,20 +1543,33 @@ public sealed class DiskIIController : ISlotCard, IDiskController
             IsTrackDirty = false;
             LastUpdateCycle = Cycle.Zero;
             SettleUntil = Cycle.Zero;
+            SlidingW0 = SlidingW1 = SlidingW2 = 0;
+            AddressParseStage = 0;
+            HasObservedAddressField = false;
+            BytesServedOnCurrentTrack = 0;
+            DataParseStage = 0;
+            DataPrologueGapActive = false;
+            DataPrologueGapBytes = 0;
+            HasMeasuredDataPrologueGap = false;
         }
 
-        public void EnsureTrackLoaded()
+        /// <summary>
+        /// Loads the cached nibble buffer for the current quarter-track if it isn't
+        /// already loaded.
+        /// </summary>
+        /// <returns><see langword="true"/> if a load was actually performed; <see langword="false"/> if the cache was already valid for the current quarter-track.</returns>
+        public bool EnsureTrackLoaded()
         {
             if (Media is null)
             {
                 CachedTrack = null;
                 CachedQuarterTrack = -1;
-                return;
+                return false;
             }
 
             if (CachedTrack is not null && CachedQuarterTrack == QuarterTrack)
             {
-                return;
+                return false;
             }
 
             // Reload the cached nibble buffer for the new quarter-track.
@@ -1089,27 +1584,48 @@ public sealed class DiskIIController : ISlotCard, IDiskController
             CachedQuarterTrack = QuarterTrack;
             IsTrackDirty = false;
             SpinPosition %= len;
+            return true;
         }
 
-        public void OnTrackChanging(ILogger logger)
+        /// <summary>
+        /// Handles a track change: flushes any dirty nibble cache and invalidates the
+        /// cached track buffer so the next read reloads from the medium.
+        /// </summary>
+        /// <param name="logger">Serilog logger used to report flush failures.</param>
+        /// <returns><see langword="true"/> if a dirty flush was performed; <see langword="false"/> otherwise.</returns>
+        public bool OnTrackChanging(ILogger logger)
         {
             // Flush dirty nibbles for the outgoing track before stepping away.
-            Flush(logger);
+            var flushed = Flush(logger);
             CachedTrack = null;
             CachedQuarterTrack = -1;
             IsTrackDirty = false;
+            return flushed;
         }
 
-        public void Flush(ILogger logger)
+        /// <summary>
+        /// Writes any dirty cached nibbles back to the medium, swallowing the typical
+        /// I/O / parse exception set into <paramref name="logger"/>.
+        /// </summary>
+        /// <param name="logger">Serilog logger used to report flush failures.</param>
+        /// <returns><see langword="true"/> if a flush was performed; <see langword="false"/> if nothing was dirty.</returns>
+        public bool Flush(ILogger logger)
         {
+            if (Media is null || !IsTrackDirty || CachedTrack is null || CachedQuarterTrack < 0)
+            {
+                return false;
+            }
+
             try
             {
                 FlushOrThrow();
+                return true;
             }
             catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or IOException)
             {
                 logger.Warning(ex, "DiskII: write-back of quarter-track {QuarterTrack} failed.", CachedQuarterTrack);
                 IsTrackDirty = false;
+                return false;
             }
         }
 

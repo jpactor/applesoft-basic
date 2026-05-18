@@ -77,4 +77,19 @@ public interface IDiskController
     /// continue to use the soft-switch surface instead of reaching for the media directly.
     /// </remarks>
     I525Media? GetMedia(int driveIndex);
+
+    /// <summary>
+    /// Returns a snapshot of the controller's activity counters, including per-drive
+    /// stream-observed address-field state.
+    /// </summary>
+    /// <returns>An immutable snapshot of the current counter values.</returns>
+    /// <remarks>
+    /// Intended for diagnostic surfaces such as the <c>diskmon</c> debug command and
+    /// the Disk II status-window extension. Counters are monotonic since controller
+    /// construction; callers should diff snapshots over time to compute rates.
+    /// Implementations are expected to be inexpensive (a single allocation plus
+    /// per-drive struct copies); they may be polled several times per second from
+    /// UI refresh code.
+    /// </remarks>
+    DiskActivitySnapshot GetActivitySnapshot();
 }
