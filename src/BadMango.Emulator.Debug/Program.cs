@@ -19,7 +19,7 @@ using Serilog.Sinks.File;
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Debug()
     .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
-    .MinimumLevel.Override("BadMango.Emulator.Devices", LogEventLevel.Verbose)
+    ////.MinimumLevel.Override("BadMango.Emulator.Devices", LogEventLevel.Verbose) // Uncomment for verbose device-level logging
     .Enrich.FromLogContext()
     .WriteTo.Console(
         outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}",
@@ -27,8 +27,7 @@ Log.Logger = new LoggerConfiguration()
     .WriteTo.File(
         "logs/emudbg-.log",
         rollingInterval: RollingInterval.Day,
-        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}",
-        flushToDiskInterval: TimeSpan.FromSeconds(5))
+        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
     .CreateLogger();
 
 try
