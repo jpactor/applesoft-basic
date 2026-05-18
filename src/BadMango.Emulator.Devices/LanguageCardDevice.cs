@@ -115,7 +115,8 @@ public sealed class LanguageCardDevice : IMotherboardDevice, ISoftSwitchProvider
     private uint bankSwapGroupId;
     private uint highSwapGroupId;
     private int deviceId;
-    private bool splitVariantsRegistered;
+    private bool highSplitVariantRegistered;
+    private bool lowSplitVariantsRegistered;
 
     private bool readRam;           // True = read from LC RAM
     private bool writeEnabled;      // True = writes go to LC RAM
@@ -597,7 +598,7 @@ public sealed class LanguageCardDevice : IMotherboardDevice, ISoftSwitchProvider
 
     private void RegisterSplitVariantsIfNeeded()
     {
-        if (splitVariantsRegistered || bus is null)
+        if ((highSplitVariantRegistered && lowSplitVariantsRegistered) || bus is null)
         {
             return;
         }
@@ -609,85 +610,85 @@ public sealed class LanguageCardDevice : IMotherboardDevice, ISoftSwitchProvider
         PageEntry highRomPage = bus.GetEffectiveMapping(0xE000);
         PageEntry topRomPage = bus.GetEffectiveMapping(0xF000);
 
-        // Register the high split target only when the full $E000-$FFFF window is backed
-        // by a single contiguous ROM target. The bus supports page-level overlays, so
-        // $F000 may legally resolve to a different target or physical base than $E000.
-        // In that case, using only the $E000 mapping for the whole 8 KB window would
-        // return incorrect ROM data in the $F000 page, or could read past the end of
-        // the $E000 target if it is only one page long.
-        bool canRegisterHighSplitVariant =
-            highRomPage.Target is not null &&
-            topRomPage.Target is not null &&
-            ReferenceEquals(highRomPage.Target, topRomPage.Target) &&
-            topRomPage.PhysicalBase == highRomPage.PhysicalBase + PageSize;
-
-        if (canRegisterHighSplitVariant)
+        // Build a per-page ROM binding list for the $E000-$FFFF region.
+        // Each page is captured independently so the split target can correctly
+        // dispatch reads when $E000-$EFFF and $F000-$FFFF are backed by different
+        // ROM targets (or have non-consecutive physical bases).
+        if (!highSplitVariantRegistered)
         {
-            // The bus computed PhysicalBase for each page already accounts for the page's
-            // virtual address relative to the ROM's load address (see MainBus.MapPageRange:
-            // pagePhysBase = physicalBase + i * PageSize). For $E000 with a 16 KB ROM at
-            // $C000 and physicalBase=0, highRomPage.PhysicalBase = $2000.
-            var highSplitTarget = new LanguageCardSplitTarget(
-                readTarget: highRomPage.Target,
-                readPhysBaseAtRegion: highRomPage.PhysicalBase,
-                writeTarget: highTarget,
+            var highRomBindings = new List<RomPageBinding>(2);
+            if (highRomPage.Target is not null)
+            {
+                highRomBindings.Add(new(0xE000, highRomPage.Target, highRomPage.PhysicalBase));
+            }
+
+            if (topRomPage.Target is not null)
+            {
+                highRomBindings.Add(new(0xF000, topRomPage.Target, topRomPage.PhysicalBase));
+            }
+
+            // Register the high split variant only when at least one page in $E000-$FFFF
+            // has a ROM target. Pages with no binding return $FF (floating bus) in split mode.
+            if (highRomBindings.Count > 0)
+            {
+                var highSplitTarget = new LanguageCardSplitTarget(
+                    romBindings: highRomBindings,
+                    writeTarget: highTarget,
+                    writePhysBaseAtRegion: 0,
+                    regionVirtualBase: 0xE000,
+                    regionSize: E000Size,
+                    name: "LC_E000_Split");
+
+                bus.AddSwapVariant(
+                    highSwapGroupId,
+                    HighSplitVariantName,
+                    highSplitTarget,
+                    physBase: 0,
+                    perms: PagePerms.ReadWrite);
+
+                highSplitVariantRegistered = true;
+            }
+        }
+
+        // Register the low split variants for $D000-$DFFF. This is a single 4 KB page
+        // so a single binding per bank is sufficient.
+        if (!lowSplitVariantsRegistered && lowRomPage.Target is not null)
+        {
+            var bank1Binding = new RomPageBinding(0xD000, lowRomPage.Target, lowRomPage.PhysicalBase);
+            var bank2Binding = new RomPageBinding(0xD000, lowRomPage.Target, lowRomPage.PhysicalBase);
+
+            var lowSplitBank1Target = new LanguageCardSplitTarget(
+                romBindings: [bank1Binding],
+                writeTarget: bank1Target,
                 writePhysBaseAtRegion: 0,
-                regionVirtualBase: 0xE000,
-                regionSize: E000Size,
-                name: "LC_E000_Split");
+                regionVirtualBase: 0xD000,
+                regionSize: D000BankSize,
+                name: "LC_D000_Bank1_Split");
 
             bus.AddSwapVariant(
-                highSwapGroupId,
-                HighSplitVariantName,
-                highSplitTarget,
+                bankSwapGroupId,
+                SplitBank1VariantName,
+                lowSplitBank1Target,
                 physBase: 0,
                 perms: PagePerms.ReadWrite);
+
+            var lowSplitBank2Target = new LanguageCardSplitTarget(
+                romBindings: [bank2Binding],
+                writeTarget: bank2Target,
+                writePhysBaseAtRegion: 0,
+                regionVirtualBase: 0xD000,
+                regionSize: D000BankSize,
+                name: "LC_D000_Bank2_Split");
+
+            bus.AddSwapVariant(
+                bankSwapGroupId,
+                SplitBank2VariantName,
+                lowSplitBank2Target,
+                physBase: 0,
+                perms: PagePerms.ReadWrite);
+
+            lowSplitVariantsRegistered = true;
         }
-
-        // If there is no ROM under $D000-$DFFF (uncommon in tests but possible in
-        // bare-bones builders), there is nothing meaningful to read from in split mode
-        // for the banked low region. Skip those registrations; ApplyState will then
-        // fall back to write-only perms for those modes, which still prevents the
-        // zero-fill ROM-shadow bug.
-        if (lowRomPage.Target is null)
-        {
-            splitVariantsRegistered = true;
-            return;
-        }
-
-        var lowSplitBank1Target = new LanguageCardSplitTarget(
-            readTarget: lowRomPage.Target,
-            readPhysBaseAtRegion: lowRomPage.PhysicalBase,
-            writeTarget: bank1Target,
-            writePhysBaseAtRegion: 0,
-            regionVirtualBase: 0xD000,
-            regionSize: D000BankSize,
-            name: "LC_D000_Bank1_Split");
-
-        bus.AddSwapVariant(
-            bankSwapGroupId,
-            SplitBank1VariantName,
-            lowSplitBank1Target,
-            physBase: 0,
-            perms: PagePerms.ReadWrite);
-
-        var lowSplitBank2Target = new LanguageCardSplitTarget(
-            readTarget: lowRomPage.Target,
-            readPhysBaseAtRegion: lowRomPage.PhysicalBase,
-            writeTarget: bank2Target,
-            writePhysBaseAtRegion: 0,
-            regionVirtualBase: 0xD000,
-            regionSize: D000BankSize,
-            name: "LC_D000_Bank2_Split");
-
-        bus.AddSwapVariant(
-            bankSwapGroupId,
-            SplitBank2VariantName,
-            lowSplitBank2Target,
-            physBase: 0,
-            perms: PagePerms.ReadWrite);
-
-        splitVariantsRegistered = true;
     }
 
     private void ApplyState()
@@ -761,27 +762,32 @@ public sealed class LanguageCardDevice : IMotherboardDevice, ISoftSwitchProvider
                 // full ReadWrite permissions to allow the target to receive the access.
                 // The variant itself routes reads to ROM and writes to RAM.
                 //
-                // If the split variants could not be registered (no ROM mapped under
-                // $D000-$FFFF), fall back to write-only RAM perms; this preserves the
-                // critical invariant that ROM is NEVER silently shadowed by zero-filled
+                // If split variants could not be registered for a given region (no ROM
+                // mapped there), fall back to write-only RAM for that region; this preserves
+                // the critical invariant that ROM is NEVER silently shadowed by zero-filled
                 // LC RAM (the previous bug that turned DOS 3.3's R*2 at $BFCB into a
                 // cascade of BRK $00 monitor calls).
-                if (splitVariantsRegistered)
+                if (highSplitVariantRegistered)
                 {
                     bus.SetLayerPermissions(HighLayerName, PagePerms.ReadWrite);
-                    bus.SetLayerPermissions(LowLayerName, PagePerms.ReadWrite);
-
                     SelectVariantIfChanged(highSwapGroupId, HighSplitVariantName);
+                }
+                else
+                {
+                    bus.SetLayerPermissions(HighLayerName, PagePerms.Write);
+                    SelectVariantIfChanged(highSwapGroupId, HighRamVariantName);
+                }
+
+                if (lowSplitVariantsRegistered)
+                {
+                    bus.SetLayerPermissions(LowLayerName, PagePerms.ReadWrite);
                     SelectVariantIfChanged(
                         bankSwapGroupId,
                         bank2Selected ? SplitBank2VariantName : SplitBank1VariantName);
                 }
                 else
                 {
-                    bus.SetLayerPermissions(HighLayerName, PagePerms.Write);
                     bus.SetLayerPermissions(LowLayerName, PagePerms.Write);
-
-                    SelectVariantIfChanged(highSwapGroupId, HighRamVariantName);
                     SelectVariantIfChanged(
                         bankSwapGroupId,
                         bank2Selected ? Bank2VariantName : Bank1VariantName);

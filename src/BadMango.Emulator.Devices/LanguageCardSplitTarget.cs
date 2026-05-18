@@ -29,6 +29,13 @@ using BadMango.Emulator.Bus.Interfaces;
 /// <see cref="Read8"/> and <see cref="Write8"/>.
 /// </para>
 /// <para>
+/// Read routing is backed by one or more <see cref="RomPageBinding"/> descriptors,
+/// one per 4 KB page in the covered region, allowing $E000-$EFFF and $F000-$FFFF
+/// to be independently routed to different ROM targets when the system ROM is
+/// composed from multiple page-level overlays. If a page has no <see cref="RomPageBinding"/>,
+/// reads return <c>0xFF</c> (floating-bus value).
+/// </para>
+/// <para>
 /// Address translation is handled internally: callers configure the split target
 /// with the virtual base of the region it covers plus the per-target physical
 /// base offsets, and accesses are routed using the original
@@ -39,9 +46,11 @@ using BadMango.Emulator.Bus.Interfaces;
 /// </remarks>
 internal sealed class LanguageCardSplitTarget : ICompositeTarget
 {
-    private readonly IBusTarget readTarget;
+    /// <summary>Size of a single bus page in bytes (4 KB).</summary>
+    private const Addr BusPageSize = 0x1000;
+
+    private readonly RomPageBinding[] romBindings;
     private readonly IBusTarget writeTarget;
-    private readonly Addr readPhysBaseAtRegion;
     private readonly Addr writePhysBaseAtRegion;
     private readonly Addr regionVirtualBase;
     private readonly Addr regionSize;
@@ -50,12 +59,11 @@ internal sealed class LanguageCardSplitTarget : ICompositeTarget
     /// <summary>
     /// Initializes a new instance of the <see cref="LanguageCardSplitTarget"/> class.
     /// </summary>
-    /// <param name="readTarget">The target that services reads (typically the system ROM).</param>
-    /// <param name="readPhysBaseAtRegion">
-    /// The physical address within <paramref name="readTarget"/> that corresponds to
-    /// <paramref name="regionVirtualBase"/>. For example, if <paramref name="readTarget"/>
-    /// is a 16 KB system ROM mapped at $C000 and this split target covers $E000-$FFFF,
-    /// pass <c>0x2000</c>.
+    /// <param name="romBindings">
+    /// One or more <see cref="RomPageBinding"/> entries that describe the ROM pages that
+    /// service reads. Each entry covers one 4 KB page. Pages within <paramref name="regionVirtualBase"/>
+    /// to <paramref name="regionVirtualBase"/> + <paramref name="regionSize"/> that have no
+    /// corresponding binding return <c>0xFF</c> for split-mode reads.
     /// </param>
     /// <param name="writeTarget">The target that services writes (typically Language Card RAM).</param>
     /// <param name="writePhysBaseAtRegion">
@@ -71,30 +79,36 @@ internal sealed class LanguageCardSplitTarget : ICompositeTarget
     /// </param>
     /// <param name="name">A human-readable name for diagnostics.</param>
     /// <exception cref="ArgumentNullException">
-    /// Thrown when <paramref name="readTarget"/>, <paramref name="writeTarget"/>, or <paramref name="name"/> is <see langword="null"/>.
+    /// Thrown when <paramref name="romBindings"/>, <paramref name="writeTarget"/>, or <paramref name="name"/> is <see langword="null"/>.
+    /// </exception>
+    /// <exception cref="ArgumentException">
+    /// Thrown when <paramref name="romBindings"/> is empty.
     /// </exception>
     /// <exception cref="ArgumentOutOfRangeException">
     /// Thrown when <paramref name="regionSize"/> is zero.
     /// </exception>
     public LanguageCardSplitTarget(
-        IBusTarget readTarget,
-        Addr readPhysBaseAtRegion,
+        IReadOnlyList<RomPageBinding> romBindings,
         IBusTarget writeTarget,
         Addr writePhysBaseAtRegion,
         Addr regionVirtualBase,
         Addr regionSize,
         string name)
     {
-        ArgumentNullException.ThrowIfNull(readTarget);
+        ArgumentNullException.ThrowIfNull(romBindings);
         ArgumentNullException.ThrowIfNull(writeTarget);
         ArgumentNullException.ThrowIfNull(name);
+        if (romBindings.Count == 0)
+        {
+            throw new ArgumentException("At least one ROM page binding is required.", nameof(romBindings));
+        }
+
         if (regionSize == 0)
         {
             throw new ArgumentOutOfRangeException(nameof(regionSize), regionSize, "Region size must be greater than zero.");
         }
 
-        this.readTarget = readTarget;
-        this.readPhysBaseAtRegion = readPhysBaseAtRegion;
+        this.romBindings = [.. romBindings];
         this.writeTarget = writeTarget;
         this.writePhysBaseAtRegion = writePhysBaseAtRegion;
         this.regionVirtualBase = regionVirtualBase;
@@ -106,31 +120,49 @@ internal sealed class LanguageCardSplitTarget : ICompositeTarget
     public string Name => name;
 
     /// <inheritdoc />
-    public TargetCaps Capabilities => readTarget.Capabilities | writeTarget.Capabilities;
+    public TargetCaps Capabilities
+    {
+        get
+        {
+            TargetCaps caps = writeTarget.Capabilities;
+            foreach (var binding in romBindings)
+            {
+                caps |= binding.Target.Capabilities;
+            }
+
+            return caps;
+        }
+    }
 
     /// <summary>
-    /// Gets the underlying read target (ROM).
-    /// </summary>
-    /// <value>The bus target servicing reads in split mode.</value>
-    public IBusTarget ReadTarget => readTarget;
-
-    /// <summary>
-    /// Gets the underlying write target (Language Card RAM).
+    /// Gets the write target (Language Card RAM).
     /// </summary>
     /// <value>The bus target servicing writes in split mode.</value>
     public IBusTarget WriteTarget => writeTarget;
 
     /// <inheritdoc />
     /// <remarks>
-    /// Forwards the read to <see cref="ReadTarget"/> at the translated ROM physical
-    /// address. The bus-supplied <paramref name="physicalAddress"/> is ignored because
-    /// it reflects only the write target's physical base; this method recomputes the
-    /// correct ROM address from <see cref="BusAccess.Address"/>.
+    /// Dispatches the read to the <see cref="RomPageBinding"/> whose
+    /// <see cref="RomPageBinding.VirtualPageBase"/> covers <see cref="BusAccess.Address"/>.
+    /// Each binding covers exactly one 4 KB page so at most one binding matches.
+    /// Pages with no binding (not a typical configuration but structurally possible)
+    /// return <c>0xFF</c>, the floating-bus value. The bus-supplied
+    /// <paramref name="physicalAddress"/> is ignored because it reflects only the
+    /// write target's physical base.
     /// </remarks>
     public byte Read8(Addr physicalAddress, in BusAccess access)
     {
-        Addr offset = (Addr)(access.Address - regionVirtualBase);
-        return readTarget.Read8(readPhysBaseAtRegion + offset, access);
+        Addr addr = access.Address;
+        foreach (var binding in romBindings)
+        {
+            if (addr >= binding.VirtualPageBase && addr < binding.VirtualPageBase + BusPageSize)
+            {
+                return binding.Target.Read8(binding.PhysicalBase + (addr - binding.VirtualPageBase), access);
+            }
+        }
+
+        // No ROM binding for this address: return floating-bus value.
+        return 0xFF;
     }
 
     /// <inheritdoc />
@@ -161,8 +193,9 @@ internal sealed class LanguageCardSplitTarget : ICompositeTarget
     /// <remarks>
     /// Returns <see cref="RegionTag.Ram"/> because the split target is, from the bus
     /// page table's perspective, a single overlay region. The underlying read target's
-    /// ROM nature is observable through <see cref="ReadTarget"/> for tooling that needs
-    /// it; the page-level tag tracks the overlay (LC RAM) rather than the read pass-through.
+    /// ROM nature is observable through the <see cref="RomPageBinding"/> list for
+    /// tooling that needs it; the page-level tag tracks the overlay (LC RAM) rather
+    /// than the read pass-through.
     /// </remarks>
     public RegionTag GetSubRegionTag(Addr offset) => RegionTag.Ram;
 
