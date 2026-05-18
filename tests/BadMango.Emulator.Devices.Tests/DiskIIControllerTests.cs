@@ -1114,6 +1114,122 @@ public class DiskIIControllerTests
     }
 
     /// <summary>
+    /// Verifies that the controller emits a Serilog Verbose record at every
+    /// well-defined disk-event boundary — motor on/off, drive select, track
+    /// step, and each address-field / data-field decode — so the user can
+    /// capture a live trace of the byte stream the CPU is consuming by enabling
+    /// the <c>DiskIIController</c> source context at <c>Verbose</c> level.
+    /// This is the live-logging surface the user asked for; the after-the-fact
+    /// <c>diskmon</c> snapshot is not sufficient to localise a per-file I/O
+    /// failure inside a multi-second DOS retry storm.
+    /// </summary>
+    [Test]
+    public void DiskActivity_LogsVerboseTraceAtEveryEventBoundary()
+    {
+        // Mock<ILogger> that reports Verbose enabled and records every Verbose call.
+        var loggerMock = Generator.Log();
+        loggerMock.Setup(l => l.IsEnabled(Serilog.Events.LogEventLevel.Verbose)).Returns(true);
+
+        var trackPattern = BuildEncodedTrack(volume: 0xFE, track: 0x11);
+        var media = new RepeatingPatternMedia(trackPattern);
+
+        var (controller, dispatcher, ctx, scheduler, _) = BuildHarness(
+            motorSettleCycles: 0,
+            loggerMock: loggerMock);
+        controller.Mount(0, media);
+        scheduler.Advance(new Cycle(2));
+
+        // Stimulus order: motor on, drive-stream long enough to observe at
+        // least one address+data field pair (need >1 revolution = 6656 bytes
+        // worth of fresh nibbles), then phase pulse for a track step, drive
+        // toggle, motor off. The track step is deliberately last because it
+        // schedules a 30 000-cycle settle that would otherwise mask data-path
+        // observations.
+        _ = dispatcher.Read(0xE9, in ctx); // motor on
+
+        for (var i = 0; i < 14000; i++)
+        {
+            scheduler.Advance(new Cycle(DiskIIController.CyclesPerByte));
+            _ = dispatcher.Read(0xEC, in ctx);
+        }
+
+        // Phase 1 on, phase 0 off — single forward half-track step (qt 0→2).
+        _ = dispatcher.Read(0xE1, in ctx); // phase 0 off (no-op from 0)
+        _ = dispatcher.Read(0xE3, in ctx); // phase 1 on  → qt 0→2
+
+        _ = dispatcher.Read(0xEB, in ctx); // select drive 2
+        _ = dispatcher.Read(0xEA, in ctx); // select drive 1
+        _ = dispatcher.Read(0xE8, in ctx); // motor off
+
+        // Verify a Verbose trace line was emitted at each boundary. Scan
+        // `loggerMock.Invocations` directly rather than `Verify(...)`: Serilog
+        // exposes several generic `Verbose<T0…>(...)` overloads, and a `Verify`
+        // expression like `l.Verbose(It.IsAny<string>(), It.IsAny<object[]>())`
+        // only matches the `params object[]` overload — calls that bind to the
+        // strongly-typed generic overloads slip past it. Walking the recorded
+        // invocations checks "did any Verbose overload receive a template
+        // containing X" which is exactly the contract we care about.
+        bool VerboseEmitted(string token) => loggerMock.Invocations.Any(inv =>
+            inv.Method.Name == "Verbose"
+            && inv.Arguments.Count > 0
+            && inv.Arguments[0] is string template
+            && template.Contains(token, StringComparison.Ordinal));
+
+        int VerboseCount(string token) => loggerMock.Invocations.Count(inv =>
+            inv.Method.Name == "Verbose"
+            && inv.Arguments.Count > 0
+            && inv.Arguments[0] is string template
+            && template.Contains(token, StringComparison.Ordinal));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(VerboseEmitted("motor ON"), Is.True, "motor-on transition must emit a Verbose record");
+            Assert.That(VerboseEmitted("motor OFF"), Is.True, "motor-off transition must emit a Verbose record");
+            Assert.That(VerboseEmitted("track step"), Is.True, "track step must emit a Verbose record");
+            Assert.That(VerboseCount("drive select"), Is.GreaterThanOrEqualTo(2), "every drive-select toggle must emit a Verbose record");
+            Assert.That(VerboseEmitted("address field"), Is.True, "every decoded address field must emit a Verbose record");
+            Assert.That(VerboseEmitted("data field"), Is.True, "every finalised data field must emit a Verbose record");
+        });
+    }
+
+    /// <summary>
+    /// Confirms the Verbose-guard is effective: when the injected logger reports
+    /// <c>IsEnabled(Verbose) == false</c> (the default for production hosts that
+    /// haven't opted in), the controller must not invoke <c>Verbose(...)</c> at
+    /// all — the diagnostic logging carries zero per-event cost when disabled.
+    /// </summary>
+    [Test]
+    public void DiskActivity_SkipsVerboseTraceWhenLevelDisabled()
+    {
+        // Default Generator.Log() mock returns false for IsEnabled — no explicit setup needed.
+        var loggerMock = Generator.Log();
+
+        var trackPattern = BuildEncodedTrack(volume: 0xFE, track: 0x11);
+        var media = new RepeatingPatternMedia(trackPattern);
+
+        var (controller, dispatcher, ctx, scheduler, _) = BuildHarness(
+            motorSettleCycles: 0,
+            loggerMock: loggerMock);
+        controller.Mount(0, media);
+        scheduler.Advance(new Cycle(2));
+
+        _ = dispatcher.Read(0xE9, in ctx);
+        for (var i = 0; i < 1000; i++)
+        {
+            scheduler.Advance(new Cycle(DiskIIController.CyclesPerByte));
+            _ = dispatcher.Read(0xEC, in ctx);
+        }
+
+        _ = dispatcher.Read(0xE8, in ctx);
+
+        // Scan invocations directly to catch every overload of Verbose<…>.
+        Assert.That(
+            loggerMock.Invocations.Any(inv => inv.Method.Name == "Verbose"),
+            Is.False,
+            "Verbose logging must be gated by IsEnabled so disabled hosts pay zero cost.");
+    }
+
+    /// <summary>
     /// Encodes a full 6656-byte track with deterministic per-sector content so the
     /// standard 48 / 14 / 5 / 349 sector stride is laid down for the live stream
     /// parser tests to consume.

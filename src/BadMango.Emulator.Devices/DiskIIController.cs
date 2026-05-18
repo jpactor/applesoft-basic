@@ -11,6 +11,7 @@ using BadMango.Emulator.Storage.Gcr;
 using BadMango.Emulator.Storage.Media;
 
 using Serilog;
+using Serilog.Events;
 
 /// <summary>
 /// Working Disk II controller — replaces the body of <see cref="DiskIIControllerStub"/>
@@ -610,11 +611,23 @@ public sealed class DiskIIController : ISlotCard, IDiskController
                 cacheFlushCount++;
             }
 
+            var oldQuarter = drive.QuarterTrack;
             drive.QuarterTrack = newQuarter;
             drive.BytesServedOnCurrentTrack = 0;
             phasePulseCount++;
             trackChangeCount++;
             ScheduleTrackStepSettle(drive);
+
+            if (logger.IsEnabled(LogEventLevel.Verbose))
+            {
+                logger.Verbose(
+                    "DiskII (slot {Slot}): drive {Drive} track step qt={OldQuarterTrack}→{NewQuarterTrack} (delta {Delta}).",
+                    SlotNumber,
+                    currentDrive + 1,
+                    oldQuarter,
+                    newQuarter,
+                    delta);
+            }
         }
         else
         {
@@ -692,6 +705,16 @@ public sealed class DiskIIController : ISlotCard, IDiskController
             motorOn = false;
             motorOffCount++;
             CancelDriftEvent();
+
+            if (logger.IsEnabled(LogEventLevel.Verbose))
+            {
+                logger.Verbose(
+                    "DiskII (slot {Slot}): motor OFF (active drive {Drive}, qt={QuarterTrack}).",
+                    SlotNumber,
+                    currentDrive + 1,
+                    drives[currentDrive].QuarterTrack);
+            }
+
             return;
         }
 
@@ -707,6 +730,16 @@ public sealed class DiskIIController : ISlotCard, IDiskController
         else
         {
             drive.SettleUntil = (Cycle)(ulong)motorSettleCycles;
+        }
+
+        if (logger.IsEnabled(LogEventLevel.Verbose))
+        {
+            logger.Verbose(
+                "DiskII (slot {Slot}): motor ON (active drive {Drive}, qt={QuarterTrack}, settle={SettleCycles} cycles).",
+                SlotNumber,
+                currentDrive + 1,
+                drive.QuarterTrack,
+                motorSettleCycles);
         }
     }
 
@@ -759,6 +792,7 @@ public sealed class DiskIIController : ISlotCard, IDiskController
             cacheFlushCount++;
         }
 
+        var oldDrive = currentDrive;
         currentDrive = index;
         driveSelectCount++;
 
@@ -769,6 +803,16 @@ public sealed class DiskIIController : ISlotCard, IDiskController
         if (motorOn && context is not null)
         {
             drives[currentDrive].LastUpdateCycle = context.Now;
+        }
+
+        if (logger.IsEnabled(LogEventLevel.Verbose))
+        {
+            logger.Verbose(
+                "DiskII (slot {Slot}): drive select {OldDrive}→{NewDrive} (qt={QuarterTrack}).",
+                SlotNumber,
+                oldDrive + 1,
+                currentDrive + 1,
+                drives[currentDrive].QuarterTrack);
         }
     }
 
@@ -1033,6 +1077,20 @@ public sealed class DiskIIController : ISlotCard, IDiskController
 
                 drive.AddressParseStage = 0;
 
+                if (logger.IsEnabled(LogEventLevel.Verbose))
+                {
+                    logger.Verbose(
+                        "DiskII (slot {Slot}): drive {Drive} qt={QuarterTrack} address field vol=${Volume:X2} trk=${Track:X2} sec=${Sector:X2} chk=${Checksum:X2} ({ChecksumStatus}).",
+                        SlotNumber,
+                        currentDrive + 1,
+                        drive.QuarterTrack,
+                        vol,
+                        trk,
+                        sec,
+                        chk,
+                        drive.LastObservedChecksumValid ? "ok" : "BAD");
+                }
+
                 // Start a fresh gap measurement: bytes from here to the next data
                 // prologue. Reset any in-flight data-field parse — RWTS only honours
                 // the data field that follows the most recent address field.
@@ -1121,6 +1179,20 @@ public sealed class DiskIIController : ISlotCard, IDiskController
             if (readTable[buf[i]] == 0xFF)
             {
                 drive.ObservedDataFieldDecodeErrors++;
+                if (logger.IsEnabled(LogEventLevel.Verbose))
+                {
+                    logger.Verbose(
+                        "DiskII (slot {Slot}): drive {Drive} qt={QuarterTrack} data field after vol=${Volume:X2} trk=${Track:X2} sec=${Sector:X2} → DECODE-ERROR (invalid nibble ${BadNibble:X2} at offset {Offset}).",
+                        SlotNumber,
+                        currentDrive + 1,
+                        drive.QuarterTrack,
+                        drive.LastObservedVolume,
+                        drive.LastObservedTrack,
+                        drive.LastObservedSector,
+                        buf[i],
+                        i);
+                }
+
                 return;
             }
         }
@@ -1149,6 +1221,25 @@ public sealed class DiskIIController : ISlotCard, IDiskController
         if (!epilogueValid)
         {
             drive.ObservedDataFieldEpilogueMismatches++;
+        }
+
+        if (logger.IsEnabled(LogEventLevel.Verbose))
+        {
+            string outcome = checksumValid
+                ? (epilogueValid ? "ok" : "ok (epilogue-mismatch)")
+                : (epilogueValid ? "CHECKSUM-ERROR" : "CHECKSUM-ERROR + epilogue-mismatch");
+
+            logger.Verbose(
+                "DiskII (slot {Slot}): drive {Drive} qt={QuarterTrack} data field after vol=${Volume:X2} trk=${Track:X2} sec=${Sector:X2} → {Outcome} (epilogue ${EpilogueByte0:X2} ${EpilogueByte1:X2}).",
+                SlotNumber,
+                currentDrive + 1,
+                drive.QuarterTrack,
+                drive.LastObservedVolume,
+                drive.LastObservedTrack,
+                drive.LastObservedSector,
+                outcome,
+                buf[343],
+                buf[344]);
         }
     }
 
