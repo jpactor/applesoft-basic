@@ -158,6 +158,12 @@ internal sealed class LanguageCardSplitTarget : ICompositeTarget
     public IBusTarget? ResolveTarget(Addr offset, AccessIntent intent) => this;
 
     /// <inheritdoc />
+    /// <remarks>
+    /// Returns <see cref="RegionTag.Ram"/> because the split target is, from the bus
+    /// page table's perspective, a single overlay region. The underlying read target's
+    /// ROM nature is observable through <see cref="ReadTarget"/> for tooling that needs
+    /// it; the page-level tag tracks the overlay (LC RAM) rather than the read pass-through.
+    /// </remarks>
     public RegionTag GetSubRegionTag(Addr offset) => RegionTag.Ram;
 
     /// <inheritdoc />

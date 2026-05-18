@@ -1021,7 +1021,7 @@ public class Pocket2eIntegrationTests
     // ─── Language Card P0 regression tests ──────────────────────────────────────
 
     /// <summary>
-    /// Regression test for the P0 ROM-shadowing bug: after DOS 3.3's `LDS $C081`
+    /// Regression test for the P0 ROM-shadowing bug: after DOS 3.3's `LDA $C081`
     /// twice (the R*2 write-enable sequence), reads from $E000-$FFFF must continue
     /// to return ROM content, NOT zero-filled Language Card RAM.
     /// </summary>

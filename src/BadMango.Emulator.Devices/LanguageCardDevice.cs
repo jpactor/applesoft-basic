@@ -605,14 +605,14 @@ public sealed class LanguageCardDevice : IMotherboardDevice, ISoftSwitchProvider
         // Capture the underlying base mappings for $D000, $E000, $F000.
         // At this point in Initialize, the LC layers have not yet been activated, so
         // GetEffectiveMapping returns the base ROM mapping installed by WithRom().
-        PageEntry dRomPage = bus.GetEffectiveMapping(0xD000);
-        PageEntry eRomPage = bus.GetEffectiveMapping(0xE000);
+        PageEntry lowRomPage = bus.GetEffectiveMapping(0xD000);
+        PageEntry highRomPage = bus.GetEffectiveMapping(0xE000);
 
         // If there is no ROM under $D000-$FFFF (uncommon in tests but possible in
         // bare-bones builders), there is nothing meaningful to read from in split mode.
         // Skip variant registration; ApplyState will then fall back to write-only perms
         // for those modes, which still prevents the zero-fill ROM-shadow bug.
-        if (dRomPage.Target is null || eRomPage.Target is null)
+        if (lowRomPage.Target is null || highRomPage.Target is null)
         {
             return;
         }
@@ -620,10 +620,10 @@ public sealed class LanguageCardDevice : IMotherboardDevice, ISoftSwitchProvider
         // The bus computed PhysicalBase for each page already accounts for the page's
         // virtual address relative to the ROM's load address (see MainBus.MapPageRange:
         // pagePhysBase = physicalBase + i * PageSize). For $E000 with a 16 KB ROM at
-        // $C000 and physicalBase=0, eRomPage.PhysicalBase = $2000.
+        // $C000 and physicalBase=0, highRomPage.PhysicalBase = $2000.
         var highSplitTarget = new LanguageCardSplitTarget(
-            readTarget: eRomPage.Target,
-            readPhysBaseAtRegion: eRomPage.PhysicalBase,
+            readTarget: highRomPage.Target,
+            readPhysBaseAtRegion: highRomPage.PhysicalBase,
             writeTarget: highTarget,
             writePhysBaseAtRegion: 0,
             regionVirtualBase: 0xE000,
@@ -638,8 +638,8 @@ public sealed class LanguageCardDevice : IMotherboardDevice, ISoftSwitchProvider
             perms: PagePerms.ReadWrite);
 
         var lowSplitBank1Target = new LanguageCardSplitTarget(
-            readTarget: dRomPage.Target,
-            readPhysBaseAtRegion: dRomPage.PhysicalBase,
+            readTarget: lowRomPage.Target,
+            readPhysBaseAtRegion: lowRomPage.PhysicalBase,
             writeTarget: bank1Target,
             writePhysBaseAtRegion: 0,
             regionVirtualBase: 0xD000,
@@ -654,8 +654,8 @@ public sealed class LanguageCardDevice : IMotherboardDevice, ISoftSwitchProvider
             perms: PagePerms.ReadWrite);
 
         var lowSplitBank2Target = new LanguageCardSplitTarget(
-            readTarget: dRomPage.Target,
-            readPhysBaseAtRegion: dRomPage.PhysicalBase,
+            readTarget: lowRomPage.Target,
+            readPhysBaseAtRegion: lowRomPage.PhysicalBase,
             writeTarget: bank2Target,
             writePhysBaseAtRegion: 0,
             regionVirtualBase: 0xD000,
