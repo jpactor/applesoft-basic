@@ -290,22 +290,17 @@ public static class GcrEncoder
             twoBit[idx] |= (byte)(reversed << shift);
         }
 
-        // Step 2: XOR-chain encode. The 86 two-bit bytes are emitted in REVERSE
-        // index order (twoBit[85] first, twoBit[0] last) so the first aux nibble
-        // on disk carries the low bits of sector bytes 85 / 171. This matches
-        // the real Apple II RWTS WRITE16 routine, which walks Y from $56 down
-        // to $00 while writing the aux buffer, and the symmetric POSTNIB16
-        // routine, which walks X from $55 down to $00 while undoing the XOR
-        // chain. Emitting in ascending order made the encoder's own decoder
-        // round-trip (XOR-chain residual is order-independent so the checksum
-        // still validates) but produced sectors whose low 2 bits were permuted
-        // in groups of 86 when real DOS 3.3 read them, manifesting as I/O ERROR.
+        // Step 2: XOR-chain encode. The 86 two-bit bytes are emitted first in
+        // their natural index order (twoBit[0] first, twoBit[85] last) so the
+        // first aux nibble on disk carries the low bits of sector byte 0 — the
+        // layout the real Apple II RWTS POSTNIB16 routine expects when it walks
+        // its aux buffer from X=85 down to X=0 while Y advances 0..255.
         Span<byte> xorChain = stackalloc byte[343];
         byte last = 0;
 
         for (var i = 0; i < 86; i++)
         {
-            var b = twoBit[85 - i];
+            var b = twoBit[i];
             xorChain[i] = (byte)(b ^ last);
             last = b;
         }
@@ -345,17 +340,15 @@ public static class GcrEncoder
             xorChain[i] = v;
         }
 
-        // Inverse XOR chain. Aux bytes were written to disk in REVERSE index
-        // order (twoBit[85] first, twoBit[0] last) to match real RWTS WRITE16
-        // — see the matching note in WriteDataField — so on read-back, the
-        // first 86 unwound nibbles populate twoBit[85] down to twoBit[0].
+        // Inverse XOR chain. Aux bytes are stored in their natural index order
+        // (matches WriteDataField above and the real Apple II RWTS layout).
         Span<byte> twoBit = stackalloc byte[86];
         Span<byte> sixBit = stackalloc byte[256];
         byte last = 0;
         for (var i = 0; i < 86; i++)
         {
             last ^= xorChain[i];
-            twoBit[85 - i] = last;
+            twoBit[i] = last;
         }
 
         for (var i = 0; i < 256; i++)
