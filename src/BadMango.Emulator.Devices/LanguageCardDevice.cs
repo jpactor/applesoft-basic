@@ -602,40 +602,58 @@ public sealed class LanguageCardDevice : IMotherboardDevice, ISoftSwitchProvider
             return;
         }
 
-        // Capture the underlying base mappings for $D000, $E000, $F000.
+        // Capture the underlying base mappings for $D000, $E000, and $F000.
         // At this point in Initialize, the LC layers have not yet been activated, so
         // GetEffectiveMapping returns the base ROM mapping installed by WithRom().
         PageEntry lowRomPage = bus.GetEffectiveMapping(0xD000);
         PageEntry highRomPage = bus.GetEffectiveMapping(0xE000);
+        PageEntry topRomPage = bus.GetEffectiveMapping(0xF000);
 
-        // If there is no ROM under $D000-$FFFF (uncommon in tests but possible in
-        // bare-bones builders), there is nothing meaningful to read from in split mode.
-        // Skip variant registration; ApplyState will then fall back to write-only perms
-        // for those modes, which still prevents the zero-fill ROM-shadow bug.
-        if (lowRomPage.Target is null || highRomPage.Target is null)
+        // Register the high split target only when the full $E000-$FFFF window is backed
+        // by a single contiguous ROM target. The bus supports page-level overlays, so
+        // $F000 may legally resolve to a different target or physical base than $E000.
+        // In that case, using only the $E000 mapping for the whole 8 KB window would
+        // return incorrect ROM data in the $F000 page, or could read past the end of
+        // the $E000 target if it is only one page long.
+        bool canRegisterHighSplitVariant =
+            highRomPage.Target is not null &&
+            topRomPage.Target is not null &&
+            ReferenceEquals(highRomPage.Target, topRomPage.Target) &&
+            topRomPage.PhysicalBase == highRomPage.PhysicalBase + PageSize;
+
+        if (canRegisterHighSplitVariant)
         {
-            return;
+            // The bus computed PhysicalBase for each page already accounts for the page's
+            // virtual address relative to the ROM's load address (see MainBus.MapPageRange:
+            // pagePhysBase = physicalBase + i * PageSize). For $E000 with a 16 KB ROM at
+            // $C000 and physicalBase=0, highRomPage.PhysicalBase = $2000.
+            var highSplitTarget = new LanguageCardSplitTarget(
+                readTarget: highRomPage.Target,
+                readPhysBaseAtRegion: highRomPage.PhysicalBase,
+                writeTarget: highTarget,
+                writePhysBaseAtRegion: 0,
+                regionVirtualBase: 0xE000,
+                regionSize: E000Size,
+                name: "LC_E000_Split");
+
+            bus.AddSwapVariant(
+                highSwapGroupId,
+                HighSplitVariantName,
+                highSplitTarget,
+                physBase: 0,
+                perms: PagePerms.ReadWrite);
         }
 
-        // The bus computed PhysicalBase for each page already accounts for the page's
-        // virtual address relative to the ROM's load address (see MainBus.MapPageRange:
-        // pagePhysBase = physicalBase + i * PageSize). For $E000 with a 16 KB ROM at
-        // $C000 and physicalBase=0, highRomPage.PhysicalBase = $2000.
-        var highSplitTarget = new LanguageCardSplitTarget(
-            readTarget: highRomPage.Target,
-            readPhysBaseAtRegion: highRomPage.PhysicalBase,
-            writeTarget: highTarget,
-            writePhysBaseAtRegion: 0,
-            regionVirtualBase: 0xE000,
-            regionSize: E000Size,
-            name: "LC_E000_Split");
-
-        bus.AddSwapVariant(
-            highSwapGroupId,
-            HighSplitVariantName,
-            highSplitTarget,
-            physBase: 0,
-            perms: PagePerms.ReadWrite);
+        // If there is no ROM under $D000-$DFFF (uncommon in tests but possible in
+        // bare-bones builders), there is nothing meaningful to read from in split mode
+        // for the banked low region. Skip those registrations; ApplyState will then
+        // fall back to write-only perms for those modes, which still prevents the
+        // zero-fill ROM-shadow bug.
+        if (lowRomPage.Target is null)
+        {
+            splitVariantsRegistered = true;
+            return;
+        }
 
         var lowSplitBank1Target = new LanguageCardSplitTarget(
             readTarget: lowRomPage.Target,
