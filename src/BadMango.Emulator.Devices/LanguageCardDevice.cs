@@ -196,15 +196,15 @@ public sealed class LanguageCardDevice : IMotherboardDevice, ISoftSwitchProvider
         // The "value" indicates whether that switch's configuration is currently active.
         //
         // Truth Table:
-        // | Softswitch | Bank | RAM Read | RAM Write | $D000�$DFFF Mapping            |
-        // | $C080      | 2    | Yes      | No        | Bank 2 RAM (read)              |
-        // | $C081      | 2    | No       | Yes*      | ROM (read), Bank 2 RAM (write) |
-        // | $C082      | 2    | No       | No        | ROM (read-only)                |
-        // | $C083      | 2    | Yes      | Yes*      | Bank 2 RAM (read/write)        |
-        // | $C088      | 1    | Yes      | No        | Bank 1 RAM (read)              |
-        // | $C089      | 1    | No       | Yes*      | ROM (read), Bank 1 RAM (write) |
-        // | $C08A      | 1    | No       | No        | ROM (read-only)                |
-        // | $C08B      | 1    | Yes      | Yes*      | Bank 1 RAM (read/write)        |
+        // | Softswitch | Bank | RAM Read | RAM Write | $D000-$DFFF Mapping            | $E000-$FFFF Mapping        |
+        // | $C080      | 2    | Yes      | No        | Bank 2 RAM (read)              | RAM (read)                 |
+        // | $C081      | 2    | No       | Yes*      | ROM (read), Bank 2 RAM (write) | ROM (read), RAM (write)    |
+        // | $C082      | 2    | No       | No        | ROM (read-only)                | ROM (read-only)            |
+        // | $C083      | 2    | Yes      | Yes*      | Bank 2 RAM (read/write)        | RAM (read/write)           |
+        // | $C088      | 1    | Yes      | No        | Bank 1 RAM (read)              | RAM (read)                 |
+        // | $C089      | 1    | No       | Yes*      | ROM (read), Bank 1 RAM (write) | ROM (read), RAM (write)    |
+        // | $C08A      | 1    | No       | No        | ROM (read-only)                | ROM (read-only)            |
+        // | $C08B      | 1    | Yes      | Yes*      | Bank 1 RAM (read/write)        | RAM (read/write)           |
 
         // Determine which switch configuration is currently active
         bool isC080 = bank2Selected && readRam && !writeEnabled;
@@ -559,79 +559,68 @@ public sealed class LanguageCardDevice : IMotherboardDevice, ISoftSwitchProvider
             return;
         }
 
-        //// The Language Card has complex state depending on readRam and writeEnabled:
+        //// The Language Card overlays $D000-$FFFF with 16KB of bank-switched RAM.
+        //// The read source and write destination are controlled independently by the
+        //// readRam and writeEnabled flags, and the same flags govern both halves of
+        //// the overlay ($D000-$DFFF and $E000-$FFFF). The only asymmetry between the
+        //// two regions is that $D000-$DFFF is bank-switched (Bank 1 / Bank 2) while
+        //// $E000-$FFFF is a single 8KB region.
         ////
         //// Truth Table (from spec):
-        //// | Softswitch | RAM Read | RAM Write | $D000�$DFFF                    | $E000�$FFFF |
-        //// | $C080      | Yes      | No        | Bank RAM (read)                | RAM         |
-        //// | $C081      | No       | Yes*      | ROM (read), Bank RAM (write)   | RAM         |
-        //// | $C082      | No       | No        | ROM                            | ROM         |
-        //// | $C083      | Yes      | Yes*      | Bank RAM (read/write)          | RAM         |
+        //// | Softswitch | RAM Read | RAM Write | $D000-$DFFF                  | $E000-$FFFF                  |
+        //// | $C080      | Yes      | No        | Bank RAM (read)              | RAM (read)                   |
+        //// | $C081      | No       | Yes*      | ROM (read), Bank RAM (write) | ROM (read), RAM (write)      |
+        //// | $C082      | No       | No        | ROM                          | ROM                          |
+        //// | $C083      | Yes      | Yes*      | Bank RAM (read/write)        | RAM (read/write)             |
         ////
-        //// Key insight from the spec:
-        //// - "RAM Read" column specifically refers to the $D000-$DFFF bank-switched region
-        //// - $E000-$FFFF is LC RAM whenever readRam OR writeEnabled is true (i.e., not $C082/$C08A)
-        //// - Only $C082/$C08A (both false) maps $E000-$FFFF to ROM
+        //// We translate this directly into layer permissions:
+        ////   Read/Execute on the LC layer is gated by readRam.
+        ////   Write           on the LC layer is gated by writeEnabled.
+        //// Both layers use the same composition.
         ////
-        //// For $D000-$DFFF:
-        //// - readRam=true: LC RAM is visible for reads (bank selected)
-        //// - readRam=false, writeEnabled=true ($C081/$C089): ROM reads, but writes go to LC RAM
-        ////   NOTE: This "split routing" mode is a hardware quirk that our layer system cannot
-        ////   fully emulate. When in this state, we keep the D000 layer active with write-only
-        ////   permission, which means reads will fail rather than falling through to ROM.
-        ////   This is a known limitation - most software uses $C083/$C08B (full RAM) or
-        ////   $C082/$C08A (full ROM) rather than the split modes.
+        //// LIMITATION: Our layer system cannot do true split read/write routing for a
+        //// single page (separate targets for reads vs writes). In the $C081/$C089
+        //// "split" mode (writeEnabled && !readRam), the LC layer is activated with
+        //// write-only permissions so that writes are correctly routed to LC RAM. CPU
+        //// reads in that state hit the LC page with no read permission and receive
+        //// floating-bus ($FF) via CpuBase.Read8 rather than reading from ROM. This is
+        //// a documented limitation; the important invariant restored by this code is
+        //// that ROM is NOT silently shadowed by zero-filled LC RAM when only
+        //// writeEnabled is true (the previous bug that caused DOS 3.3's R*2 sequence
+        //// at $BFCB to turn every subsequent monitor ROM call into cascading BRK $00).
 
-        bool lcRamActive = readRam || writeEnabled;
-
-        // Determine permissions for $E000-$FFFF layer
-        // E000-FFFF is always readable when LC RAM is active, writable when writeEnabled
-        PagePerms highPerms = PagePerms.ReadExecute;
-        if (writeEnabled)
+        PagePerms layerPerms = PagePerms.None;
+        if (readRam)
         {
-            highPerms |= PagePerms.Write;
+            layerPerms |= PagePerms.ReadExecute;
         }
 
-        if (lcRamActive)
+        if (writeEnabled)
         {
-            // Activate E000-FFFF layer (always RAM when lcRamActive)
+            layerPerms |= PagePerms.Write;
+        }
+
+        bool lcLayerActive = layerPerms != PagePerms.None;
+
+        if (lcLayerActive)
+        {
+            // Activate $E000-$FFFF layer with the composed permissions
             if (!bus.IsLayerActive(HighLayerName))
             {
                 bus.ActivateLayer(HighLayerName);
             }
 
-            bus.SetLayerPermissions(HighLayerName, highPerms);
+            bus.SetLayerPermissions(HighLayerName, layerPerms);
 
-            // For D000-DFFF: determine the correct state
-            if (readRam)
+            // Activate $D000-$DFFF layer with the same composed permissions
+            if (!bus.IsLayerActive(LowLayerName))
             {
-                // Full RAM read mode: activate layer with read permission
-                PagePerms lowPerms = writeEnabled ? PagePerms.All : PagePerms.ReadExecute;
-
-                if (!bus.IsLayerActive(LowLayerName))
-                {
-                    bus.ActivateLayer(LowLayerName);
-                }
-
-                bus.SetLayerPermissions(LowLayerName, lowPerms);
-            }
-            else
-            {
-                // Split mode ($C081/$C089): ROM reads, RAM writes for $D000-$DFFF
-                // LIMITATION: Our layer system can't do split read/write routing.
-                // We keep the layer active for writes but reads from D000-DFFF
-                // will come from LC RAM instead of ROM. This is a known limitation.
-                // For accurate split-mode emulation, a composite target would be needed.
-                if (!bus.IsLayerActive(LowLayerName))
-                {
-                    bus.ActivateLayer(LowLayerName);
-                }
-
-                // Set write permission; reads will come from LC RAM (not ROM as spec requires)
-                bus.SetLayerPermissions(LowLayerName, PagePerms.All);
+                bus.ActivateLayer(LowLayerName);
             }
 
-            // Select the appropriate bank variant for D000-DFFF
+            bus.SetLayerPermissions(LowLayerName, layerPerms);
+
+            // Select the appropriate bank variant for $D000-$DFFF
             string variantName = bank2Selected ? Bank2VariantName : Bank1VariantName;
             if (bus.GetActiveSwapVariant(bankSwapGroupId) != variantName)
             {
@@ -640,7 +629,8 @@ public sealed class LanguageCardDevice : IMotherboardDevice, ISoftSwitchProvider
         }
         else
         {
-            // Full ROM mode ($C082/$C08A): deactivate both layers
+            // Full ROM mode ($C082/$C08A): deactivate both layers so the underlying
+            // base ROM mapping shows through.
             if (bus.IsLayerActive(HighLayerName))
             {
                 bus.DeactivateLayer(HighLayerName);
