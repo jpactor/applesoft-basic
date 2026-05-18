@@ -691,6 +691,260 @@ public class DiskIIControllerTests
         Assert.That(postSettle, Is.EqualTo(0xAA), "After the post-step settle expires, $C0EC must surface the live track byte (bit 7 set).");
     }
 
+    // ─── Activity-snapshot instrumentation tests (FR-D10) ────────────────────
+
+    /// <summary>
+    /// Verifies that a freshly constructed controller reports zero activity across all
+    /// counters and per-drive fields, so the diagnostic UI can rely on the snapshot
+    /// reflecting only what has actually happened on the bus.
+    /// </summary>
+    [Test]
+    public void GetActivitySnapshot_NewController_ReportsAllZeros()
+    {
+        var controller = new DiskIIController(NewLoggerMock().Object);
+        var snap = controller.GetActivitySnapshot();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(snap.DataReadCount, Is.Zero);
+            Assert.That(snap.FreshByteCount, Is.Zero);
+            Assert.That(snap.StaleByteCount, Is.Zero);
+            Assert.That(snap.SettleSuppressedReadCount, Is.Zero);
+            Assert.That(snap.DataWriteCount, Is.Zero);
+            Assert.That(snap.PhasePulseCount, Is.Zero);
+            Assert.That(snap.PhaseNoOpCount, Is.Zero);
+            Assert.That(snap.TrackChangeCount, Is.Zero);
+            Assert.That(snap.MotorOnCount, Is.Zero);
+            Assert.That(snap.MotorOffCount, Is.Zero);
+            Assert.That(snap.DriveSelectCount, Is.Zero);
+            Assert.That(snap.CacheLoadCount, Is.Zero);
+            Assert.That(snap.CacheFlushCount, Is.Zero);
+            Assert.That(snap.Drives, Has.Count.EqualTo(2));
+            Assert.That(snap.Drives[0].ObservedAddressFields, Is.Zero);
+            Assert.That(snap.Drives[0].LastObservedVolume, Is.Null);
+            Assert.That(snap.Drives[1].ObservedAddressFields, Is.Zero);
+        });
+    }
+
+    /// <summary>
+    /// Verifies that motor on / off transitions, drive selection changes, phase pulses,
+    /// no-op phase pulses, and track changes are all individually counted (FR-D10).
+    /// </summary>
+    [Test]
+    public void GetActivitySnapshot_CountsBusEvents()
+    {
+        var (controller, dispatcher, ctx, scheduler, media) = BuildHarness(motorSettleCycles: 0);
+        controller.Mount(0, media.Object);
+        scheduler.Advance(new Cycle(2));
+
+        _ = dispatcher.Read(0xE9, in ctx);   // motor on
+        _ = dispatcher.Read(0xE8, in ctx);   // motor off
+        _ = dispatcher.Read(0xE9, in ctx);   // motor on again
+        _ = dispatcher.Read(0xEB, in ctx);   // select drive 2
+        _ = dispatcher.Read(0xEA, in ctx);   // select drive 1
+        _ = dispatcher.Read(0xE3, in ctx);   // phase 1 on → step head (qt 0→2)
+        _ = dispatcher.Read(0xE5, in ctx);   // phase 2 on → step head (qt 2→4)
+        _ = dispatcher.Read(0xE1, in ctx);   // phase 0 on while head at phase 2 → opposite phase → no-op
+
+        var snap = controller.GetActivitySnapshot();
+        Assert.Multiple(() =>
+        {
+            Assert.That(snap.MotorOnCount, Is.EqualTo(2));
+            Assert.That(snap.MotorOffCount, Is.EqualTo(1));
+            Assert.That(snap.DriveSelectCount, Is.EqualTo(2));
+            Assert.That(snap.PhasePulseCount, Is.EqualTo(2));
+            Assert.That(snap.PhaseNoOpCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(snap.TrackChangeCount, Is.EqualTo(2));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that data-path reads are classified into fresh (SpinPosition advanced),
+    /// stale (CPU polled before a new byte arrived), and settle-suppressed (head still
+    /// settling) bins — these classifications are the key signal for diagnosing
+    /// "I/O ERROR" failures where RWTS is either polling too fast or polling during
+    /// a settle window.
+    /// </summary>
+    [Test]
+    public void GetActivitySnapshot_ClassifiesReadsIntoFreshStaleAndSettle()
+    {
+        var media = new ConstantTrackMedia((byte)0xAA);
+        var (controller, dispatcher, ctx, scheduler, _) = BuildHarness(motorSettleCycles: 500);
+        controller.Mount(0, media);
+        scheduler.Advance(new Cycle(2));
+
+        // Motor on; first 500 cycles are settle window. The motor-on access itself
+        // performs a data-path read which is classified as settle-suppressed because
+        // SettleUntil is now in the future. Capture the baseline so we can assert on
+        // deltas rather than absolute counts.
+        _ = dispatcher.Read(0xE9, in ctx);
+
+        var baseline = controller.GetActivitySnapshot();
+
+        // Read during settle → should classify as settle-suppressed.
+        for (var i = 0; i < 5; i++)
+        {
+            _ = dispatcher.Read(0xEC, in ctx);
+        }
+
+        var duringSettle = controller.GetActivitySnapshot();
+        Assert.That(duringSettle.SettleSuppressedReadCount - baseline.SettleSuppressedReadCount, Is.EqualTo(5), "Reads during settle should be classified as settle-suppressed.");
+        Assert.That(duringSettle.FreshByteCount, Is.EqualTo(baseline.FreshByteCount), "No fresh bytes should be reported during settle.");
+
+        // Past settle, advance one byte time; that read is fresh.
+        scheduler.Advance(new Cycle(500 + DiskIIController.CyclesPerByte));
+        _ = dispatcher.Read(0xEC, in ctx);
+        var afterFresh = controller.GetActivitySnapshot();
+        Assert.That(afterFresh.FreshByteCount, Is.GreaterThanOrEqualTo(1), "Read after settle expires should yield a fresh byte.");
+
+        // Immediately re-read without advancing time → CPU polled faster than bytes arrive → stale.
+        _ = dispatcher.Read(0xEC, in ctx);
+        _ = dispatcher.Read(0xEC, in ctx);
+        var afterStale = controller.GetActivitySnapshot();
+        Assert.That(afterStale.StaleByteCount, Is.GreaterThanOrEqualTo(2), "Back-to-back reads without time advance should be classified as stale.");
+    }
+
+    /// <summary>
+    /// Verifies that the controller's live byte-stream parser decodes <c>$D5 $AA $96</c>
+    /// address prologues followed by 4-and-4 vol/trk/sec/chk pairs and surfaces the
+    /// decoded fields on <see cref="DiskDriveActivity"/>. This is the headline
+    /// diagnostic signal for separating seek bugs (wrong track served) from timing
+    /// bugs (no address field served at all).
+    /// </summary>
+    [Test]
+    public void GetActivitySnapshot_StreamParser_DecodesValidAddressField()
+    {
+        // Encode a single address field for vol=$FE, trk=$11, sec=$05 and repeat it
+        // across the entire track so the head is guaranteed to hit it.
+        var encoded = Encode4And4AddressField(0xFE, 0x11, 0x05);
+        var media = new RepeatingPatternMedia(encoded);
+
+        var (controller, dispatcher, ctx, scheduler, _) = BuildHarness(motorSettleCycles: 0);
+        controller.Mount(0, media);
+        scheduler.Advance(new Cycle(2));
+
+        _ = dispatcher.Read(0xE9, in ctx); // motor on
+
+        // Drive enough fresh bytes through the parser to see the prologue at least once.
+        // The pattern is 11 bytes long; tracklen is 6656; a few hundred reads is plenty.
+        for (var i = 0; i < 200; i++)
+        {
+            scheduler.Advance(new Cycle(DiskIIController.CyclesPerByte));
+            _ = dispatcher.Read(0xEC, in ctx);
+        }
+
+        var snap = controller.GetActivitySnapshot();
+        var drive = snap.Drives[0];
+        Assert.Multiple(() =>
+        {
+            Assert.That(drive.ObservedAddressFields, Is.GreaterThanOrEqualTo(1), "At least one address-field prologue should have been parsed from the live byte stream.");
+            Assert.That(drive.LastObservedVolume, Is.EqualTo(0xFE));
+            Assert.That(drive.LastObservedTrack, Is.EqualTo(0x11));
+            Assert.That(drive.LastObservedSector, Is.EqualTo(0x05));
+            Assert.That(drive.LastObservedChecksumValid, Is.True, "vol ^ trk ^ sec should match the parsed checksum byte.");
+            Assert.That(drive.ObservedAddressFieldChecksumErrors, Is.Zero);
+        });
+    }
+
+    /// <summary>
+    /// Verifies that a corrupted address field (mismatched checksum) is observed but
+    /// flagged via <see cref="DiskDriveActivity.LastObservedChecksumValid"/> and
+    /// <see cref="DiskDriveActivity.ObservedAddressFieldChecksumErrors"/>.
+    /// </summary>
+    [Test]
+    public void GetActivitySnapshot_StreamParser_FlagsChecksumMismatch()
+    {
+        // Construct an address field with deliberately wrong checksum byte.
+        var encoded = Encode4And4AddressField(0xFE, 0x11, 0x05);
+
+        // Replace the 8 data bytes (positions 3..10) checksum nibbles (positions 9, 10)
+        // with values that decode to something other than vol^trk^sec.
+        // Easiest path: corrupt the lo-nibble of the checksum pair (position 10).
+        encoded[10] ^= 0x01;
+
+        var media = new RepeatingPatternMedia(encoded);
+
+        var (controller, dispatcher, ctx, scheduler, _) = BuildHarness(motorSettleCycles: 0);
+        controller.Mount(0, media);
+        scheduler.Advance(new Cycle(2));
+
+        _ = dispatcher.Read(0xE9, in ctx); // motor on
+        for (var i = 0; i < 200; i++)
+        {
+            scheduler.Advance(new Cycle(DiskIIController.CyclesPerByte));
+            _ = dispatcher.Read(0xEC, in ctx);
+        }
+
+        var snap = controller.GetActivitySnapshot();
+        var drive = snap.Drives[0];
+        Assert.Multiple(() =>
+        {
+            Assert.That(drive.ObservedAddressFields, Is.GreaterThanOrEqualTo(1));
+            Assert.That(drive.LastObservedChecksumValid, Is.False);
+            Assert.That(drive.ObservedAddressFieldChecksumErrors, Is.GreaterThanOrEqualTo(1));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that bytes-served-on-current-track resets when the head steps to a new
+    /// quarter-track, so the diagnostic UI can show RWTS's progress per-track without
+    /// stale accumulation from previous track residency.
+    /// </summary>
+    [Test]
+    public void GetActivitySnapshot_BytesServedOnCurrentTrack_ResetsOnTrackChange()
+    {
+        var media = new ConstantTrackMedia((byte)0xAA);
+        var (controller, dispatcher, ctx, scheduler, _) = BuildHarness(motorSettleCycles: 0);
+        controller.Mount(0, media);
+        scheduler.Advance(new Cycle(2));
+
+        _ = dispatcher.Read(0xE9, in ctx); // motor on
+
+        // Accumulate some bytes on track 0.
+        for (var i = 0; i < 10; i++)
+        {
+            scheduler.Advance(new Cycle(DiskIIController.CyclesPerByte));
+            _ = dispatcher.Read(0xEC, in ctx);
+        }
+
+        var preStep = controller.GetActivitySnapshot();
+        Assert.That(preStep.Drives[0].BytesServedOnCurrentTrack, Is.GreaterThanOrEqualTo(5));
+
+        // Step the head.
+        _ = dispatcher.Read(0xE3, in ctx);
+
+        var postStep = controller.GetActivitySnapshot();
+        Assert.That(postStep.Drives[0].BytesServedOnCurrentTrack, Is.Zero, "Track step should reset per-track byte counter.");
+    }
+
+    /// <summary>
+    /// Encodes an Apple GCR 4-and-4 address field (11 bytes total) for the given
+    /// volume / track / sector triplet, with a checksum byte equal to vol XOR trk XOR sec.
+    /// </summary>
+    /// <param name="vol">Volume number.</param>
+    /// <param name="trk">Track number.</param>
+    /// <param name="sec">Sector number.</param>
+    /// <returns>An 11-byte buffer: <c>$D5 $AA $96</c> followed by 8 4-and-4 nibble pairs.</returns>
+    private static byte[] Encode4And4AddressField(byte vol, byte trk, byte sec)
+    {
+        var chk = (byte)(vol ^ trk ^ sec);
+        var buf = new byte[11];
+        buf[0] = 0xD5;
+        buf[1] = 0xAA;
+        buf[2] = 0x96;
+        WritePair(buf, 3, vol);
+        WritePair(buf, 5, trk);
+        WritePair(buf, 7, sec);
+        WritePair(buf, 9, chk);
+        return buf;
+
+        static void WritePair(byte[] b, int offset, byte v)
+        {
+            b[offset] = (byte)((v >> 1) | 0xAA);
+            b[offset + 1] = (byte)(v | 0xAA);
+        }
+    }
+
     private static Mock<ILogger> NewLoggerMock() => Generator.Log();
 
     private static (DiskIIController Controller, IOPageDispatcher Dispatcher, BusAccess Context, Scheduler Scheduler, Mock<I525Media> Media) BuildHarness(
@@ -780,6 +1034,43 @@ public class DiskIIControllerTests
         public bool IsReadOnly => false;
 
         public void ReadTrack(int quarterTrack, Span<byte> destination) => destination.Fill(fill);
+
+        public void WriteTrack(int quarterTrack, ReadOnlySpan<byte> source)
+        {
+        }
+
+        public void Flush()
+        {
+        }
+    }
+
+    /// <summary>
+    /// Test fake that returns a track buffer formed by repeating a fixed byte pattern.
+    /// Used by the address-field stream-parser tests to guarantee the head encounters
+    /// a recognizable <c>$D5 $AA $96</c> prologue regardless of where it starts.
+    /// </summary>
+    private sealed class RepeatingPatternMedia : I525Media
+    {
+        private readonly byte[] pattern;
+
+        public RepeatingPatternMedia(byte[] pattern)
+        {
+            this.pattern = pattern;
+        }
+
+        public DiskGeometry Geometry => DiskGeometry.Standard525Dos;
+
+        public int OptimalTrackLength => GcrEncoder.StandardTrackLength;
+
+        public bool IsReadOnly => false;
+
+        public void ReadTrack(int quarterTrack, Span<byte> destination)
+        {
+            for (var i = 0; i < destination.Length; i++)
+            {
+                destination[i] = pattern[i % pattern.Length];
+            }
+        }
 
         public void WriteTrack(int quarterTrack, ReadOnlySpan<byte> source)
         {
