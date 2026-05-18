@@ -809,9 +809,20 @@ public sealed class DiskIIController : ISlotCard, IDiskController
         var current = drives[currentDrive];
         if (context is not null && current.SettleUntil > context.Now)
         {
-            // During settling, return the previously latched byte (or floating $FF
-            // when nothing has been latched yet). FR-D7.
-            return LatchedOrFloating();
+            // During settling (motor warm-up or post-step head settling), real
+            // Disk II hardware does not produce a stable byte-ready signal: the
+            // head may be over track gaps or unstable nibbles. Model this by
+            // clearing bit 7 of whatever is currently on the data latch so that
+            // DOS RWTS's `LDA $C08C,X / BPL *-3` polling loop spins waiting for
+            // a fresh byte instead of immediately consuming the stale latch
+            // contents. This is essential for multi-track loads: a track step
+            // sets SettleUntil = now + trackStepSettleCycles (~30 ms), and RWTS
+            // begins polling for address prologues almost immediately afterward;
+            // returning the latched byte with bit 7 set would cause RWTS to read
+            // the same non-$D5 nibble thousands of times per settle window,
+            // burning its 48-retry budget and producing a spurious "I/O ERROR"
+            // on any file that crosses tracks. FR-D7.
+            return (byte)(LatchedOrFloating() & 0x7F);
         }
 
         // Model the Disk II shift-register byte-ready behavior in read mode

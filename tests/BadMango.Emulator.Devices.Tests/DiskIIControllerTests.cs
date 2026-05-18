@@ -212,7 +212,11 @@ public class DiskIIControllerTests
 
     /// <summary>
     /// Verifies that during the post-motor-on settling window, reads return the
-    /// last-latched byte (or floating $FF) rather than live disk data (FR-D7).
+    /// data latch with bit 7 cleared so DOS RWTS's <c>LDA $C08C,X / BPL *-3</c>
+    /// polling loop spins (modeling unstable byte-ready during head warm-up).
+    /// After the settle window elapses, live track data flows with bit 7 set
+    /// (every valid GCR nibble has bit 7 set) so the polling loop falls through
+    /// to the address-prologue match (FR-D7).
     /// </summary>
     [Test]
     public void MotorSettling_ReturnsLastLatchedByteUntilExpiry()
@@ -226,13 +230,17 @@ public class DiskIIControllerTests
         // Motor on at t=2.
         _ = dispatcher.Read(0xE9, in ctx);
 
-        // While the settle timer is active (advance only 100 cycles), $C0EC should
-        // not advance to live data — should report floating $FF (no byte yet latched).
+        // While the settle timer is active (advance only 100 cycles), $C0EC must
+        // report bit 7 cleared so DOS's BPL polling loop spins. Returning a byte
+        // with bit 7 set (e.g. the raw $FF floating bus) here would cause RWTS
+        // to read the same stale nibble thousands of times per settle window and
+        // burn through its retry budget.
         scheduler.Advance(new Cycle(100));
         var duringSettle = dispatcher.Read(0xEC, in ctx);
-        Assert.That(duringSettle, Is.EqualTo(0xFF));
+        Assert.That(duringSettle & 0x80, Is.EqualTo(0), "Reads during the motor-settle window must clear bit 7 so RWTS's BPL loop spins.");
 
-        // After the settle elapses, $C0EC must return the actual track byte.
+        // After the settle elapses, $C0EC must return the actual track byte with
+        // bit 7 set (every valid GCR nibble has bit 7 set).
         scheduler.Advance(new Cycle(1000));
         var postSettle = dispatcher.Read(0xEC, in ctx);
         Assert.That(postSettle, Is.EqualTo(0xAA));
@@ -601,6 +609,86 @@ public class DiskIIControllerTests
         scheduler.Advance(new Cycle(DiskIIController.CyclesPerByte));
         var fresh = dispatcher.Read(0xEC, in ctx);
         Assert.That(fresh & 0x80, Is.EqualTo(0x80), "Next byte time should re-arm the byte-ready high bit.");
+    }
+
+    /// <summary>
+    /// Regression test for the multi-track-load "I/O ERROR" bug: when the head
+    /// is stepped to a new track, the post-step settle window must report bit 7
+    /// cleared on $C0EC reads so DOS RWTS's <c>LDA $C08C,X / BPL *-3</c>
+    /// address-prologue scan loop spins waiting for the head to stabilise.
+    /// Before this fix, the settle window returned the previously latched byte
+    /// unchanged (bit 7 set, because every valid GCR nibble has bit 7 set), so
+    /// RWTS read the same stale non-$D5 nibble at full CPU speed for ~30 ms,
+    /// burning its 48-retry budget and producing a spurious "I/O ERROR" on any
+    /// file that crossed a track boundary (e.g. the 47-sector LEMONADE).
+    /// </summary>
+    [Test]
+    public void TrackStepSettling_HoldsByteReadyLowUntilExpiry()
+    {
+        // Use a constant-nibble track so we can unambiguously detect that the
+        // controller is *not* surfacing a real byte (bit 7 set) during settle.
+        // 0xAA is what would be on the data latch from the previous track read.
+        var media = new ConstantTrackMedia((byte)0xAA);
+
+        const int TrackStepSettle = 30000;
+        var controller = new DiskIIController(
+            NewLoggerMock().Object,
+            bootRom: new DiskIIBootRom(BlankBootRom),
+            motorSettleCycles: 0,
+            trackStepSettleCycles: TrackStepSettle);
+        controller.SlotNumber = 6;
+        var dispatcher = new IOPageDispatcher();
+        dispatcher.InstallSlotHandlers(6, controller.IOHandlers!);
+        var scheduler = new Scheduler();
+        var bus = new Mock<IMemoryBus>();
+        var signals = new Mock<ISignalBus>();
+        var eventCtx = new EventContext(scheduler, signals.Object, bus.Object);
+        scheduler.SetEventContext(eventCtx);
+        controller.Initialize(eventCtx);
+        controller.Mount(0, media);
+        scheduler.Advance(new Cycle(2));
+
+        var ctx = new BusAccess(
+            Address: 0xC0E0,
+            Value: 0,
+            WidthBits: 8,
+            Mode: BusAccessMode.Decomposed,
+            EmulationFlag: true,
+            Intent: AccessIntent.DataRead,
+            SourceId: 0,
+            Cycle: 0,
+            Flags: AccessFlags.None);
+
+        // Motor on (zero settle) and prime the data latch with a fresh byte so
+        // bit 7 is set going into the simulated track step.
+        _ = dispatcher.Read(0xE9, in ctx);
+        scheduler.Advance(new Cycle(DiskIIController.CyclesPerByte));
+        var primed = dispatcher.Read(0xEC, in ctx);
+        Assert.That(primed, Is.EqualTo(0xAA), "Sanity: latch should be primed with a live track byte (bit 7 set).");
+
+        // Step the head: pulse phase 1 ($C0E3). This triggers OnTrackChanging
+        // (nulls cached track) and arms SettleUntil = now + 30000.
+        _ = dispatcher.Read(0xE3, in ctx);
+
+        // Tight poll of $C0EC during the settle window — exactly what DOS RWTS
+        // does when scanning for the address-field prologue $D5. Every read
+        // must report bit 7 cleared so the BPL loop spins. Sample at 256-cycle
+        // intervals across the full 30 ms settle window (well over 100 reads).
+        for (var i = 0; i < 100; i++)
+        {
+            scheduler.Advance(new Cycle(256));
+            var duringSettle = dispatcher.Read(0xEC, in ctx);
+            Assert.That(
+                duringSettle & 0x80,
+                Is.EqualTo(0),
+                $"During post-step settle (iteration {i}, t≈{(i + 1) * 256} of {TrackStepSettle} cycles), $C0EC must keep bit 7 cleared so RWTS's BPL polling loop spins instead of consuming stale nibbles.");
+        }
+
+        // Advance well past the settle deadline; the next read must produce a
+        // real track byte with bit 7 set so RWTS can finally find $D5.
+        scheduler.Advance(new Cycle(TrackStepSettle));
+        var postSettle = dispatcher.Read(0xEC, in ctx);
+        Assert.That(postSettle, Is.EqualTo(0xAA), "After the post-step settle expires, $C0EC must surface the live track byte (bit 7 set).");
     }
 
     private static Mock<ILogger> NewLoggerMock() => Generator.Log();
