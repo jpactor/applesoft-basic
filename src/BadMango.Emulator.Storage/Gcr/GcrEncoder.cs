@@ -239,7 +239,7 @@ public static class GcrEncoder
 
     private static int Wrap(int i, int n) => ((i % n) + n) % n;
 
-    private static byte Decode44(byte high, byte low) => (byte)((high << 1) & low);
+    private static byte Decode44(byte high, byte low) => (byte)(((high << 1) | 1) & low);
 
     private static void Write44(byte value, Span<byte> dest)
     {
