@@ -175,6 +175,49 @@ public class DiskIIControllerTests
     }
 
     /// <summary>
+    /// Regression test for FR-D4 head-clamp: the stepper must allow the head to
+    /// reach the outermost cylinder of a 35-track DOS 3.3 disk (track 34 = qt 136).
+    /// An earlier implementation used <c>maxQuarter = 2 × trackCount − 2 = 68</c>,
+    /// which clamped the head at qt=68 / track 17 / $11 and silently made the upper
+    /// half of any disk unreachable — DOS reads would loop forever as RWTS detected
+    /// an address-field track mismatch on every retry, surfacing as a permanent
+    /// I/O ERROR for files whose TSList track was above $11 (e.g. LEMONADE on
+    /// <c>game_01b.dsk</c>, which lives at T$17 / qt 92).
+    /// </summary>
+    [Test]
+    public void PhaseStepper_CanReachOuterCylinder_OfThirtyFiveTrackDisk()
+    {
+        var (controller, dispatcher, ctx, _, media) = BuildHarness();
+        controller.Mount(0, media.Object);
+
+        // Standard 35-track DOS 3.3 geometry → qtCount = 140; the last whole-track
+        // boundary is qt=136 (= track 34). The DOS seek pattern alternates phase-on
+        // and phase-off pulses so the head can keep stepping; an "on" advances qt
+        // by 2 (one half-track), the matching "off" releases the previous magnet.
+        // Each four-phase ON cycle (1, 2, 3, 0) advances qt by 8 (two full tracks),
+        // so 17 cycles reach qt=136 from qt=0.
+        byte[] forwardOnPulses = { 0xE3, 0xE5, 0xE7, 0xE1 };  // phase 1/2/3/0 ON
+        byte[] forwardOffPulses = { 0xE0, 0xE2, 0xE4, 0xE6 }; // phase 0/1/2/3 OFF
+        for (int cycle = 0; cycle < 17; cycle++)
+        {
+            for (int p = 0; p < 4; p++)
+            {
+                _ = dispatcher.Read(forwardOnPulses[p], in ctx);
+                _ = dispatcher.Read(forwardOffPulses[p], in ctx);
+            }
+        }
+
+        var afterSeek = controller.GetDriveSnapshot(0);
+        Assert.That(afterSeek.QuarterTrack, Is.EqualTo(136), "Head must reach track 34 (qt=136) on a 35-track disk.");
+
+        // One more forward ON/OFF must clamp (qt=136 is the highest legal value).
+        _ = dispatcher.Read(0xE3, in ctx);
+        _ = dispatcher.Read(0xE0, in ctx);
+        var clamped = controller.GetDriveSnapshot(0);
+        Assert.That(clamped.QuarterTrack, Is.EqualTo(136), "Head must clamp at qt=136, not advance off the end of the media.");
+    }
+
+    /// <summary>
     /// Verifies the Q6/Q7 write-protect dispatch path: Q6=1, Q7=0 returns the
     /// current drive's WP status in the high bit (FR-D5).
     /// </summary>

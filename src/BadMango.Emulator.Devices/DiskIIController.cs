@@ -29,7 +29,7 @@ using Serilog.Events;
 /// <item><description>16 soft switches at <c>$C0n0–$C0nF</c> using the table from
 /// <c>Disk II Controller Device Specification.md</c> §2.2 (FR-D3).</description></item>
 /// <item><description>Phase stepper that updates the head on valid phase-overlap sequences
-/// and clamps at 0 / <c>2 × trackCount − 2</c> (FR-D4).</description></item>
+/// and clamps at 0 / <c>4 × trackCount − 4</c> (FR-D4).</description></item>
 /// <item><description>Q6/Q7 dispatch covering read-data, write-protect sense, write-mode
 /// enable, and write-load (FR-D5).</description></item>
 /// <item><description>On-demand spin-position recompute on <c>$C0nC</c> reads — no
@@ -588,10 +588,16 @@ public sealed class DiskIIController : ISlotCard, IDiskController
         var media = drive.Media;
         var qtCount = media is not null ? media.Geometry.QuarterTrackCount : 4 * 35;
 
-        // FR-D4: clamp at track 0 and `2 * trackCount - 2`, i.e. the last even
-        // quarter-track since the stepper moves in two-quarter-track increments.
-        var trackCount = qtCount / 4;
-        var maxQuarter = (2 * trackCount) - 2;
+        // FR-D4: clamp at track 0 and the last even quarter-track that still maps
+        // to a real cylinder. For a 35-track disk this is qt=136 (= track 34); the
+        // stepper moves in two-quarter-track increments, so the highest reachable
+        // even index is `qtCount - 4` (the last whole-track boundary). An earlier
+        // formula clamped at `2 * trackCount - 2` which limited the head to qt=68
+        // (= track 17 / $11) on standard media, making the upper half of the disk
+        // unreachable — anything beyond DOS catalog track $11 silently became a
+        // permanent I/O ERROR because RWTS read back the address-field track of
+        // the clamp position instead of the requested track.
+        var maxQuarter = qtCount - 4;
         var newQuarter = drive.QuarterTrack + delta;
         if (newQuarter < 0)
         {
