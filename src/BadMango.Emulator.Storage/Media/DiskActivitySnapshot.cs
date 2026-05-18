@@ -11,9 +11,9 @@ namespace BadMango.Emulator.Storage.Media;
 /// </summary>
 /// <remarks>
 /// <para>
-/// All counters are monotonically increasing since the controller was instantiated
-/// (or last reset). They are updated on the bus / scheduler thread; consumers should
-/// snapshot the entire record rather than reading individual properties piecemeal.
+/// All counters are monotonically increasing since the controller was instantiated.
+/// They are updated on the bus / scheduler thread; consumers should snapshot the
+/// entire record rather than reading individual properties piecemeal.
 /// </para>
 /// <para>
 /// Counters are intentionally lightweight (simple integer adds) so they can be
