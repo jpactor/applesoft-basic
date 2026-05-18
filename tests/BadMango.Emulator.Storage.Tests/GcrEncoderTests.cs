@@ -95,13 +95,20 @@ public class GcrEncoderTests
     }
 
     /// <summary>
-    /// Verifies that the 6-and-2 auxiliary ("low two bits") byte at the start
-    /// of the data field carries the low two bits of <em>sector byte 0</em>,
-    /// matching the real Apple II RWTS POSTNIB16 layout. A previous bug
-    /// reversed this ordering (aux byte 0 carried bits for sector byte 85),
-    /// which produced sectors whose top 6 bits decoded correctly but whose
-    /// bottom 2 bits were permuted in groups of 86.
+    /// Verifies that the 6-and-2 auxiliary ("low two bits") bytes on disk are
+    /// emitted in the order the real Apple II RWTS expects: the first aux nibble
+    /// after the data prologue carries <em>twoBit[85]</em> (low bits of sector
+    /// bytes 85 / 171), and <em>twoBit[0]</em> (low bits of sector bytes 0 / 86 /
+    /// 172) appears 85 bytes further into the data field.
     /// </summary>
+    /// <remarks>
+    /// A previous bug emitted the aux array in ascending index order
+    /// (twoBit[0] first). The XOR-chain residual is order-independent, so the
+    /// encoder's own decoder round-tripped fine, but real DOS 3.3 RWTS — which
+    /// walks its aux buffer from <c>$55</c> down to <c>$00</c> — unpacked the low
+    /// 2 bits of every sector byte into the wrong slot, producing "I/O ERROR"
+    /// on every boot.
+    /// </remarks>
     [Test]
     public void EncodeTrack_DataFieldAuxBytes_AreInRwtsOrder()
     {
@@ -112,7 +119,11 @@ public class GcrEncoderTests
         //   reversed(10) = 01 at shift 0 -> 0x01
         //   reversed(01) = 10 at shift 2 -> 0x08
         //   reversed(11) = 11 at shift 4 -> 0x30
-        // twoBit[0] = 0x39, and xorChain[0] = twoBit[0] ^ 0 = 0x39.
+        // twoBit[0] = 0x39. Real RWTS emits twoBit[85] FIRST on disk; with our
+        // inputs nothing populates twoBit[85] (which holds bytes 85 and 171,
+        // both zero in our sectors) so the first aux byte is 0. twoBit[0] is
+        // emitted 85 positions later as the 86th aux byte, where its 6-bit
+        // value of 0x39 appears at on-disk offset 85.
         var sectors = new byte[16 * 256];
         sectors[0] = 0x02;
         sectors[86] = 0x01;
@@ -124,12 +135,19 @@ public class GcrEncoderTests
         // Find sector-0's data field: 48 gap + 14 addr + 5 gap = 67 bytes in,
         // then 3 bytes of data prologue.
         const int sector0DataStart = 48 + 14 + 5 + 3;
-        var firstAuxNibble = nibbles[sector0DataStart];
         var read = GcrEncoder.GetReadTable();
-        var firstAux6Bit = read[firstAuxNibble];
 
+        // First aux nibble on disk: must be twoBit[85] = 0 → WriteTable[0] = $96.
+        var firstAux6Bit = read[nibbles[sector0DataStart]];
         Assert.That(firstAux6Bit, Is.Not.EqualTo((byte)0xFF), "First aux nibble must translate via the read table.");
-        Assert.That(firstAux6Bit, Is.EqualTo((byte)0x39), "First aux 6-bit value must encode the low two bits of sector bytes 0, 86, 172 (not byte 85's bits).");
+        Assert.That(firstAux6Bit, Is.EqualTo((byte)0x00), "First aux nibble on disk must carry twoBit[85] (low bits of sector bytes 85/171), per real Apple II RWTS layout — not twoBit[0].");
+
+        // 86th aux nibble on disk (offset 85): must be the XOR of twoBit[0]
+        // with the running chain. With twoBit[1..85] all zero the chain is
+        // still 0 just before it, so this nibble's 6-bit value is twoBit[0] =
+        // 0x39.
+        var lastAux6Bit = read[nibbles[sector0DataStart + 85]];
+        Assert.That(lastAux6Bit, Is.EqualTo((byte)0x39), "86th aux nibble on disk must carry twoBit[0] (low bits of sector bytes 0/86/172).");
 
         // And a full round-trip must still recover the original sector.
         var decoded = new byte[16 * 256];
