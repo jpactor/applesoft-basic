@@ -653,14 +653,20 @@ public class Cpu65C02Tests : CpuTestBase
     /// <summary>
     /// Verifies that Step returns 0 when CPU is halted.
     /// </summary>
+    /// <remarks>
+    /// On the WDC W65C02S there are no illegal opcodes (all 256 slots are
+    /// defined per the datasheet — see <c>65C02 Apple II Emulator Correctness
+    /// Checklist.md</c>). The canonical way to halt the CPU is the WDC
+    /// extension <c>STP</c> (<c>$DB</c>), which stops processing until reset.
+    /// </remarks>
     [Test]
     public void Step_WhenHalted_ReturnsZero()
     {
         // Arrange
         WriteWord(0xFFFC, 0x1000);
-        Write(0x1000, 0xFF); // Illegal opcode (not implemented in our table)
+        Write(0x1000, 0xDB); // STP - halts CPU until reset
         Cpu.Reset();
-        Cpu.Step(); // Execute illegal opcode to halt
+        Cpu.Step(); // Execute STP to halt
 
         // Act
         var result = Cpu.Step();

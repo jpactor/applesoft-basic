@@ -44,6 +44,7 @@ public static class OpcodeTableAnalyzer
         [nameof(AddressingModes.AbsoluteYWrite)] = 2,
         [nameof(AddressingModes.Indirect)] = 2,
         [nameof(AddressingModes.AbsoluteIndirectX)] = 2,
+        [nameof(AddressingModes.ZeroPageRelative)] = 2,
     };
 
     /// <summary>
@@ -69,6 +70,7 @@ public static class OpcodeTableAnalyzer
         [nameof(AddressingModes.AbsoluteYWrite)] = CpuAddressingModes.AbsoluteY, // Write variant maps to same mode
         [nameof(AddressingModes.Indirect)] = CpuAddressingModes.Indirect,
         [nameof(AddressingModes.AbsoluteIndirectX)] = CpuAddressingModes.AbsoluteIndirectX,
+        [nameof(AddressingModes.ZeroPageRelative)] = CpuAddressingModes.ZeroPageRelative,
     };
 
     /// <summary>
@@ -176,6 +178,12 @@ public static class OpcodeTableAnalyzer
         map["LSRa"] = CpuInstructions.LSR;
         map["ROLa"] = CpuInstructions.ROL;
         map["RORa"] = CpuInstructions.ROR;
+
+        // BIT #imm has a separate factory (BITImmediate) because it has different
+        // flag semantics (only Z is updated; N and V are preserved). The
+        // disassembler should still display it as "BIT" — the immediate operand
+        // is what distinguishes the variant visually.
+        map["BITImmediate"] = CpuInstructions.BIT;
 
         return map;
     }
