@@ -565,12 +565,13 @@ public class Extended80ColumnDeviceTests
     /// <summary>
     /// Regression test for the ProDOS auxiliary-RAM probe bug: when the
     /// $0080-$00B5 boot helper toggles WRCARDRAM (`STA $C005`) and
-    /// RDCARDRAM (`STA $C003`) on, then toggles WRMAINRAM (`STA $C004`)
-    /// and RDMAINRAM (`STA $C002`) back off, the AUX_RAM layer must
-    /// deactivate cleanly and reveal main RAM at pages $1-$B. Previously
-    /// the base mapping was never saved, so deactivating the AUX_RAM
-    /// layer "paged out" all RAM above the zero-page composite and the
-    /// CPU executed garbage from unmapped memory.
+    /// RDCARDRAM (`STA $C003`) on to enable auxiliary RAM, then writes to
+    /// WRMAINRAM (`STA $C004`) and RDMAINRAM (`STA $C002`) to switch
+    /// back to main RAM, the AUX_RAM layer must deactivate cleanly and
+    /// reveal main RAM at pages $1-$B. Previously the base mapping was
+    /// never saved, so deactivating the AUX_RAM layer "paged out" all
+    /// RAM above the zero-page composite and the CPU executed garbage
+    /// from unmapped memory.
     /// </summary>
     [Test]
     public void RamRdRamWrt_ToggleOnThenOff_PreservesMainRamBaseMapping()
@@ -628,10 +629,10 @@ public class Extended80ColumnDeviceTests
         });
 
         // Act: emulate ProDOS aux probe at $0084-$00B1:
-        //   STA $C005  (WRCARDRAM on)
-        //   STA $C003  (RDCARDRAM on)
-        //   STA $C004  (WRMAINRAM off)
-        //   STA $C002  (RDMAINRAM off)
+        //   STA $C005  (WRCARDRAM: writes go to aux RAM)
+        //   STA $C003  (RDCARDRAM: reads come from aux RAM)
+        //   STA $C004  (WRMAINRAM: writes go back to main RAM)
+        //   STA $C002  (RDMAINRAM: reads come back from main RAM)
         dispatcher.Write(0x05, 0x00, in context);
         dispatcher.Write(0x03, 0x00, in context);
 
