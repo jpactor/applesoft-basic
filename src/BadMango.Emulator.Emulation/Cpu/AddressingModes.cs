@@ -253,7 +253,7 @@ public static class AddressingModes
         addrCycles += 2; // 2 cycles to fetch the 16-bit address
         cpu.Registers.PC.Advance(2);
 
-        Addr effectiveAddr = baseAddr + cpu.Registers.X.GetDWord();
+        Addr effectiveAddr = (baseAddr + cpu.Registers.X.GetDWord()) & 0xFFFF;
 
         if ((baseAddr & 0xFF00) != (effectiveAddr & 0xFF00))
         {
@@ -293,7 +293,7 @@ public static class AddressingModes
         addrCycles += 2; // 2 cycles to fetch the 16-bit address
         cpu.Registers.PC.Advance(2);
 
-        Addr effectiveAddr = baseAddr + cpu.Registers.Y.GetDWord();
+        Addr effectiveAddr = (baseAddr + cpu.Registers.Y.GetDWord()) & 0xFFFF;
 
         if ((baseAddr & 0xFF00) != (effectiveAddr & 0xFF00))
         {
@@ -395,7 +395,7 @@ public static class AddressingModes
         addrCycles += 2; // 2 cycles to read pointer from ZP
 
         byte y = cpu.Registers.Y.GetByte();
-        Addr effectiveAddr = baseAddr + y;
+        Addr effectiveAddr = (baseAddr + y) & 0xFFFF;
 
         if ((baseAddr & 0xFF00) != (effectiveAddr & 0xFF00))
         {
@@ -432,7 +432,7 @@ public static class AddressingModes
         Addr pc = cpu.Registers.PC.GetAddr();
         Addr baseAddr = cpu.Read16(pc);
         cpu.Registers.PC.Advance(2);
-        Addr effectiveAddr = baseAddr + cpu.Registers.X.GetByte();
+        Addr effectiveAddr = (baseAddr + cpu.Registers.X.GetByte()) & 0xFFFF;
         addrCycles += 3; // 2 cycles to fetch address + 1 extra for write operations
 
         cpu.Registers.TCU += addrCycles;
@@ -466,7 +466,7 @@ public static class AddressingModes
         Addr pc = cpu.Registers.PC.GetAddr();
         Addr baseAddr = cpu.Read16(pc);
         cpu.Registers.PC.Advance(2);
-        Addr effectiveAddr = baseAddr + cpu.Registers.Y.GetByte();
+        Addr effectiveAddr = (baseAddr + cpu.Registers.Y.GetByte()) & 0xFFFF;
         addrCycles += 3; // 2 cycles to fetch address + 1 extra for write operations
 
         cpu.Registers.TCU += addrCycles;
@@ -515,7 +515,7 @@ public static class AddressingModes
         addrCycles += 2; // 2 cycles to read pointer from ZP
 
         byte y = cpu.Registers.Y.GetByte();
-        Addr effectiveAddr = baseAddr + y;
+        Addr effectiveAddr = (baseAddr + y) & 0xFFFF;
 
         addrCycles++; // 1 extra cycle for write (always taken)
 

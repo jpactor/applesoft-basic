@@ -58,6 +58,18 @@ public interface IMemoryBus
     int PageCount { get; }
 
     /// <summary>
+    /// Gets the ring buffer of recent bus faults, or <see langword="null"/>
+    /// when the bus implementation does not record faults.
+    /// </summary>
+    /// <remarks>
+    /// Debug tooling (e.g. the <c>fault</c> and <c>buslog</c> debug commands)
+    /// uses this to surface unmapped accesses, permission denials, and other
+    /// faults that the CPU would otherwise see only as a returned
+    /// <see cref="BusFault"/> or as a silent floating-bus read.
+    /// </remarks>
+    IBusFaultRing? FaultRing { get; }
+
+    /// <summary>
     /// Reads a single byte from the specified address.
     /// </summary>
     /// <param name="access">The access context describing the operation.</param>

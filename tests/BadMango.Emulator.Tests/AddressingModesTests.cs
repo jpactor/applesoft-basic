@@ -331,6 +331,114 @@ public class AddressingModesTests : CpuTestBase
     }
 
     /// <summary>
+    /// Verifies that AbsoluteY wraps to 16 bits when base+Y overflows past $FFFF.
+    /// On the 65C02, <c>LDA $FF48,Y</c> with Y=$FE must produce effective
+    /// address $0046, not the unwrapped $10046. This regression test guards
+    /// against the ProDOS-boot halt that occurred when the unwrapped
+    /// 17-bit address was passed to the bus and reported as Unmapped.
+    /// </summary>
+    [Test]
+    public void AbsoluteY_WrapsTo16BitsOnOverflow()
+    {
+        // Arrange - LDA $FF48,Y with Y=$FE -> should wrap to $0046
+        WriteWord(0x1000, 0xFF48);
+        SetupCpu(pc: 0x1000, y: 0xFE, cycles: 10);
+
+        // Act
+        Addr address = AddressingModes.AbsoluteY(Cpu);
+
+        // Assert
+        Assert.That(address, Is.EqualTo(0x0046), "$FF48 + $FE must wrap to $0046 on the 65C02.");
+    }
+
+    /// <summary>
+    /// Verifies that AbsoluteX wraps to 16 bits when base+X overflows past $FFFF.
+    /// </summary>
+    [Test]
+    public void AbsoluteX_WrapsTo16BitsOnOverflow()
+    {
+        // Arrange - LDA $FFFE,X with X=$10 -> $0E
+        WriteWord(0x1000, 0xFFFE);
+        SetupCpu(pc: 0x1000, x: 0x10, cycles: 10);
+
+        // Act
+        Addr address = AddressingModes.AbsoluteX(Cpu);
+
+        // Assert
+        Assert.That(address, Is.EqualTo(0x000E), "$FFFE + $10 must wrap to $000E on the 65C02.");
+    }
+
+    /// <summary>
+    /// Verifies that AbsoluteYWrite wraps to 16 bits when base+Y overflows.
+    /// </summary>
+    [Test]
+    public void AbsoluteYWrite_WrapsTo16BitsOnOverflow()
+    {
+        // Arrange - STA $FFC0,Y with Y=$80 -> $0040
+        WriteWord(0x1000, 0xFFC0);
+        SetupCpu(pc: 0x1000, y: 0x80, cycles: 10);
+
+        // Act
+        Addr address = AddressingModes.AbsoluteYWrite(Cpu);
+
+        // Assert
+        Assert.That(address, Is.EqualTo(0x0040), "$FFC0 + $80 must wrap to $0040 on the 65C02.");
+    }
+
+    /// <summary>
+    /// Verifies that AbsoluteXWrite wraps to 16 bits when base+X overflows.
+    /// </summary>
+    [Test]
+    public void AbsoluteXWrite_WrapsTo16BitsOnOverflow()
+    {
+        // Arrange - STA $FFC0,X with X=$80 -> $0040
+        WriteWord(0x1000, 0xFFC0);
+        SetupCpu(pc: 0x1000, x: 0x80, cycles: 10);
+
+        // Act
+        Addr address = AddressingModes.AbsoluteXWrite(Cpu);
+
+        // Assert
+        Assert.That(address, Is.EqualTo(0x0040), "$FFC0 + $80 must wrap to $0040 on the 65C02.");
+    }
+
+    /// <summary>
+    /// Verifies that IndirectY wraps to 16 bits when pointer+Y overflows.
+    /// </summary>
+    [Test]
+    public void IndirectY_WrapsTo16BitsOnOverflow()
+    {
+        // Arrange - LDA ($70),Y with pointer=$FF80, Y=$90 -> $0010
+        Write(0x1000, 0x70);
+        WriteWord(0x0070, 0xFF80);
+        SetupCpu(pc: 0x1000, y: 0x90, cycles: 10);
+
+        // Act
+        Addr address = AddressingModes.IndirectY(Cpu);
+
+        // Assert
+        Assert.That(address, Is.EqualTo(0x0010), "$FF80 + $90 must wrap to $0010 on the 65C02.");
+    }
+
+    /// <summary>
+    /// Verifies that IndirectYWrite wraps to 16 bits when pointer+Y overflows.
+    /// </summary>
+    [Test]
+    public void IndirectYWrite_WrapsTo16BitsOnOverflow()
+    {
+        // Arrange - STA ($70),Y with pointer=$FF80, Y=$90 -> $0010
+        Write(0x1000, 0x70);
+        WriteWord(0x0070, 0xFF80);
+        SetupCpu(pc: 0x1000, y: 0x90, cycles: 10);
+
+        // Act
+        Addr address = AddressingModes.IndirectYWrite(Cpu);
+
+        // Assert
+        Assert.That(address, Is.EqualTo(0x0010), "$FF80 + $90 must wrap to $0010 on the 65C02.");
+    }
+
+    /// <summary>
     /// Sets up CPU registers for testing.
     /// </summary>
     private void SetupCpu(
