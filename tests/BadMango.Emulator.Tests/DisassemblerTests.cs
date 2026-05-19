@@ -220,8 +220,9 @@ public class DisassemblerTests : CpuTestBase
         // Act
         var table = OpcodeTableAnalyzer.BuildOpcodeInfoTable(opcodeTable);
 
-        // 0x02 is an illegal opcode on 65C02
-        var info = table[0x02];
+        // 0xFF is an unimplemented opcode in our 65C02 table (the WDC unused
+        // slots like $02 are explicit silent NOPs and would not return None).
+        var info = table[0xFF];
 
         // Assert
         Assert.That(info.Instruction, Is.EqualTo(CpuInstructions.None));
@@ -563,7 +564,7 @@ public class DisassemblerTests : CpuTestBase
     public void Disassembler_IllegalOpcode_HasNoneInstruction()
     {
         // Arrange
-        Write(0x1000, 0x02); // Illegal opcode
+        Write(0x1000, 0xFF); // Illegal opcode (unimplemented in our table)
 
         // Act
         var instruction = disassembler.DisassembleInstruction(0x1000);

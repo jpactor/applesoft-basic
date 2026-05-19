@@ -628,7 +628,11 @@ public class Cpu65C02Tests : CpuTestBase
     {
         // Arrange
         WriteWord(0xFFFC, 0x1000);
-        Write(0x1000, 0x02); // Illegal opcode (not implemented)
+        // Use $FF (unimplemented BBS7-style slot) as the unmapped sentinel.
+        // The WDC W65C02S "unused" opcode slots ($02, $C2, $44, $5C, etc.) are
+        // legitimate silent NOPs and have explicit handlers per the correctness
+        // checklist, so they are NOT suitable as a generic illegal-opcode probe.
+        Write(0x1000, 0xFF); // Illegal opcode (not implemented in our table)
         Cpu.Reset();
 
         // Act
@@ -648,7 +652,7 @@ public class Cpu65C02Tests : CpuTestBase
     {
         // Arrange
         WriteWord(0xFFFC, 0x1000);
-        Write(0x1000, 0x02); // Illegal opcode
+        Write(0x1000, 0xFF); // Illegal opcode (not implemented in our table)
         Cpu.Reset();
         Cpu.Step(); // Execute illegal opcode to halt
 

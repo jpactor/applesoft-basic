@@ -71,6 +71,73 @@ public static class Cpu65C02OpcodeTableBuilder
         // NOP - No Operation
         handlers[0xEA] = Instructions.NOP(AddressingModes.Implied);
 
+        // WDC W65C02S "unused" opcode NOP slots (see "65C02 Apple II Emulator
+        // Correctness Checklist.md" section 6 and the WDC W65C02S datasheet).
+        // All of these preserve flags and registers. Software (notably ProDOS
+        // 2.4.3's boot1 IIgs-detection idiom at $102C: `C2 02`) relies on these
+        // being silent NOPs on a 65C02 (whereas on a 65816 they decode as
+        // REP/SEP/PEI/MVN/JML/etc. and have observable side effects).
+        // The disassembler renders these as `NOP <operand>` via the standard
+        // Instructions.NOP + AddressingModes.* composition (reflection-based
+        // analysis in OpcodeTableAnalyzer).
+
+        // 2 bytes, 2 cycles: immediate-mode NOPs.
+        handlers[0x02] = Instructions.NOP(AddressingModes.Immediate);
+        handlers[0x22] = Instructions.NOP(AddressingModes.Immediate);
+        handlers[0x42] = Instructions.NOP(AddressingModes.Immediate);
+        handlers[0x62] = Instructions.NOP(AddressingModes.Immediate);
+        handlers[0x82] = Instructions.NOP(AddressingModes.Immediate);
+        handlers[0xC2] = Instructions.NOP(AddressingModes.Immediate);
+        handlers[0xE2] = Instructions.NOP(AddressingModes.Immediate);
+
+        // 2 bytes, 3 cycles: zero-page NOP.
+        // (ZeroPage adds 1 cycle for the operand fetch; NOP adds 1; +1 from
+        //  base opcode fetch = 3 cycles total.)
+        handlers[0x44] = Instructions.NOP(AddressingModes.ZeroPage);
+
+        // 2 bytes, 4 cycles: zero-page,X NOPs.
+        // (ZeroPageX adds 2 cycles (fetch + indexing); NOP adds 1; +1 from
+        //  base opcode fetch = 4 cycles total.)
+        handlers[0x54] = Instructions.NOP(AddressingModes.ZeroPageX);
+        handlers[0xD4] = Instructions.NOP(AddressingModes.ZeroPageX);
+        handlers[0xF4] = Instructions.NOP(AddressingModes.ZeroPageX);
+
+        // 3 bytes, 4 cycles: absolute NOPs.
+        // (Absolute adds 2 cycles for the 16-bit operand fetch; NOP adds 1;
+        //  +1 from base opcode fetch = 4 cycles total.)
+        handlers[0xDC] = Instructions.NOP(AddressingModes.Absolute);
+        handlers[0xFC] = Instructions.NOP(AddressingModes.Absolute);
+
+        // 3 bytes, 8 cycles: "loud" absolute NOP. Per the WDC datasheet this is
+        // the only unused-slot NOP that consumes 8 cycles (versus 4 for the
+        // other 3-byte absolute NOPs). Modelled with extra instruction cycles
+        // so the PC advances by 3 and the bus arbiter sees the correct cycle
+        // pressure; the actual bus read at the formed address is not performed
+        // since no shipping 65C02 software in scope for this emulator relies on
+        // the side effect.
+        handlers[0x5C] = Instructions.NOP(AddressingModes.Absolute, instructionCycles: 5);
+
+        // 1 byte, 1 cycle: column-3 single-cycle NOPs. These are the slots
+        // reserved by WDC for future expansion; on the 65C02 they fully decode
+        // in a single cycle with no side effects (no operand fetch, no PC
+        // advance beyond the opcode byte itself).
+        handlers[0x03] = Instructions.NOP(AddressingModes.Implied, instructionCycles: 0);
+        handlers[0x13] = Instructions.NOP(AddressingModes.Implied, instructionCycles: 0);
+        handlers[0x23] = Instructions.NOP(AddressingModes.Implied, instructionCycles: 0);
+        handlers[0x33] = Instructions.NOP(AddressingModes.Implied, instructionCycles: 0);
+        handlers[0x43] = Instructions.NOP(AddressingModes.Implied, instructionCycles: 0);
+        handlers[0x53] = Instructions.NOP(AddressingModes.Implied, instructionCycles: 0);
+        handlers[0x63] = Instructions.NOP(AddressingModes.Implied, instructionCycles: 0);
+        handlers[0x73] = Instructions.NOP(AddressingModes.Implied, instructionCycles: 0);
+        handlers[0x83] = Instructions.NOP(AddressingModes.Implied, instructionCycles: 0);
+        handlers[0x93] = Instructions.NOP(AddressingModes.Implied, instructionCycles: 0);
+        handlers[0xA3] = Instructions.NOP(AddressingModes.Implied, instructionCycles: 0);
+        handlers[0xB3] = Instructions.NOP(AddressingModes.Implied, instructionCycles: 0);
+        handlers[0xC3] = Instructions.NOP(AddressingModes.Implied, instructionCycles: 0);
+        handlers[0xD3] = Instructions.NOP(AddressingModes.Implied, instructionCycles: 0);
+        handlers[0xE3] = Instructions.NOP(AddressingModes.Implied, instructionCycles: 0);
+        handlers[0xF3] = Instructions.NOP(AddressingModes.Implied, instructionCycles: 0);
+
         // STX - Store X Register
         handlers[0x86] = Instructions.STX(AddressingModes.ZeroPage);
         handlers[0x96] = Instructions.STX(AddressingModes.ZeroPageY);
