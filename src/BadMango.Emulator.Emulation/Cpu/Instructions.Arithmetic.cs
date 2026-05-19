@@ -355,4 +355,58 @@ public static partial class Instructions
             cpu.Registers.TCU += 1;
         };
     }
+
+    /// <summary>
+    /// INA - Increment Accumulator instruction (65C02).
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use (must be Accumulator).</param>
+    /// <returns>An opcode handler that executes INC A.</returns>
+    /// <remarks>
+    /// Alternate mnemonic for INC A. Operates on the accumulator register.
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler INA(AddressingModeHandler addressingMode)
+    {
+        return cpu =>
+        {
+            addressingMode(cpu);
+            byte value = (byte)(cpu.Registers.A.GetByte() + 1);
+            cpu.Registers.A.SetByte(value);
+            cpu.Registers.P.SetZeroAndNegative(value);
+
+            if (cpu.IsDebuggerAttached)
+            {
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.INA };
+            }
+
+            cpu.Registers.TCU += 1;
+        };
+    }
+
+    /// <summary>
+    /// DEA - Decrement Accumulator instruction (65C02).
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use (must be Accumulator).</param>
+    /// <returns>An opcode handler that executes DEC A.</returns>
+    /// <remarks>
+    /// Alternate mnemonic for DEC A. Operates on the accumulator register.
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler DEA(AddressingModeHandler addressingMode)
+    {
+        return cpu =>
+        {
+            addressingMode(cpu);
+            byte value = (byte)(cpu.Registers.A.GetByte() - 1);
+            cpu.Registers.A.SetByte(value);
+            cpu.Registers.P.SetZeroAndNegative(value);
+
+            if (cpu.IsDebuggerAttached)
+            {
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.DEA };
+            }
+
+            cpu.Registers.TCU += 1;
+        };
+    }
 }

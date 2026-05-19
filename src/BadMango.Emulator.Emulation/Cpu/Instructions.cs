@@ -288,6 +288,7 @@ public static partial class Instructions
             opCycles++; // Push P
 
             cpu.Registers.P |= ProcessorStatusFlags.I;
+            cpu.Registers.P &= ~ProcessorStatusFlags.D; // 65C02 clears D on BRK
             cpu.Registers.PC.SetWord(cpu.Read16(Cpu65C02Constants.IrqVector));
             opCycles += 2; // Read IRQ vector (2 bytes)
 

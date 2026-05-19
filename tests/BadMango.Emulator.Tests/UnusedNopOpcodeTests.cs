@@ -253,6 +253,46 @@ public class UnusedNopOpcodeTests : CpuTestBase
     }
 
     /// <summary>
+    /// Verifies that every column-B unused opcode ($0B, $1B, ..., $FB) is a
+    /// 1-byte, 1-cycle NOP that preserves all flags and registers.
+    /// </summary>
+    /// <param name="opcode">The unused-opcode slot under test.</param>
+    [TestCase((byte)0x0B)]
+    [TestCase((byte)0x1B)]
+    [TestCase((byte)0x2B)]
+    [TestCase((byte)0x3B)]
+    [TestCase((byte)0x4B)]
+    [TestCase((byte)0x5B)]
+    [TestCase((byte)0x6B)]
+    [TestCase((byte)0x7B)]
+    [TestCase((byte)0x8B)]
+    [TestCase((byte)0x9B)]
+    [TestCase((byte)0xAB)]
+    [TestCase((byte)0xBB)]
+    [TestCase((byte)0xEB)]
+    [TestCase((byte)0xFB)]
+    public void ColumnBNopSlot_AdvancesPcByOneAndConsumesOneCycle(byte opcode)
+    {
+        WriteWord(0xFFFC, 0x1000);
+        Write(0x1000, opcode);
+        Cpu.Reset();
+        SetupCpu(pc: 0x1000, a: 0x55, x: 0xAA, y: 0xCC, p: ProcessorStatusFlags.N | ProcessorStatusFlags.V, cycles: 0);
+
+        var stepResult = Cpu.Step();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1001));
+            Assert.That(stepResult.CyclesConsumed.Value, Is.EqualTo(1UL));
+            Assert.That(Cpu.Registers.A.GetByte(), Is.EqualTo(0x55));
+            Assert.That(Cpu.Registers.X.GetByte(), Is.EqualTo(0xAA));
+            Assert.That(Cpu.Registers.Y.GetByte(), Is.EqualTo(0xCC));
+            Assert.That(Cpu.Registers.P, Is.EqualTo(ProcessorStatusFlags.N | ProcessorStatusFlags.V));
+            Assert.That(Cpu.Halted, Is.False);
+        });
+    }
+
+    /// <summary>
     /// Sets up the CPU registers for testing with the specified values.
     /// </summary>
     /// <param name="pc">Program counter value.</param>

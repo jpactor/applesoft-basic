@@ -36,12 +36,14 @@ public static class OpcodeTableAnalyzer
         [nameof(AddressingModes.IndirectX)] = 1,
         [nameof(AddressingModes.IndirectY)] = 1,
         [nameof(AddressingModes.IndirectYWrite)] = 1,
+        [nameof(AddressingModes.ZeroPageIndirect)] = 1,
         [nameof(AddressingModes.Absolute)] = 2,
         [nameof(AddressingModes.AbsoluteX)] = 2,
         [nameof(AddressingModes.AbsoluteY)] = 2,
         [nameof(AddressingModes.AbsoluteXWrite)] = 2,
         [nameof(AddressingModes.AbsoluteYWrite)] = 2,
         [nameof(AddressingModes.Indirect)] = 2,
+        [nameof(AddressingModes.AbsoluteIndirectX)] = 2,
     };
 
     /// <summary>
@@ -59,12 +61,14 @@ public static class OpcodeTableAnalyzer
         [nameof(AddressingModes.IndirectX)] = CpuAddressingModes.IndirectX,
         [nameof(AddressingModes.IndirectY)] = CpuAddressingModes.IndirectY,
         [nameof(AddressingModes.IndirectYWrite)] = CpuAddressingModes.IndirectY, // Write variant maps to same mode
+        [nameof(AddressingModes.ZeroPageIndirect)] = CpuAddressingModes.ZeroPageIndirect,
         [nameof(AddressingModes.Absolute)] = CpuAddressingModes.Absolute,
         [nameof(AddressingModes.AbsoluteX)] = CpuAddressingModes.AbsoluteX,
         [nameof(AddressingModes.AbsoluteY)] = CpuAddressingModes.AbsoluteY,
         [nameof(AddressingModes.AbsoluteXWrite)] = CpuAddressingModes.AbsoluteX, // Write variant maps to same mode
         [nameof(AddressingModes.AbsoluteYWrite)] = CpuAddressingModes.AbsoluteY, // Write variant maps to same mode
         [nameof(AddressingModes.Indirect)] = CpuAddressingModes.Indirect,
+        [nameof(AddressingModes.AbsoluteIndirectX)] = CpuAddressingModes.AbsoluteIndirectX,
     };
 
     /// <summary>

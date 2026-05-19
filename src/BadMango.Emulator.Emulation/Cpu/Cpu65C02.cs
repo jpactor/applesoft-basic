@@ -400,6 +400,9 @@ public sealed class Cpu65C02 : CpuBase
         // Set I flag to disable further IRQs
         Registers.P.SetInterruptDisable(true);
 
+        // 65C02 clears D flag on all interrupt entry paths (IRQ, NMI, BRK, reset)
+        Registers.P &= ~ProcessorStatusFlags.D;
+
         // Load PC from interrupt vector
         Registers.PC.SetAddr(Read16(vector));
 
