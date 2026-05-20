@@ -346,7 +346,15 @@ public static class AddressingModes
         }
 
         Addr pointerAddr = (Addr)(directPage + effectiveOffset);
-        Addr address = cpu.Read16(pointerAddr);
+
+        // Read 16-bit pointer with zero-page wrap on the high-byte fetch.
+        // Per the 6502/65C02 spec, all zero-page indirect modes wrap within
+        // the zero page: if the pointer is at $FF, the high byte is read
+        // from $00, not $100 (which would hit the stack). Mirror the helper
+        // pattern used in ZeroPageIndirect: lo = Read8(ptr); hi = Read8((ptr & 0xFF00) | ((ptr + 1) & 0xFF)).
+        byte addrLo = cpu.Read8(pointerAddr);
+        byte addrHi = cpu.Read8((pointerAddr & 0xFF00) | ((pointerAddr + 1) & 0xFF));
+        Addr address = (Addr)((addrHi << 8) | addrLo);
 
         addrCycles += 2; // 2 cycles to read pointer from ZP
 
@@ -390,7 +398,15 @@ public static class AddressingModes
         }
 
         Addr pointerAddr = (Addr)(directPage + zpOffset);
-        Addr baseAddr = cpu.Read16(pointerAddr);
+
+        // Read 16-bit pointer with zero-page wrap on the high-byte fetch.
+        // Per the 6502/65C02 spec, all zero-page indirect modes wrap within
+        // the zero page: if the pointer is at $FF, the high byte is read
+        // from $00, not $100 (which would hit the stack). Mirror the helper
+        // pattern used in ZeroPageIndirect.
+        byte ptrLo = cpu.Read8(pointerAddr);
+        byte ptrHi = cpu.Read8((pointerAddr & 0xFF00) | ((pointerAddr + 1) & 0xFF));
+        Addr baseAddr = (Addr)((ptrHi << 8) | ptrLo);
 
         addrCycles += 2; // 2 cycles to read pointer from ZP
 
@@ -510,7 +526,12 @@ public static class AddressingModes
         }
 
         Addr pointerAddr = (Addr)(directPage + zpOffset);
-        Addr baseAddr = cpu.Read16(pointerAddr);
+
+        // Read 16-bit pointer with zero-page wrap on the high-byte fetch
+        // (see IndirectY/ZeroPageIndirect for the rationale).
+        byte ptrLo = cpu.Read8(pointerAddr);
+        byte ptrHi = cpu.Read8((pointerAddr & 0xFF00) | ((pointerAddr + 1) & 0xFF));
+        Addr baseAddr = (Addr)((ptrHi << 8) | ptrLo);
 
         addrCycles += 2; // 2 cycles to read pointer from ZP
 
