@@ -18,10 +18,11 @@ using BadMango.Emulator.Storage.Media;
 
 /// <summary>
 /// Long-running diagnostic harness that boots ProDOS 2.4.3 on the
-/// <c>pocket2e-a2-enh</c> profile and watches writes into the
-/// <c>$0C00..$0DFF</c> range to investigate the suspected BITSY BYE
-/// off-by-one issue (caller passes a buffer pointer that ends up
-/// being <c>$0D00</c> instead of <c>$0C00</c>).
+/// <c>pocket2e-a2-enh</c> profile and watches writes into a configurable
+/// memory window (default <c>$0C00..$0DFF</c>) to investigate the
+/// suspected BITSY BYE off-by-one issue (caller passes a buffer pointer
+/// that ends up being <c>$0D00</c> instead of <c>$0C00</c>) and to verify
+/// whether 80-column mode is engaged on a //e-class profile.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -33,11 +34,28 @@ using BadMango.Emulator.Storage.Media;
 /// dotnet test tests/BadMango.Emulator.Tests \
 ///   --filter "TestCategory=LongRunning"
 /// </code>
+/// <para><b>Agent-tunable knobs (environment variables):</b></para>
+/// <list type="bullet">
+///   <item><c>BPB_HARNESS_MAX_CYCLES</c> — total emulated cycle budget
+///     (default 200,000,000 ≈ 200 emulated seconds at 1.023 MHz).</item>
+///   <item><c>BPB_HARNESS_MAX_EVENTS</c> — cap on captured diff events
+///     (default 16,384).</item>
+///   <item><c>BPB_HARNESS_WATCH_START</c>, <c>BPB_HARNESS_WATCH_END</c> —
+///     inclusive/exclusive bounds of the shadowed range. Accepts hex
+///     (<c>0x0C00</c>, <c>$0C00</c>) or decimal. Defaults: $0C00..$0E00.</item>
+/// </list>
 /// <para>
 /// The harness <em>does not</em> assert correctness; its purpose is to
 /// dump diagnostic information. The test passes as long as the CPU does
 /// not halt unexpectedly. Diagnostics are written to
 /// <see cref="TestContext.Out"/>.
+/// </para>
+/// <para>
+/// In addition to per-byte diffs in the watched range, the harness fires
+/// named <b>phase milestones</b> at most once each — e.g. the first time
+/// <c>PC == $0801</c> (boot sector entered), at which point it
+/// classifies the loaded boot block as DOS 3.3 / ProDOS / unknown by
+/// signature and dumps <c>$0800..$08FF</c> for forensic analysis.
 /// </para>
 /// <para>
 /// Important: the trap registry's <c>TrapOperation.Write</c> is invoked
@@ -53,21 +71,27 @@ public sealed class BitsyByeBootHarnessTests
     private const string ProfileName = "pocket2e-a2-enh";
     private const string DiskImageRelativePath = "disks/prodos243-master.po";
 
-    // Watch the 512-byte window centered on the BITSY BYE buffer.
-    private const ushort WatchStart = 0x0C00;
-    private const ushort WatchEnd = 0x0E00; // exclusive
+    // Default watched window (overridable via env vars).
+    private const ushort DefaultWatchStart = 0x0C00;
+    private const ushort DefaultWatchEnd = 0x0E00; // exclusive
 
-    // Cycle budget: ~50M cycles ≈ 50 emulated seconds at 1.023 MHz.
-    // Adjust upward if the boot does not reach BITSY BYE in time.
-    private const ulong MaxCycles = 50_000_000UL;
+    // Default cycle budget: 50M cycles ≈ 50 emulated seconds at 1.023 MHz.
+    // Override with BPB_HARNESS_MAX_CYCLES (e.g. 200000000 for ~200s of
+    // emulated time, useful when the boot reaches BITSY BYE late).
+    private const ulong DefaultMaxCycles = 50_000_000UL;
 
-    // Maximum number of diff events to capture before bailing out, to
-    // bound log size if writes flood the watched region.
-    private const int MaxEvents = 4096;
+    // Default cap on captured diff events. Override with BPB_HARNESS_MAX_EVENTS.
+    private const int DefaultMaxEvents = 16_384;
 
     private const int RecentPcRingSize = 16;
 
+    // Boot-block signatures (per "apple ii bootability" repo memory).
+    private static readonly byte[] Dos33BootSignature = [0x01, 0xA5, 0x27, 0xC9, 0x09];
+    private static readonly byte[] ProDosBootSignature = [0x01, 0x38, 0xB0, 0x03];
+
     // Soft switches to peek at every diagnostic event.
+    // Mix of memory-routing and video-mode switches so we can tell whether
+    // 80-column / alt-charset modes ever engage.
     private static readonly (string Label, ushort Address)[] SoftSwitchPeeks =
     [
         ("RAMRD     ($C013)", 0xC013),
@@ -80,17 +104,35 @@ public sealed class BitsyByeBootHarnessTests
         ("LC_BANK   ($C012)", 0xC012),
         ("INTCXROM  ($C015)", 0xC015),
         ("SLOTC3ROM ($C017)", 0xC017),
+        ("RD80COL   ($C01F)", 0xC01F),
+        ("RDALTCHAR ($C01E)", 0xC01E),
+        ("RDTEXT    ($C01A)", 0xC01A),
+        ("RDMIXED   ($C01B)", 0xC01B),
+        ("RDVBL     ($C019)", 0xC019),
     ];
 
     /// <summary>
     /// Boots <c>pocket2e-a2-enh</c> with <c>prodos243-master.po</c> mounted
     /// in slot 6 drive 1, then steps the CPU and logs every change to
-    /// <c>$0C00..$0DFF</c> alongside CPU + soft-switch state at the moment
-    /// of the change.
+    /// the configured watched range alongside CPU + soft-switch state at
+    /// the moment of the change, plus once-per-run phase milestones
+    /// (boot-ROM entry, boot-sector entry, language-card entry).
     /// </summary>
     [Test]
     public void BootProDos243_AndWatchPage0CWritesForBitsyByeOffByOne()
     {
+        ulong maxCycles = GetEnvUlong("BPB_HARNESS_MAX_CYCLES", DefaultMaxCycles);
+        int maxEvents = GetEnvInt("BPB_HARNESS_MAX_EVENTS", DefaultMaxEvents);
+        ushort watchStart = GetEnvUshort("BPB_HARNESS_WATCH_START", DefaultWatchStart);
+        ushort watchEnd = GetEnvUshort("BPB_HARNESS_WATCH_END", DefaultWatchEnd);
+
+        if (watchEnd <= watchStart)
+        {
+            throw new ArgumentException(
+                $"BPB_HARNESS_WATCH_END (${watchEnd:X4}) must be strictly greater than " +
+                $"BPB_HARNESS_WATCH_START (${watchStart:X4}).");
+        }
+
         string repoRoot = LocateRepositoryRoot();
         string profilePath = Path.Combine(repoRoot, "profiles", ProfileName + ".json");
         string diskPath = Path.Combine(repoRoot, DiskImageRelativePath);
@@ -120,21 +162,47 @@ public sealed class BitsyByeBootHarnessTests
         // Reset so the disk-II boot ROM at $C600 takes over via reset vector.
         machine.Reset();
 
-        var watcher = new WatchedRangeShadow(machine.Bus, WatchStart, WatchEnd);
+        var watcher = new WatchedRangeShadow(machine.Bus, watchStart, watchEnd);
         var recentPcs = new RingBuffer<ushort>(RecentPcRingSize);
-        var events = new List<string>(capacity: MaxEvents);
+        var events = new List<string>(capacity: maxEvents);
         var lastSoftSwitchSnapshot = new byte[SoftSwitchPeeks.Length];
         Array.Fill(lastSoftSwitchSnapshot, (byte)0xFE); // Force first dump as full.
+
+        // Phase milestones. Each fires at most once when its predicate first
+        // becomes true for the about-to-execute PC. The "post-boot" milestone
+        // is gated on the boot-sector having already fired so reset-vector
+        // entry into the //e monitor ROM (PC=$FA62) does not trip it.
+        var bootSectorMilestone = new PhaseMilestone("boot-sector-entry", static pc => pc == 0x0801);
+        var milestones = new List<PhaseMilestone>
+        {
+            new("boot-rom-entry", static pc => pc == 0xC600),
+            bootSectorMilestone,
+            new(
+                "post-boot high-memory entry",
+                pc => bootSectorMilestone.Fired && pc >= 0xD000),
+        };
 
         ulong stepCount = 0;
         ulong lastCycles = machine.Cpu.GetCycles();
         CpuRunState lastState = CpuRunState.Running;
 
-        while (machine.Cpu.GetCycles() < MaxCycles && events.Count < MaxEvents)
+        while (machine.Cpu.GetCycles() < maxCycles && events.Count < maxEvents)
         {
             var registersBefore = machine.Cpu.GetRegisters();
             ushort pcBefore = registersBefore.PC.GetWord();
             recentPcs.Push(pcBefore);
+
+            // Fire any milestone whose predicate matches and which hasn't
+            // already fired. Done before Step() so PC really is "about to
+            // execute" the matched address.
+            foreach (var milestone in milestones)
+            {
+                if (!milestone.Fired && milestone.Predicate(pcBefore))
+                {
+                    milestone.Fired = true;
+                    events.Add(FormatMilestone(milestone.Name, stepCount, machine, pcBefore, registersBefore, lastSoftSwitchSnapshot));
+                }
+            }
 
             CpuStepResult result;
             try
@@ -180,10 +248,18 @@ public sealed class BitsyByeBootHarnessTests
         summary.AppendLine(CultureInfo.InvariantCulture, $"BITSY BYE boot harness summary:");
         summary.AppendLine(CultureInfo.InvariantCulture, $"  profile         : {ProfileName}");
         summary.AppendLine(CultureInfo.InvariantCulture, $"  disk image      : {diskPath}");
+        summary.AppendLine(CultureInfo.InvariantCulture, $"  watch range     : ${watchStart:X4}..${watchEnd - 1:X4} ({watchEnd - watchStart} bytes)");
         summary.AppendLine(CultureInfo.InvariantCulture, $"  steps executed  : {stepCount}");
-        summary.AppendLine(CultureInfo.InvariantCulture, $"  cycles consumed : {machine.Cpu.GetCycles()} (budget {MaxCycles})");
+        summary.AppendLine(CultureInfo.InvariantCulture, $"  cycles consumed : {machine.Cpu.GetCycles()} (budget {maxCycles})");
         summary.AppendLine(CultureInfo.InvariantCulture, $"  final CPU state : {lastState}");
-        summary.AppendLine(CultureInfo.InvariantCulture, $"  events captured : {events.Count} (cap {MaxEvents})");
+        summary.AppendLine(CultureInfo.InvariantCulture, $"  events captured : {events.Count} (cap {maxEvents})");
+        summary.Append("  milestones      :");
+        foreach (var m in milestones)
+        {
+            summary.Append(CultureInfo.InvariantCulture, $" {m.Name}={(m.Fired ? "✓" : "✗")}");
+        }
+
+        summary.AppendLine();
         TestContext.Out.WriteLine(summary.ToString());
 
         foreach (var ev in events)
@@ -193,7 +269,7 @@ public sealed class BitsyByeBootHarnessTests
 
         // Dump the final state of the watched range for forensic reference.
         TestContext.Out.WriteLine();
-        TestContext.Out.WriteLine("Final $0C00..$0DFF snapshot:");
+        TestContext.Out.WriteLine(string.Create(CultureInfo.InvariantCulture, $"Final ${watchStart:X4}..${watchEnd - 1:X4} snapshot:"));
         TestContext.Out.WriteLine(watcher.DumpHex());
 
         // Surface bus faults, in case anything synthetic was recorded.
@@ -379,6 +455,185 @@ public sealed class BitsyByeBootHarnessTests
         throw new DirectoryNotFoundException(
             $"Could not locate repository root from {AppContext.BaseDirectory} " +
             "(looking for ancestor containing profiles/, roms/, and disks/).");
+    }
+
+    /// <summary>
+    /// Renders a banner block for a one-shot phase milestone. On
+    /// <c>boot-sector-entry</c> (PC=$0801) the block additionally dumps
+    /// the loaded boot sector at <c>$0800..$08FF</c> and classifies it
+    /// as DOS 3.3 / ProDOS / unknown by signature.
+    /// </summary>
+    private static string FormatMilestone(
+        string name,
+        ulong step,
+        IMachine machine,
+        ushort pcBefore,
+        Registers registers,
+        byte[] lastSoftSwitchSnapshot)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine(
+            CultureInfo.InvariantCulture,
+            $"==== phase milestone '{name}' @ step {step}, cycle {machine.Cpu.GetCycles()} ====");
+        sb.AppendLine(
+            CultureInfo.InvariantCulture,
+            $"  PC={pcBefore:X4}  A={registers.A.GetByte():X2}  X={registers.X.GetByte():X2}  Y={registers.Y.GetByte():X2}  P={(byte)registers.P:X2}  SP={registers.SP.GetByte():X2}");
+
+        // Full soft-switch snapshot at every milestone (so we can easily
+        // diff 80-column / mem-routing state across phases). Also resync
+        // the last-snapshot baseline so subsequent diff-events show
+        // deltas relative to the milestone state.
+        sb.AppendLine("  soft switches:");
+        for (int i = 0; i < SoftSwitchPeeks.Length; i++)
+        {
+            byte value = DebugPeek(machine.Bus, SoftSwitchPeeks[i].Address);
+            sb.AppendLine(
+                CultureInfo.InvariantCulture,
+                $"    {SoftSwitchPeeks[i].Label} = ${value:X2}");
+            lastSoftSwitchSnapshot[i] = value;
+        }
+
+        if (name == "boot-sector-entry")
+        {
+            sb.AppendLine("  loaded boot sector $0800..$08FF:");
+            DumpRangeHex(sb, machine.Bus, 0x0800, 0x0900, indent: "    ");
+            sb.Append("  classification : ");
+            sb.AppendLine(ClassifyBootSector(machine.Bus));
+        }
+
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Inspects bytes at <c>$0800..</c> on the live bus and classifies the
+    /// boot loader by signature (see "apple ii bootability" repo memory).
+    /// </summary>
+    private static string ClassifyBootSector(IMemoryBus bus)
+    {
+        Span<byte> head = stackalloc byte[8];
+        for (int i = 0; i < head.Length; i++)
+        {
+            head[i] = DebugPeek(bus, (ushort)(0x0800 + i));
+        }
+
+        if (StartsWith(head, Dos33BootSignature))
+        {
+            return "DOS 3.3 boot1 (signature 01 A5 27 C9 09 at $0800)";
+        }
+
+        if (StartsWith(head, ProDosBootSignature))
+        {
+            return "ProDOS PBOOT block 0 (signature 01 38 B0 03 at $0800)";
+        }
+
+        if (head[0] == 0x01)
+        {
+            return $"unknown bootable image (starts $01 but signature mismatch; head=${head[0]:X2} ${head[1]:X2} ${head[2]:X2} ${head[3]:X2} ${head[4]:X2})";
+        }
+
+        return $"NOT BOOTABLE (head=${head[0]:X2} ${head[1]:X2} ${head[2]:X2} ${head[3]:X2} ${head[4]:X2} — no leading $01)";
+    }
+
+    private static bool StartsWith(ReadOnlySpan<byte> haystack, ReadOnlySpan<byte> needle)
+    {
+        if (haystack.Length < needle.Length)
+        {
+            return false;
+        }
+
+        return haystack[..needle.Length].SequenceEqual(needle);
+    }
+
+    private static void DumpRangeHex(StringBuilder sb, IMemoryBus bus, ushort start, ushort end, string indent)
+    {
+        for (int row = start; row < end; row += 16)
+        {
+            sb.Append(CultureInfo.InvariantCulture, $"{indent}${row:X4}: ");
+            for (int col = 0; col < 16 && row + col < end; col++)
+            {
+                sb.Append(CultureInfo.InvariantCulture, $"{DebugPeek(bus, (ushort)(row + col)):X2} ");
+            }
+
+            sb.AppendLine();
+        }
+    }
+
+    private static ulong GetEnvUlong(string name, ulong defaultValue)
+    {
+        string? raw = Environment.GetEnvironmentVariable(name);
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return defaultValue;
+        }
+
+        if (TryParseUnsignedLiteral(raw, out ulong value))
+        {
+            return value;
+        }
+
+        throw new ArgumentException($"Environment variable {name}='{raw}' is not a valid unsigned integer.");
+    }
+
+    private static int GetEnvInt(string name, int defaultValue)
+    {
+        ulong asUlong = GetEnvUlong(name, (ulong)defaultValue);
+        if (asUlong > int.MaxValue)
+        {
+            throw new ArgumentException($"Environment variable {name} value {asUlong} exceeds Int32.MaxValue.");
+        }
+
+        return (int)asUlong;
+    }
+
+    private static ushort GetEnvUshort(string name, ushort defaultValue)
+    {
+        ulong asUlong = GetEnvUlong(name, defaultValue);
+        if (asUlong > ushort.MaxValue)
+        {
+            throw new ArgumentException($"Environment variable {name} value {asUlong} exceeds UInt16.MaxValue.");
+        }
+
+        return (ushort)asUlong;
+    }
+
+    /// <summary>
+    /// Parses an unsigned literal in any of these forms: <c>1234</c>
+    /// (decimal), <c>0x1A2B</c> / <c>0X1A2B</c> (C hex), or <c>$1A2B</c>
+    /// (Apple hex).
+    /// </summary>
+    private static bool TryParseUnsignedLiteral(string text, out ulong value)
+    {
+        string trimmed = text.Trim();
+        if (trimmed.StartsWith('$'))
+        {
+            return ulong.TryParse(trimmed.AsSpan(1), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out value);
+        }
+
+        if (trimmed.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+        {
+            return ulong.TryParse(trimmed.AsSpan(2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out value);
+        }
+
+        return ulong.TryParse(trimmed, NumberStyles.Integer, CultureInfo.InvariantCulture, out value);
+    }
+
+    /// <summary>
+    /// A named, single-shot trigger fired when its predicate first
+    /// returns <see langword="true"/> for the about-to-execute PC.
+    /// </summary>
+    private sealed class PhaseMilestone
+    {
+        public PhaseMilestone(string name, Func<ushort, bool> predicate)
+        {
+            this.Name = name;
+            this.Predicate = predicate;
+        }
+
+        public string Name { get; }
+
+        public Func<ushort, bool> Predicate { get; }
+
+        public bool Fired { get; set; }
     }
 
     /// <summary>
