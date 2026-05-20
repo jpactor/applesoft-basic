@@ -43,6 +43,17 @@ using BadMango.Emulator.Storage.Media;
 ///   <item><c>BPB_HARNESS_WATCH_START</c>, <c>BPB_HARNESS_WATCH_END</c> —
 ///     inclusive/exclusive bounds of the shadowed range. Accepts hex
 ///     (<c>0x0C00</c>, <c>$0C00</c>) or decimal. Defaults: $0C00..$0E00.</item>
+///   <item><c>BPB_HARNESS_MAX_MLI_CALLS</c> — cap on traced ProDOS MLI
+///     entries (default 512). Each call logs caller, cmd mnemonic,
+///     param-block bytes, and (for READ/WRITE/OPEN) the decoded data
+///     buffer address.</item>
+///   <item><c>BPB_HARNESS_TIGHT_LOOP_THRESHOLD</c> — consecutive steps the
+///     PC must stay inside a narrow window before the tight-loop
+///     detector fires (default 50,000). On fire, dumps CPU regs, the
+///     recent PC trace, $0000..$00FF, $0800..$09FF, soft switches, and
+///     top-of-stack — then ends the run early.</item>
+///   <item><c>BPB_HARNESS_TIGHT_LOOP_WINDOW</c> — maximum PC span (in
+///     bytes) considered a "tight loop" (default 16).</item>
 /// </list>
 /// <para>
 /// The harness <em>does not</em> assert correctness; its purpose is to
@@ -168,6 +179,16 @@ public sealed class BitsyByeBootHarnessTests
         var lastSoftSwitchSnapshot = new byte[SoftSwitchPeeks.Length];
         Array.Fill(lastSoftSwitchSnapshot, (byte)0xFE); // Force first dump as full.
 
+        // MLI call tracer. ProDOS MLI entry is at $BF00; calls have the form
+        //   JSR $BF00 / DFB cmd / DW param_addr
+        // After the JSR, top-of-stack holds (return - 1) so the cmd byte is
+        // at (return - 1 + 1) = the byte immediately after the $BF00 JSR.
+        // For READ ($CA) / WRITE ($CB), the param block has the data buffer
+        // pointer at param_addr+2 (lo) and param_addr+3 (hi). For OPEN ($C8),
+        // it has the I/O buffer pointer at param_addr+3 (lo) and +4 (hi).
+        int maxMliCalls = GetEnvInt("BPB_HARNESS_MAX_MLI_CALLS", 512);
+        int mliCallCount = 0;
+
         // Phase milestones. Each fires at most once when its predicate first
         // becomes true for the about-to-execute PC. The "post-boot" milestone
         // is gated on the boot-sector having already fired so reset-vector
@@ -186,11 +207,66 @@ public sealed class BitsyByeBootHarnessTests
         ulong lastCycles = machine.Cpu.GetCycles();
         CpuRunState lastState = CpuRunState.Running;
 
+        // Tight-loop detector. Tracks the min/max PC seen across a sliding
+        // window of consecutive steps; if the window stays narrower than
+        // tightLoopWindow for tightLoopThreshold steps, we declare a tight
+        // loop and dump a forensic snapshot.
+        int tightLoopThreshold = GetEnvInt("BPB_HARNESS_TIGHT_LOOP_THRESHOLD", 50_000);
+        ushort tightLoopWindow = GetEnvUshort("BPB_HARNESS_TIGHT_LOOP_WINDOW", 16);
+        ulong tightLoopRunStart = 0;
+        ushort tightLoopMin = 0xFFFF;
+        ushort tightLoopMax = 0x0000;
+        bool tightLoopReported = false;
+
         while (machine.Cpu.GetCycles() < maxCycles && events.Count < maxEvents)
         {
             var registersBefore = machine.Cpu.GetRegisters();
             ushort pcBefore = registersBefore.PC.GetWord();
             recentPcs.Push(pcBefore);
+
+            // Update tight-loop window. If PC has wandered outside the
+            // current window, reset the run.
+            if (stepCount == 0)
+            {
+                tightLoopMin = pcBefore;
+                tightLoopMax = pcBefore;
+                tightLoopRunStart = 0;
+            }
+            else
+            {
+                ushort newMin = pcBefore < tightLoopMin ? pcBefore : tightLoopMin;
+                ushort newMax = pcBefore > tightLoopMax ? pcBefore : tightLoopMax;
+                if ((newMax - newMin) > tightLoopWindow)
+                {
+                    tightLoopMin = pcBefore;
+                    tightLoopMax = pcBefore;
+                    tightLoopRunStart = stepCount;
+                    tightLoopReported = false;
+                }
+                else
+                {
+                    tightLoopMin = newMin;
+                    tightLoopMax = newMax;
+                }
+            }
+
+            if (!tightLoopReported && (stepCount - tightLoopRunStart) >= (ulong)tightLoopThreshold)
+            {
+                tightLoopReported = true;
+                events.Add(FormatTightLoop(
+                    stepCount,
+                    tightLoopRunStart,
+                    tightLoopMin,
+                    tightLoopMax,
+                    machine,
+                    registersBefore,
+                    recentPcs));
+
+                // Stop early — once a tight loop is detected, continuing
+                // just burns CPU time without yielding new information.
+                lastState = CpuRunState.Running;
+                break;
+            }
 
             // Fire any milestone whose predicate matches and which hasn't
             // already fired. Done before Step() so PC really is "about to
@@ -202,6 +278,14 @@ public sealed class BitsyByeBootHarnessTests
                     milestone.Fired = true;
                     events.Add(FormatMilestone(milestone.Name, stepCount, machine, pcBefore, registersBefore, lastSoftSwitchSnapshot));
                 }
+            }
+
+            // MLI call tracer. Fires every time we're about to execute the
+            // ProDOS MLI entry point so we can decode the cmd + buffer the
+            // caller passed (the BITSY BYE diagnostic target).
+            if (pcBefore == 0xBF00 && mliCallCount < maxMliCalls)
+            {
+                events.Add(FormatMliCall(stepCount, machine, registersBefore, ++mliCallCount));
             }
 
             CpuStepResult result;
@@ -253,6 +337,7 @@ public sealed class BitsyByeBootHarnessTests
         summary.AppendLine(CultureInfo.InvariantCulture, $"  cycles consumed : {machine.Cpu.GetCycles()} (budget {maxCycles})");
         summary.AppendLine(CultureInfo.InvariantCulture, $"  final CPU state : {lastState}");
         summary.AppendLine(CultureInfo.InvariantCulture, $"  events captured : {events.Count} (cap {maxEvents})");
+        summary.AppendLine(CultureInfo.InvariantCulture, $"  MLI calls traced: {mliCallCount} (cap {maxMliCalls})");
         summary.Append("  milestones      :");
         foreach (var m in milestones)
         {
@@ -456,6 +541,190 @@ public sealed class BitsyByeBootHarnessTests
             $"Could not locate repository root from {AppContext.BaseDirectory} " +
             "(looking for ancestor containing profiles/, roms/, and disks/).");
     }
+
+    /// <summary>
+    /// Renders a forensic snapshot when the tight-loop detector fires:
+    /// CPU registers, the PC window, zero page <c>$00..$FF</c>,
+    /// the BITSY BYE / boot-loader code page <c>$0800..$08FF</c> (which
+    /// BITSY BYE relocates into when it loads on top of the boot loader),
+    /// and the instruction bytes immediately around PC.
+    /// </summary>
+    private static string FormatTightLoop(
+        ulong step,
+        ulong runStartStep,
+        ushort pcMin,
+        ushort pcMax,
+        IMachine machine,
+        Registers registers,
+        RingBuffer<ushort> recentPcs)
+    {
+        IMemoryBus bus = machine.Bus;
+        ushort pc = registers.PC.GetWord();
+        var sb = new StringBuilder();
+        sb.AppendLine(
+            CultureInfo.InvariantCulture,
+            $"!!!! TIGHT LOOP DETECTED !!!!  step={step}  cycle={machine.Cpu.GetCycles()}");
+        sb.AppendLine(
+            CultureInfo.InvariantCulture,
+            $"  PC stayed in [${pcMin:X4}..${pcMax:X4}] (window={pcMax - pcMin}) for {step - runStartStep} consecutive steps.");
+        sb.AppendLine(
+            CultureInfo.InvariantCulture,
+            $"  PC={pc:X4}  A={registers.A.GetByte():X2}  X={registers.X.GetByte():X2}  Y={registers.Y.GetByte():X2}  P={(byte)registers.P:X2}  SP={registers.SP.GetByte():X2}");
+
+        sb.Append("  recentPC:");
+        foreach (var oldPc in recentPcs.Snapshot())
+        {
+            sb.Append(CultureInfo.InvariantCulture, $" {oldPc:X4}");
+        }
+
+        sb.AppendLine();
+
+        sb.AppendLine(CultureInfo.InvariantCulture, $"  bytes around PC (${(ushort)(pc - 8):X4}..${(ushort)(pc + 31):X4}):");
+        DumpRangeHex(sb, bus, (ushort)(pc - 8), (ushort)(pc + 32), indent: "    ");
+
+        sb.AppendLine("  zero page $00..$FF (BITSY BYE / ProDOS scratch pointers):");
+        DumpRangeHex(sb, bus, 0x0000, 0x0100, indent: "    ");
+
+        sb.AppendLine("  code page $0800..$08FF (BITSY BYE loaded over boot loader):");
+        DumpRangeHex(sb, bus, 0x0800, 0x0900, indent: "    ");
+
+        sb.AppendLine("  code page $0900..$09FF:");
+        DumpRangeHex(sb, bus, 0x0900, 0x0A00, indent: "    ");
+
+        sb.AppendLine("  full soft-switch panel:");
+        for (int i = 0; i < SoftSwitchPeeks.Length; i++)
+        {
+            byte value = DebugPeek(bus, SoftSwitchPeeks[i].Address);
+            sb.AppendLine(
+                CultureInfo.InvariantCulture,
+                $"    {SoftSwitchPeeks[i].Label} = ${value:X2}");
+        }
+
+        // Stack snapshot — most recent 16 pushed bytes ($0100 + (SP+1) up).
+        byte sp = registers.SP.GetByte();
+        sb.Append("  top-of-stack ($0100+SP+1, up to 16 bytes):");
+        for (int i = 1; i <= 16 && (sp + i) <= 0xFF; i++)
+        {
+            sb.Append(
+                CultureInfo.InvariantCulture,
+                $" {DebugPeek(bus, (ushort)(0x0100 + sp + i)):X2}");
+        }
+
+        sb.AppendLine();
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Decodes a ProDOS MLI call at <c>$BF00</c> entry: the JSR caller, the
+    /// cmd byte, the param block pointer, and the data buffer pointer (for
+    /// READ/WRITE/OPEN — the calls whose buffer addresses we suspect are
+    /// being corrupted in the BITSY BYE handoff path).
+    /// </summary>
+    private static string FormatMliCall(ulong step, IMachine machine, Registers registers, int callIndex)
+    {
+        IMemoryBus bus = machine.Bus;
+        byte sp = registers.SP.GetByte();
+
+        // JSR pushes (return - 1): high then low (stack grows downward, so
+        // PHA at $0100+SP, then SP--). After JSR, top-of-stack is the low
+        // byte of (return - 1). SP now points at the next free slot, so the
+        // two pushed bytes are at $0100+(SP+1) (lo) and $0100+(SP+2) (hi).
+        byte retLo = DebugPeek(bus, (ushort)(0x0100 + ((sp + 1) & 0xFF)));
+        byte retHi = DebugPeek(bus, (ushort)(0x0100 + ((sp + 2) & 0xFF)));
+        ushort returnMinusOne = (ushort)((retHi << 8) | retLo);
+        ushort callSite = (ushort)(returnMinusOne - 2); // the JSR opcode itself
+        ushort cmdAddr = (ushort)(returnMinusOne + 1);
+        byte cmd = DebugPeek(bus, cmdAddr);
+        byte paramLo = DebugPeek(bus, (ushort)(cmdAddr + 1));
+        byte paramHi = DebugPeek(bus, (ushort)(cmdAddr + 2));
+        ushort paramAddr = (ushort)((paramHi << 8) | paramLo);
+
+        string mnemonic = DecodeMliCommand(cmd);
+
+        var sb = new StringBuilder();
+        sb.AppendLine(
+            CultureInfo.InvariantCulture,
+            $".... MLI call #{callIndex} @ step {step}, cycle {machine.Cpu.GetCycles()} ....");
+        sb.AppendLine(
+            CultureInfo.InvariantCulture,
+            $"  caller   : ${callSite:X4} (JSR $BF00)   cmd=${cmd:X2} {mnemonic}   param_addr=${paramAddr:X4}");
+
+        // Dump the first 8 bytes of the param block (longest standard call is
+        // READ/WRITE = 8 bytes; OPEN = 5; CLOSE = 2; etc).
+        sb.Append("  paramblk :");
+        for (int i = 0; i < 8; i++)
+        {
+            sb.Append(CultureInfo.InvariantCulture, $" {DebugPeek(bus, (ushort)(paramAddr + i)):X2}");
+        }
+
+        sb.AppendLine();
+
+        // For the calls that take a buffer pointer, decode and emphasize it.
+        // READ ($CA) and WRITE ($CB): data_buffer at offset 2,3.
+        // OPEN ($C8): io_buffer at offset 3,4 (1024-byte aligned in the spec).
+        if (cmd is 0xCA or 0xCB)
+        {
+            byte bufLo = DebugPeek(bus, (ushort)(paramAddr + 2));
+            byte bufHi = DebugPeek(bus, (ushort)(paramAddr + 3));
+            ushort buf = (ushort)((bufHi << 8) | bufLo);
+            byte cntLo = DebugPeek(bus, (ushort)(paramAddr + 4));
+            byte cntHi = DebugPeek(bus, (ushort)(paramAddr + 5));
+            ushort cnt = (ushort)((cntHi << 8) | cntLo);
+            byte refNum = DebugPeek(bus, (ushort)(paramAddr + 1));
+            sb.AppendLine(
+                CultureInfo.InvariantCulture,
+                $"  decoded  : ref_num=${refNum:X2}  data_buffer=${buf:X4}  request_count=${cnt:X4}");
+        }
+        else if (cmd == 0xC8)
+        {
+            byte bufLo = DebugPeek(bus, (ushort)(paramAddr + 3));
+            byte bufHi = DebugPeek(bus, (ushort)(paramAddr + 4));
+            ushort buf = (ushort)((bufHi << 8) | bufLo);
+            byte pathLo = DebugPeek(bus, (ushort)(paramAddr + 1));
+            byte pathHi = DebugPeek(bus, (ushort)(paramAddr + 2));
+            ushort path = (ushort)((pathHi << 8) | pathLo);
+            sb.AppendLine(
+                CultureInfo.InvariantCulture,
+                $"  decoded  : pathname_ptr=${path:X4}  io_buffer=${buf:X4}");
+        }
+
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Maps a ProDOS MLI command byte to its mnemonic. Covers the core file
+    /// I/O subset used by BITSY BYE; anything else is reported as "??".
+    /// </summary>
+    private static string DecodeMliCommand(byte cmd) => cmd switch
+    {
+        0x40 => "ALLOC_INTERRUPT",
+        0x41 => "DEALLOC_INTERRUPT",
+        0x65 => "QUIT",
+        0x80 => "READ_BLOCK",
+        0x81 => "WRITE_BLOCK",
+        0x82 => "GET_TIME",
+        0xC0 => "CREATE",
+        0xC1 => "DESTROY",
+        0xC2 => "RENAME",
+        0xC3 => "SET_FILE_INFO",
+        0xC4 => "GET_FILE_INFO",
+        0xC5 => "ONLINE",
+        0xC6 => "SET_PREFIX",
+        0xC7 => "GET_PREFIX",
+        0xC8 => "OPEN",
+        0xC9 => "NEWLINE",
+        0xCA => "READ",
+        0xCB => "WRITE",
+        0xCC => "CLOSE",
+        0xCD => "FLUSH",
+        0xCE => "SET_MARK",
+        0xCF => "GET_MARK",
+        0xD0 => "SET_EOF",
+        0xD1 => "GET_EOF",
+        0xD2 => "SET_BUF",
+        0xD3 => "GET_BUF",
+        _ => "??",
+    };
 
     /// <summary>
     /// Renders a banner block for a one-shot phase milestone. On
