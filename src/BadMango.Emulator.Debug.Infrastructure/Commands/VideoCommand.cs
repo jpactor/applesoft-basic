@@ -4,7 +4,12 @@
 
 namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 
+using System.Linq;
+
+using BadMango.Emulator.Bus;
+using BadMango.Emulator.Bus.Interfaces;
 using BadMango.Emulator.Devices;
+using BadMango.Emulator.Devices.Interfaces;
 using BadMango.Emulator.Rendering;
 
 /// <summary>
@@ -46,7 +51,7 @@ public sealed class VideoCommand : CommandHandlerBase, ICommandHelp
     }
 
     /// <inheritdoc/>
-    public string Synopsis => "video [open|close|scale <n>|color <mode>|fps [on|off]|refresh]";
+    public string Synopsis => "video [open|close|scale <n>|color <mode>|fps [on|off]|refresh|state|screen|capture|memory]";
 
     /// <inheritdoc/>
     public string DetailedDescription =>
@@ -59,7 +64,11 @@ public sealed class VideoCommand : CommandHandlerBase, ICommandHelp
         "  scale n  - Set display scale (1=native, 2=2×, 3=3×, 4=4×)\n" +
         "  color m  - Set color mode: green, amber, white, or color\n" +
         "  fps      - Toggle FPS display, or 'fps on'/'fps off'\n" +
-        "  refresh  - Force an immediate display refresh";
+        "  refresh  - Force an immediate display refresh\n" +
+        "  state    - Show current video mode and flags (JSON friendly)\n" +
+        "  screen   - Dump logical screen content (text grid or graphics data)\n" +
+        "  capture  - Render current frame buffer (for AI diagnostics)\n" +
+        "  memory   - Show video memory pages in use";
 
     /// <inheritdoc/>
     public IReadOnlyList<CommandOption> Options { get; } =
@@ -70,6 +79,10 @@ public sealed class VideoCommand : CommandHandlerBase, ICommandHelp
         new("color <mode>", null, "subcommand", "Set color mode: green, amber, white, or color", null),
         new("fps [on|off]", null, "subcommand", "Toggle or set FPS display overlay", null),
         new("refresh", null, "subcommand", "Force an immediate display refresh", null),
+        new("state", null, "subcommand", "Show current video mode/flags (good for --json)", null),
+        new("screen", null, "subcommand", "Dump decoded screen content for current mode", null),
+        new("capture", null, "subcommand", "Capture current frame buffer (pixels for AI)", null),
+        new("memory", null, "subcommand", "Show active video memory pages", null),
     ];
 
     /// <inheritdoc/>
@@ -86,13 +99,17 @@ public sealed class VideoCommand : CommandHandlerBase, ICommandHelp
         "video fps               Toggle FPS display",
         "video fps on            Enable FPS display",
         "video refresh           Force display refresh",
+        "video state             Current mode (use with --json)",
+        "video screen            Decoded screen content",
+        "video capture           Frame buffer capture (headless friendly)",
+        "video memory            Video RAM pages in use",
     ];
 
     /// <inheritdoc/>
     public string? SideEffects => "Opens, closes, or modifies the video display window.";
 
     /// <inheritdoc/>
-    public IReadOnlyList<string> SeeAlso { get; } = ["print", "plot", "hplot", "gr", "hgr", "text"];
+    public IReadOnlyList<string> SeeAlso { get; } = ["print", "plot", "hplot", "gr", "hgr", "text", "mem", "read", "peek", "switches"];
 
     /// <inheritdoc/>
     public override CommandResult Execute(ICommandContext context, string[] args)
@@ -115,6 +132,10 @@ public sealed class VideoCommand : CommandHandlerBase, ICommandHelp
             "color" => SetColorMode(context, subArgs),
             "fps" => ToggleFps(context, subArgs),
             "refresh" => RefreshDisplay(context),
+            "state" => ShowVideoState(context),
+            "screen" => DumpScreen(context, subArgs),
+            "capture" => CaptureFrame(context),
+            "memory" => DumpVideoMemory(context, subArgs),
             _ => CommandResult.Error($"Unknown subcommand: {subcommand}. Use 'help video' for usage."),
         };
     }
@@ -269,5 +290,245 @@ public sealed class VideoCommand : CommandHandlerBase, ICommandHelp
 
         _ = windowManager.ShowWindowAsync("Video", new VideoWindowContext { ForceRefresh = true });
         return CommandResult.Ok("Display refreshed.");
+    }
+
+    private CommandResult ShowVideoState(ICommandContext context)
+    {
+        if (context is not IDebugContext dc || dc.Machine is null)
+            return CommandResult.Error("No machine attached.");
+
+        var video = dc.Machine.GetComponent<IVideoDevice>();
+        if (video == null)
+            return CommandResult.Error("No video device.");
+
+        bool useJson = (context as DebugContext)?.JsonOutput == true;
+
+        if (useJson)
+        {
+            var state = new
+            {
+                mode = video.CurrentMode.ToString(),
+                isText = video.IsTextMode,
+                isMixed = video.IsMixedMode,
+                isPage2 = video.IsPage2,
+                isHiRes = video.IsHiRes,
+                is80Col = video.Is80Column,
+                isDoubleHiRes = video.IsDoubleHiRes,
+                isVbl = video.IsVerticalBlanking
+            };
+            string json = System.Text.Json.JsonSerializer.Serialize(state, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+            context.Output.WriteLine(json);
+            return CommandResult.Ok();
+        }
+
+        context.Output.WriteLine("Video State:");
+        context.Output.WriteLine($"  Mode: {video.CurrentMode}");
+        context.Output.WriteLine($"  Text:{video.IsTextMode} Mixed:{video.IsMixedMode} Page2:{video.IsPage2}");
+        context.Output.WriteLine($"  HiRes:{video.IsHiRes} 80Col:{video.Is80Column} DoubleHiRes:{video.IsDoubleHiRes}");
+        context.Output.WriteLine($"  VBL: {video.IsVerticalBlanking}");
+        return CommandResult.Ok();
+    }
+
+    private CommandResult DumpScreen(ICommandContext context, string[] args)
+    {
+        if (context is not IDebugContext dc || dc.Machine is null)
+            return CommandResult.Error("No machine.");
+
+        var video = dc.Machine.GetComponent<IVideoDevice>();
+        if (video == null) return CommandResult.Error("No video device.");
+
+        bool useJson = (context as DebugContext)?.JsonOutput == true;
+        VideoMode mode = video.CurrentMode;
+
+        // Get physical providers for correct main/aux (bypass banking for display view)
+        var mainProv = dc.Machine.GetComponent<IMainMemoryProvider>();
+        var auxDev = dc.Machine.GetComponent<IExtended80ColumnDevice>();
+
+        if (mode == VideoMode.Text40 || mode == VideoMode.Text80 ||
+            mode == VideoMode.LoRes || mode == VideoMode.LoResMixed ||
+            mode == VideoMode.DoubleLoRes || mode == VideoMode.DoubleLoResMixed)
+        {
+            // Text / Lores use text page memory
+            bool is80 = mode == VideoMode.Text80 || mode == VideoMode.DoubleLoRes || mode == VideoMode.DoubleLoResMixed;
+            bool isPage2 = video.IsPage2 && !is80; // In 80-col, page2 is aux at page1 addr
+
+            int cols = is80 ? 80 : 40;
+            int rows = 24;
+            var grid = new List<string>(rows);
+
+            for (int row = 0; row < rows; row++)
+            {
+                int group = row / 8;
+                int offset = row % 8;
+                ushort rowBase = (ushort)(0x0400 + (offset * 128) + (group * 40));
+                if (isPage2) rowBase += 0x0400; // page 2 for 40-col
+
+                var rowChars = new char[cols];
+                for (int c = 0; c < cols; c++)
+                {
+                    ushort addr = (ushort)(rowBase + (c / (is80 ? 2 : 1)));
+                    byte code;
+                    if (is80)
+                    {
+                        bool even = (c % 2) == 0;
+                        code = even && auxDev != null ? auxDev.ReadAuxRam(addr) : (mainProv?.ReadMainRam(addr) ?? 0);
+                    }
+                    else
+                    {
+                        code = mainProv?.ReadMainRam(addr) ?? 0;
+                    }
+                    // Simple decode to visible char (rough; full inverse/flash/mousetext in renderer)
+                    char ch = (char)((code & 0x7F) | 0x20); // map to printable-ish
+                    if (ch < 0x20 || ch > 0x7E) ch = '.';
+                    rowChars[c] = ch;
+                }
+                grid.Add(new string(rowChars));
+            }
+
+            if (useJson)
+            {
+                var data = new { mode = mode.ToString(), rows = grid.Count, cols, grid };
+                context.Output.WriteLine(System.Text.Json.JsonSerializer.Serialize(data, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+                return CommandResult.Ok();
+            }
+            else
+            {
+                context.Output.WriteLine($"Screen ({mode}, {cols}x{rows}):");
+                foreach (var line in grid) context.Output.WriteLine("  " + line);
+                return CommandResult.Ok();
+            }
+        }
+
+        // Graphics modes or fallback: report memory pages + suggest capture/renderer
+        if (useJson)
+        {
+            var info = new { mode = mode.ToString(), note = "Graphics mode - use 'video capture' for rendered frame buffer or 'video memory' + 'mem' for raw video RAM." };
+            context.Output.WriteLine(System.Text.Json.JsonSerializer.Serialize(info, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+            return CommandResult.Ok();
+        }
+
+        context.Output.WriteLine($"Current video mode: {mode} (graphics - see capture/memory commands for data exposure)");
+        return CommandResult.Ok();
+    }
+
+    private CommandResult CaptureFrame(ICommandContext context)
+    {
+        if (context is not IDebugContext dc || dc.Machine is null || dc.Bus is null)
+            return CommandResult.Error("Machine + bus required for frame capture.");
+
+        var video = dc.Machine.GetComponent<IVideoDevice>();
+        if (video == null) return CommandResult.Error("No video device.");
+
+        VideoMode mode = video.CurrentMode;
+
+        try
+        {
+            var renderer = new Pocket2VideoRenderer();
+            int w = renderer.CanonicalWidth;
+            int h = renderer.CanonicalHeight;
+            uint[] pixels = new uint[w * h];
+
+            // Use physical main and aux RAM for accurate video fetch (bypasses MMU soft switches like 80STORE/PAGE2/RAMRD).
+            // This matches real Apple IIe hardware behavior and the snapshot technique in VideoWindow.
+            // Critical for 80-column (even cols from aux, odd from main at PAGE1 addresses) and double modes.
+            var mainProvider = dc.Machine.GetComponent<IMainMemoryProvider>();
+            var auxDevice = dc.Machine.GetComponent<IExtended80ColumnDevice>();
+
+            Func<ushort, byte> readMain = addr =>
+            {
+                if (mainProvider != null)
+                    return mainProvider.ReadMainRam(addr);
+                // Fallback to bus (may be affected by current banking)
+                var access = new BusAccess(
+                    Address: addr,
+                    Value: 0,
+                    WidthBits: 8,
+                    Mode: BusAccessMode.Decomposed,
+                    EmulationFlag: true,
+                    Intent: AccessIntent.DebugRead,
+                    SourceId: 0,
+                    Cycle: 0,
+                    Flags: AccessFlags.NoSideEffects);
+                var res = dc.Bus.TryRead8(access);
+                return res.Fault.IsFault ? (byte)0 : res.Value;
+            };
+
+            Func<ushort, byte>? readAux = auxDevice != null 
+                ? (Func<ushort, byte>)(addr => auxDevice.ReadAuxRam(addr))
+                : null;
+
+            var charProvider = dc.Machine.GetComponent<ICharacterRomProvider>();
+            ReadOnlySpan<byte> charRom = charProvider?.IsCharacterRomLoaded == true 
+                ? charProvider.GetCharacterRomData().Span 
+                : default;
+
+            renderer.RenderFrame(
+                pixels.AsSpan(),
+                mode,
+                readMain,
+                charRom,
+                useAltCharSet: false,
+                isPage2: video.IsPage2,
+                flashState: false,
+                noFlash1Enabled: false,
+                noFlash2Enabled: false,
+                colorMode: DisplayColorMode.Green,
+                readAuxMemory: readAux);
+
+            bool useJson = (context as DebugContext)?.JsonOutput == true;
+
+            if (useJson)
+            {
+                // Compact: dimensions + sample of pixels (BGRA uints)
+                var sample = pixels.Take(64).Select(p => $"0x{p:X8}").ToArray();
+                var cap = new
+                {
+                    mode = mode.ToString(),
+                    width = w,
+                    height = h,
+                    samplePixels = sample,
+                    note = "Full 560x384 BGRA frame rendered headlessly via renderer. Use for AI video analysis."
+                };
+                string json = System.Text.Json.JsonSerializer.Serialize(cap, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+                context.Output.WriteLine(json);
+            }
+            else
+            {
+                context.Output.WriteLine($"Captured {w}x{h} frame for mode {mode} (headless render OK).");
+            }
+
+            return CommandResult.Ok();
+        }
+        catch (Exception ex)
+        {
+            return CommandResult.Error($"Capture error: {ex.Message}");
+        }
+    }
+
+    private CommandResult DumpVideoMemory(ICommandContext context, string[] args)
+    {
+        if (context is not IDebugContext dc || dc.Bus is null)
+            return CommandResult.Error("No bus attached.");
+
+        bool useJson = (context as DebugContext)?.JsonOutput == true;
+
+        var pages = new[]
+        {
+            new { name = "Text/LoRes P1", start = "0x0400", end = "0x07FF", note = "40/80 col text or lores" },
+            new { name = "Text/LoRes P2", start = "0x0800", end = "0x0BFF", note = "page 2" },
+            new { name = "HiRes P1", start = "0x2000", end = "0x3FFF", note = "280x192 or double" },
+            new { name = "HiRes P2", start = "0x4000", end = "0x5FFF", note = "page 2" }
+        };
+
+        if (useJson)
+        {
+            context.Output.WriteLine(System.Text.Json.JsonSerializer.Serialize(new { videoMemory = pages }, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+            return CommandResult.Ok();
+        }
+
+        context.Output.WriteLine("Video memory pages (use 'mem $addr $len' or 'read' on these for raw exposure):");
+        foreach (var p in pages)
+            context.Output.WriteLine($"  {p.name}: {p.start}-{p.end} ({p.note})");
+        return CommandResult.Ok();
     }
 }

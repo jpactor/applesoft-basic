@@ -39,6 +39,7 @@ emudbg --file my-commands.emudbg
 - `-e, --exec <cmds>` — run semicolon- or newline-separated commands then exit (non-interactive).
 - `-f, --file <path>` — execute commands from a text file.
 - `--no-banner` — suppress banner and prompts (ideal for agents/scripts).
+- `--headless` — skip GUI entirely (no Avalonia, for headless/CI/agent hosts).
 - `-h, --help` — usage.
 
 On launch (when no CLI commands are given), `emudbg` creates a machine using the default (or --profile) profile and enters the REPL.
@@ -156,7 +157,7 @@ See the agent planning documents for the intended future direction (structured t
 - ~~Optional structured output (JSON) for key commands (`regs --json`, `dasm --json`).~~ (Now available for switches, regions, pages, mem/read/peek/write/poke, disk*, devicemap, trace, profile, fault, etc. Use --json or per-command.)
 - Better output capture abstraction (currently uses `ICommandContext.Output`).
 - Separate lightweight agent host project (as planned in `emudbg-agent-plan.md`).
-- Headless-friendly defaults and fake audio/video providers.
+- ~~Headless-friendly defaults and fake audio/video providers.~~ (Added `--headless` flag that skips DebugUiModule / Avalonia entirely; auto non-int detection already helps)
 - Scriptable "run until condition" helpers that are safe for agents.
 
 When you change commands, **always verify** by running representative piped sequences (boot + inspect + step + trace + exit) and confirm no regressions in output.

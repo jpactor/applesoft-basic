@@ -18,7 +18,9 @@ public sealed record EmudbgOptions(
     string? ScriptFile = null,
     bool NoBanner = false,
     bool ShowHelp = false,
-    bool JsonOutput = false)
+    bool JsonOutput = false,
+    bool Headless = false,
+    bool AgentMode = false)
 {
     /// <summary>
     /// Parses command-line arguments into <see cref="EmudbgOptions"/>.
@@ -35,6 +37,8 @@ public sealed record EmudbgOptions(
         bool noBanner = false;
         bool showHelp = false;
         bool jsonOutput = false;
+        bool headless = false;
+        bool agentMode = false;
 
         for (int i = 0; i < args.Length; i++)
         {
@@ -77,6 +81,20 @@ public sealed record EmudbgOptions(
                 continue;
             }
 
+            if (arg.StartsWith("--headless"))
+            {
+                headless = true;
+                continue;
+            }
+
+            if (arg.StartsWith("--agent"))
+            {
+                agentMode = true;
+                headless = true;
+                jsonOutput = true;
+                continue;
+            }
+
             switch (arg)
             {
                 case "--profile":
@@ -115,6 +133,17 @@ public sealed record EmudbgOptions(
                     jsonOutput = true;
                     break;
 
+                case "--headless":
+                    headless = true;
+                    break;
+
+                case "--agent":
+                case "--agent-mode":
+                    agentMode = true;
+                    headless = true;
+                    jsonOutput = true;
+                    break;
+
                 case "--help":
                 case "-h":
                 case "/?":
@@ -128,7 +157,7 @@ public sealed record EmudbgOptions(
             }
         }
 
-        return new EmudbgOptions(profile, exec, file, noBanner, showHelp, jsonOutput);
+        return new EmudbgOptions(profile, exec, file, noBanner, showHelp, jsonOutput, headless, agentMode);
     }
 
     /// <summary>

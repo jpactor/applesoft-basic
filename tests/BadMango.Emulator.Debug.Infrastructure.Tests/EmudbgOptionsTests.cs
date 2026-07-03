@@ -180,4 +180,24 @@ public class EmudbgOptionsTests
             Assert.That(options.NoBanner, Is.True);
         });
     }
+
+    [Test]
+    public void Parse_Headless_SetsFlag()
+    {
+        var options = EmudbgOptions.Parse(["--headless"]);
+        Assert.That(options.Headless, Is.True);
+    }
+
+    [Test]
+    public void Parse_HeadlessWithJsonAndNoBanner()
+    {
+        var options = EmudbgOptions.Parse(["--headless", "--json", "--no-banner", "--profile", "test"]);
+        Assert.Multiple(() =>
+        {
+            Assert.That(options.Headless, Is.True);
+            Assert.That(options.JsonOutput, Is.True);
+            Assert.That(options.NoBanner, Is.True);
+            Assert.That(options.Profile, Is.EqualTo("test"));
+        });
+    }
 }

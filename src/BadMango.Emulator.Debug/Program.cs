@@ -11,6 +11,7 @@ using Autofac.Extensions.DependencyInjection;
 
 using BadMango.Emulator.Debug.Infrastructure;
 using BadMango.Emulator.Debug.UI;
+using BadMango.Emulator.Debug.UI.Services;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -49,12 +50,16 @@ static void PrintUsage()
                                  Separate multiple commands with ; or \n
           -f, --file <path>      Read and execute commands from a text file (one command per line)
           --no-banner            Do not display the startup banner
+          --headless             Use Avalonia headless platform (for AI video diagnostics, servers, CI without display)
+          --agent                Agent mode: auto --headless --json + clean non-interactive
           -h, --help             Show this help and exit
 
         Examples:
           emudbg --profile pocket2e-lite
           emudbg --exec "boot;regs;step 20;regs;exit"
           emudbg -e "profile list\nboot\nregs" --no-banner
+          emudbg --headless --json --exec "switches;regions;exit"
+          emudbg --agent --exec "video screen;exit"
           emudbg --file my-debug-script.txt
 
         When no options are given, starts an interactive REPL.
@@ -79,6 +84,20 @@ try
         return 1;
     }
 
+    // Auto-enable headless + JSON for non-interactive input or agent mode (for low-noise AI use)
+    bool forceNonInteractive = Console.IsInputRedirected ||
+                               !string.IsNullOrEmpty(options.ExecCommands) ||
+                               !string.IsNullOrEmpty(options.ScriptFile) ||
+                               options.AgentMode;
+
+    if (forceNonInteractive)
+    {
+        options = options with { Headless = true, JsonOutput = true, AgentMode = true };
+    }
+
+    // Configure Avalonia headless mode if requested (for AI video diagnostics, servers, etc.)
+    AvaloniaBootstrapper.UseHeadless = options.Headless;
+
     Log.Information("Starting Emulator Debug Console");
 
     // Build the host
@@ -90,7 +109,7 @@ try
             builder.RegisterInstance(options).AsSelf().SingleInstance();
 
             builder.RegisterModule<DebugConsoleModule>();
-            builder.RegisterModule<DebugUiModule>();
+            builder.RegisterModule<DebugUiModule>();  // Always register; headless mode is configured via AvaloniaBootstrapper.UseHeadless
             builder.RegisterInstance(Log.Logger).As<ILogger>().SingleInstance();
         })
         .UseSerilog(Log.Logger)
@@ -102,7 +121,7 @@ try
     var logger = scope.ServiceProvider.GetRequiredService<ILogger>();
 
     // Configure non-interactive / scripting behavior
-    bool isScriptMode = !string.IsNullOrEmpty(options.ExecCommands) || !string.IsNullOrEmpty(options.ScriptFile);
+    bool isScriptMode = !string.IsNullOrEmpty(options.ExecCommands) || !string.IsNullOrEmpty(options.ScriptFile) || options.AgentMode;
     if (options.NoBanner || isScriptMode || options.JsonOutput)
     {
         repl.ShowBanner = false;

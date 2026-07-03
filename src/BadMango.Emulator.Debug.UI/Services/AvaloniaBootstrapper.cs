@@ -7,6 +7,7 @@ namespace BadMango.Emulator.Debug.UI.Services;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Headless;
 using Avalonia.Threading;
 
 /// <summary>
@@ -42,6 +43,12 @@ public sealed class AvaloniaBootstrapper : IDisposable
     private static readonly object SyncLock = new();
     private static AvaloniaBootstrapper? instance;
     private static bool isInitialized;
+
+    /// <summary>
+    /// Gets or sets whether to use Avalonia's headless platform (for no-display / AI video diagnostics).
+    /// Must be set before first EnsureInitialized() call.
+    /// </summary>
+    public static bool UseHeadless { get; set; } = false;
 
     private readonly Thread avaloniaThread;
     private readonly ManualResetEventSlim startedEvent = new(false);
@@ -138,10 +145,22 @@ public sealed class AvaloniaBootstrapper : IDisposable
     }
 
     private static AppBuilder BuildAvaloniaApp()
-        => AppBuilder.Configure<DebugApp>()
-            .UsePlatformDetect()
+    {
+        var builder = AppBuilder.Configure<DebugApp>()
             .WithInterFont()
             .LogToTrace();
+
+        if (UseHeadless)
+        {
+            builder.UseHeadless(new AvaloniaHeadlessPlatformOptions());
+        }
+        else
+        {
+            builder.UsePlatformDetect();
+        }
+
+        return builder;
+    }
 
     private void Start()
     {

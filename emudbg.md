@@ -41,6 +41,7 @@ emudbg [options]
 | `-f, --file <path>` | Read and run commands from a text file (one per line) |
 | `--json`, `-j`      | Enable structured JSON output for supported commands (e.g. `regs`, `dasm`) |
 | `--no-banner`       | Suppress the startup banner and input prompts |
+| `--headless`        | Use Avalonia's built-in headless platform (enables offscreen video rendering and diagnostics for AI agents, servers, CI) |
 | `-h, --help`        | Show usage and exit |
 
 ### Examples
@@ -58,6 +59,9 @@ emudbg --exec "boot;regs;step 20;regs;exit" --no-banner
 # Get structured JSON output (for agents/tools)
 emudbg --json --exec "regs;exit" --no-banner
 
+# Headless + JSON for agent/CI use (no display needed)
+emudbg --headless --json --exec "switches;regions;pages;exit"
+
 # Use a script file
 emudbg --file debug-sequence.emudbg --no-banner
 ```
@@ -68,6 +72,10 @@ This is lower-overhead and ideal for agents/scripts. Command outputs (text or JS
 
 The REPL automatically detects non-interactive usage (e.g. when input is redirected, a StringReader is used for --exec/--file, or piped stdin) and suppresses the banner, input prompts ("> "), and exit message ("Goodbye!") for clean output capture. This makes captured stdout from scripts/agents free of REPL noise.
 
+Use `--headless` to initialize Avalonia using its headless platform. This allows video windows and rendering to operate offscreen (e.g. for AI to inspect emulator video output via diagnostics), without requiring a physical display or windowing system. WindowManager-dependent commands continue to work.
+
+**80-column and double modes note**: Video memory exposure and capture use *physical* main and auxiliary RAM (via IMainMemoryProvider / IExtended80ColumnDevice.ReadAuxRam) to correctly handle the hardware's direct VRAM fetch. In 80-col text/DHGR/etc., even columns come from aux, odd from main at the shared PAGE1 addresses ($0400+ for text, $2000+ for hires). This bypasses CPU-visible banking (80STORE, PAGE2, RAMRD/RAMWRT) just like real Apple IIe/c video hardware and the 80-col firmware's column bank switching. See specs/video/ and reference/ docs for details.
+
 Explicit `--no-banner` can be used even in interactive sessions. Advanced control via the IsInteractive property is available in code.
 
 Supported diagnostic, memory, and device commands now produce agent-friendly structured JSON when `--json` / `-j` is used (globally or per-command), or when the session was started with `--json`:
@@ -75,6 +83,7 @@ Supported diagnostic, memory, and device commands now produce agent-friendly str
 - Diagnostic: switches, regions, pages, devicemap, fault, buslog, profile
 - Memory: mem, read, peek, write, poke, load, save
 - Disk: disk list, disk info, disk-read-sector, etc.
+- Video (headless friendly, 80-col/DHGR aware): state, screen, capture, memory (uses physical main/aux RAM via IMainMemoryProvider/IExtended80ColumnDevice to match real Apple IIe hardware interleaving and bypass 80STORE/PAGE2/RAMRD for display view)
 - Others: trace, bp, watch, dasm, regs
 
 This enables low-noise use from agents (e.g. `mem --json $C000 16`, `switches --json`).
