@@ -62,7 +62,7 @@ public sealed class BootCommand : CommandHandlerBase, ICommandHelp
     public override IReadOnlyList<string> Aliases { get; } = ["startup"];
 
     /// <inheritdoc/>
-    public override string Usage => "boot";
+    public override string Usage => "boot [--immediate|-i]";
 
     /// <inheritdoc/>
     public string Synopsis => "boot";
@@ -73,8 +73,9 @@ public sealed class BootCommand : CommandHandlerBase, ICommandHelp
         "This is equivalent to pressing the power/reset button on a real computer. " +
         "The CPU loads its reset vector and begins executing from the reset handler. " +
         "Execution runs in the background, keeping the debugger responsive. " +
-        "A brief delay is applied before booting to allow time to hold modifier keys " +
+        "A brief delay (1s) is applied before booting to allow time to hold modifier keys " +
         "(Open Apple, Closed Apple) that affect the boot process. " +
+        "Use --immediate to skip the delay for scripted/agent boots. " +
         "If the profile has autoVideoWindowOpen enabled, the video window opens automatically.";
 
     /// <inheritdoc/>
@@ -83,7 +84,8 @@ public sealed class BootCommand : CommandHandlerBase, ICommandHelp
     /// <inheritdoc/>
     public IReadOnlyList<string> Examples { get; } =
     [
-        "boot                    Reset and start the machine",
+        "boot                    Reset and start the machine (1s delay for modifiers)",
+        "boot --immediate        Boot immediately (for agents/scripts, no modifier delay)",
         "startup                 Alias for boot",
     ];
 
@@ -111,6 +113,9 @@ public sealed class BootCommand : CommandHandlerBase, ICommandHelp
             return CommandResult.Error("No machine attached to debug context.");
         }
 
+        bool immediate = args.Any(a => a.Equals("--immediate", StringComparison.OrdinalIgnoreCase) || a.Equals("-i", StringComparison.OrdinalIgnoreCase));
+        int delayMs = immediate ? 0 : DefaultBootDelayMs;
+
         // Check if auto video window open is enabled
         bool autoOpenVideo = profile?.Boot?.AutoVideoWindowOpen ?? false;
 
@@ -121,12 +126,20 @@ public sealed class BootCommand : CommandHandlerBase, ICommandHelp
             _ = windowManager.ShowWindowAsync("Video", debugContext.Machine);
         }
 
-        // Start boot with delay to allow modifier keys to be pressed
-        _ = BootWithDelayAsync(debugContext, DefaultBootDelayMs);
+        // Start boot with optional delay (use --immediate for agent/scripted boots without modifier wait)
+        _ = BootWithDelayAsync(debugContext, delayMs);
+
+        if (delayMs == 0)
+        {
+            string msg = autoOpenVideo && windowManager is not null
+                ? "Booting immediately (no delay). Video window opened if configured."
+                : "Booting immediately (no delay for modifiers).";
+            return CommandResult.Ok(msg);
+        }
 
         string message = autoOpenVideo && windowManager is not null
-            ? $"Booting in {DefaultBootDelayMs / 1000.0:F1}s... Hold modifier keys now. Video window opened."
-            : $"Booting in {DefaultBootDelayMs / 1000.0:F1}s... Hold modifier keys (Open Apple, Closed Apple) now.";
+            ? $"Booting in {delayMs / 1000.0:F1}s... Hold modifier keys now. Video window opened."
+            : $"Booting in {delayMs / 1000.0:F1}s... Hold modifier keys (Open Apple, Closed Apple) now.";
 
         return CommandResult.Ok(message);
     }

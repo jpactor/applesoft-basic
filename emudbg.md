@@ -82,7 +82,7 @@ Supported diagnostic, memory, and device commands now produce agent-friendly str
 
 - Diagnostic: switches, regions, pages, devicemap, fault, buslog, profile
 - Memory: mem, read, peek, write, poke, load, save
-- Disk: disk list, disk info, disk-read-sector, etc.
+- Disk: disk list, disk info, disk-read-sector, disk-ls, disk-readfile, disk-fsinfo (file system support for DOS 3.3/ProDOS/Pascal), etc.
 - Video (headless friendly, 80-col/DHGR aware): state, screen, capture, memory (uses physical main/aux RAM via IMainMemoryProvider/IExtended80ColumnDevice to match real Apple IIe hardware interleaving and bypass 80STORE/PAGE2/RAMRD for display view)
 - Others: trace (status/dump), bp (list), watch (list), dasm, regs (and many more)
 
@@ -117,7 +117,8 @@ See `help` inside the console for the full live list. Highlights:
 - `bp ...` / `watch ...` (breakpoints and watchpoints)
 - `trace ...` (instruction tracing)
 - `profile list|load <name>`
-- `disk list|info|insert|create|...`
+- `disk list|info|insert|create|ls|readfile|fsinfo|...` (higher-level FS tools)
+- `perf` for introspection stats.
 - `video open|close|scale ...`
 - `switches`, `regions`, `pages`, `fault`
 

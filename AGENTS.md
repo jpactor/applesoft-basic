@@ -157,9 +157,33 @@ See the agent planning documents for the intended future direction (structured t
 - ~~Optional structured output (JSON) for key commands (`regs --json`, `dasm --json`).~~ (Now available for switches, regions, pages, mem/read/peek/write/poke, disk*, devicemap, trace, profile, fault, etc. Use --json or per-command.)
 - Better output capture abstraction (currently uses `ICommandContext.Output`).
 - Separate lightweight agent host project (MCP stdio) — implementation started in BadMango.Emulator.Debug.Agent (stdio JSON-RPC server with generic `emudbg_exec` and structured examples; reuses dispatcher/context; settable writers for output capture).
+
+### Functional Goal Workflow (MCP Agent Example)
+The target: MCP agent boots Enhanced IIe (`pocket2e-a2-enh`) + DOS 3.3 on 6:1 (`library://disks/dos33-master.dsk`), confirms stages via trace (slot ROM boot loader @C600 → loads sector to 0800 and JMPs 0801 for boot sector loader → OS load), types/runs/validates a BASIC from `samples/` (e.g. `fibonacci.bas`) via keyboard + `video screen --json`.
+
+Example MCP sequence (via `emudbg_exec` or dedicated tools):
+1. `emudbg_disk_insert` {slot_drive:"6:1", path:"library://disks/dos33-master.dsk"}
+2. `emudbg_disk_fsinfo` {slot_drive:"6:1"}
+3. `emudbg_disk_ls` {slot_drive:"6:1"}   (or `emudbg_disk_cat` / `emudbg_disk_getfile` for file contents)
+4. `emudbg_trace_on`
+5. `emudbg_boot` (uses --immediate internally)
+6. (client waits ~2-8s for bg run / scheduler to advance boot)
+7. `emudbg_pause`
+8. `emudbg_trace_dump` {count:20}  (C6xx for slot ROM loader at C600; 0801 for handoff after C600 code loads the sector to 0800 and executes at 0801)
+9. `emudbg_get_screen` or `emudbg_get_video_state` (force --json)
+10. `emudbg_keyboard_type` {text: full bas with \r between lines + "RUN\r"}
+11. (client waits)
+12. `emudbg_pause`; `emudbg_get_screen`  (validate grid contains program output / "DONE!")
+
+For ProDOS verification (new functional requirement): use `emudbg_disk_fsinfo` + `emudbg_disk_ls` on prodos203-master.dsk, boot, run with trace/perf, confirm no crash and kernel loaded.
+
+Use `emudbg_exec "disk insert 6:1 ...; boot --immediate; ...; video screen --json"` for complex batches.
+Capture via the context writers ensures clean JSON/text for agent parsing.
 - ~~Headless-friendly defaults and fake audio/video providers.~~ (Added `--headless` flag that skips DebugUiModule / Avalonia entirely; auto non-int detection already helps)
 - Full structured JSON for trace / bp / watch (6.1 done — `trace status/dump`, `bp list`, `watch list` now produce clean objects/arrays).
-- `run until $addr` (and `--until=$addr`) with structured result including `untilTarget` + `untilHit` (6.2 started, huge efficiency win for agents).
+- `run until $addr` (and `--until=$addr`) with structured result including `untilTarget` + `untilHit` (6.2 done).
+- `perf` for introspection (6.9), `fsinfo`/`ls`/`cat` for disk files (6.8), structured JSON on monitors (6.5), enhanced audio state (6.7), full MCP tools (6.10).
+- Cross-cutting: tests added for new commands, StyleCop clean (0 warnings on main pkgs), docs updated.
 
 When you change commands, **always verify** by running representative piped sequences (boot + inspect + step + trace + exit) and confirm no regressions in output.
 

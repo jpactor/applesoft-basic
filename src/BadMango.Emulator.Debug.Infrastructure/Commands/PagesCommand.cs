@@ -115,7 +115,7 @@ public sealed class PagesCommand : CommandHandlerBase, ICommandHelp
         // Clamp count to remaining pages
         count = Math.Min(count, bus.PageCount - startPage);
 
-        bool useJson = (context as DebugContext)?.JsonOutput == true ||
+        bool useJson = context.JsonOutput ||
                        args.Any(a => a.Equals("--json", StringComparison.OrdinalIgnoreCase) ||
                                      a.Equals("-j", StringComparison.OrdinalIgnoreCase));
 

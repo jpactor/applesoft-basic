@@ -127,6 +127,24 @@ public class RunCommand : ExecutionCommandBase
             return CommandResult.Error("CPU is halted. Use 'reset' to restart.");
         }
 
+        // 6.4: run status / stop / start (background for agent polling)
+        string first = args.Length > 0 ? args[0].ToLowerInvariant() : "";
+        if (first == "status" || first == "poll")
+        {
+            return ShowRunStatus(debugContext);
+        }
+        if (first == "stop" || first == "cancel")
+        {
+            debugContext.RequestRunStop();
+            return CommandResult.Ok("Run stop requested.");
+        }
+        bool startBackground = first == "start" || first == "bg" || first == "background";
+        if (startBackground && args.Length > 0)
+        {
+            // shift args
+            args = args.Skip(1).ToArray();
+        }
+
         // Support dedicated "run-until" command as shorthand for "run until ..."
         // e.g. "run-until $c000" or "run-until bp" or "run-until mem $c030 01"
         if (this.Name.Equals("run-until", StringComparison.OrdinalIgnoreCase)
@@ -265,38 +283,63 @@ public class RunCommand : ExecutionCommandBase
 
         uint? untilTarget = options.UntilPc;
 
-        // Execute the instruction loop
+        var terminate = (IDebugContext dc, byte _) =>
+        {
+            if (untilTarget.HasValue && dc.Cpu is not null)
+            {
+                return dc.Cpu.GetPC() == untilTarget.Value;
+            }
+
+            if (untilMemAddr.HasValue && untilMemVal.HasValue && dc.Bus is not null)
+            {
+                var access = new BusAccess(
+                    Address: untilMemAddr.Value,
+                    Value: 0,
+                    WidthBits: 8,
+                    Mode: BusAccessMode.Decomposed,
+                    EmulationFlag: true,
+                    Intent: AccessIntent.DebugRead,
+                    SourceId: 0,
+                    Cycle: 0,
+                    Flags: AccessFlags.NoSideEffects);
+                var res = dc.Bus.TryRead8(access);
+                if (!res.Fault.IsFault && res.Value == untilMemVal.Value)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        };
+
+        if (startBackground)
+        {
+            // 6.4: launch on background task so MCP/agent can poll with "run status"
+            if (debugContext is DebugContext dcImpl)
+            {
+                dcImpl.StartBackgroundRun(ct =>
+                {
+                    // Note: the inner loop doesn't take ct yet, but respects stop request + we cancel
+                    var res = ExecuteInstructionLoop(debugContext, options, terminate);
+                    return Task.FromResult(res);
+                }, "background run");
+            }
+            else
+            {
+                // fallback
+                _ = Task.Run(() => ExecuteInstructionLoop(debugContext, options, terminate));
+            }
+            debugContext.Output.WriteLine("Background run started. Use 'run status' (or emudbg_run_status) to poll.");
+            return CommandResult.Ok();
+        }
+
+        // Execute the instruction loop (synchronous / blocking for REPL)
         var result = ExecuteInstructionLoop(
             debugContext,
             options,
-            (dc, _) =>
-            {
-                if (untilTarget.HasValue && dc.Cpu is not null)
-                {
-                    return dc.Cpu.GetPC() == untilTarget.Value;
-                }
+            terminate);
 
-                if (untilMemAddr.HasValue && untilMemVal.HasValue && dc.Bus is not null)
-                {
-                    var access = new BusAccess(
-                        Address: untilMemAddr.Value,
-                        Value: 0,
-                        WidthBits: 8,
-                        Mode: BusAccessMode.Decomposed,
-                        EmulationFlag: true,
-                        Intent: AccessIntent.DebugRead,
-                        SourceId: 0,
-                        Cycle: 0,
-                        Flags: AccessFlags.NoSideEffects);
-                    var res = dc.Bus.TryRead8(access);
-                    if (!res.Fault.IsFault && res.Value == untilMemVal.Value)
-                    {
-                        return true;
-                    }
-                }
-
-                return false;
-            });
+        (debugContext as DebugContext)?.SetLastRunResult(result);
 
         bool bpHit = debugContext.Breakpoints?.LastHitAddress != null;
         bool watchHit = debugContext.Watchpoints?.LastHitAddress != null;
@@ -338,7 +381,7 @@ public class RunCommand : ExecutionCommandBase
             }
         }
 
-        bool useJson = (context as DebugContext)?.JsonOutput == true;
+        bool useJson = context.JsonOutput;
 
         if (useJson)
         {
@@ -486,5 +529,54 @@ public class RunCommand : ExecutionCommandBase
         }
 
         return options;
+    }
+
+    private static CommandResult ShowRunStatus(IDebugContext debugContext)
+    {
+        bool useJson = debugContext.JsonOutput;
+
+        var isActive = debugContext.IsRunActive;
+        var desc = debugContext.ActiveRunDescription;
+        var last = debugContext.LastRunResult;
+        var cpu = debugContext.Cpu;
+
+        if (useJson)
+        {
+            var status = new
+            {
+                isRunActive = isActive,
+                description = desc,
+                currentPc = cpu != null ? $"${cpu.GetPC():X4}" : null,
+                lastResult = last != null ? new
+                {
+                    instructionCount = last.InstructionCount,
+                    cycleCount = last.CycleCount,
+                    elapsedMs = last.ElapsedMs,
+                    stopReason = last.StopReason,
+                    normalCompletion = last.NormalCompletion
+                } : null
+            };
+            debugContext.Output.WriteLine(System.Text.Json.JsonSerializer.Serialize(status, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+            return CommandResult.Ok();
+        }
+
+        debugContext.Output.WriteLine("Run status:");
+        debugContext.Output.WriteLine($"  Active      : {isActive}");
+        if (desc != null) debugContext.Output.WriteLine($"  Description : {desc}");
+        if (cpu != null) debugContext.Output.WriteLine($"  Current PC  : ${cpu.GetPC():X4}");
+        if (last != null)
+        {
+            debugContext.Output.WriteLine("  Last result :");
+            debugContext.Output.WriteLine($"    Instructions: {last.InstructionCount}");
+            debugContext.Output.WriteLine($"    Cycles      : {last.CycleCount}");
+            debugContext.Output.WriteLine($"    Elapsed     : {last.ElapsedMs} ms");
+            debugContext.Output.WriteLine($"    Stop reason : {last.StopReason}");
+            debugContext.Output.WriteLine($"    Normal      : {last.NormalCompletion}");
+        }
+        else
+        {
+            debugContext.Output.WriteLine("  Last result : (none)");
+        }
+        return CommandResult.Ok();
     }
 }

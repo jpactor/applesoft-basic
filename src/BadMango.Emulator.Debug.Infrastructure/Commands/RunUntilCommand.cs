@@ -32,7 +32,8 @@ public sealed class RunUntilCommand : RunCommand
     public override string DetailedDescription =>
         "Convenience form of 'run until ...'. Supports the same conditions and options as 'run' with until targets. " +
         "Intended for agents and scripts for explicit 'until' semantics. " +
-        "Examples: run-until $c000 ; run-until bp ; run-until mem $c030 01 ; run-until --until-cycles=10000";
+        "For Apple II DOS 3.3 boot confirmation: use run-until $0801 after C600 slot ROM activity (the C600 loader reads the boot sector into $0800 then does JMP $0801). " +
+        "Examples: run-until $c000 ; run-until bp ; run-until mem $c030 01 ; run-until --until-cycles=10000 ; run-until $0801 --trace-buffer";
 
     /// <inheritdoc/>
     public override IReadOnlyList<CommandOption> Options { get; } =
@@ -53,6 +54,7 @@ public sealed class RunUntilCommand : RunCommand
         "run-until watch            Run until watchpoint",
         "run-until mem $c030 01     Run until mem[$c030] == 0x01",
         "run-until --until-cycles=100000",
+        "run-until $0801 --trace-buffer   Apple II disk boot: C600 ROM loads sector to 0800 then JMP $0801",
         "run-until $c000 --trace-buffer --trace-last=10",
     ];
 

@@ -140,6 +140,69 @@ public sealed class DebugContext : IDebugContext, IDisposable
     /// <inheritdoc/>
     public MountedDiskRegistry MountedDisks { get; } = new();
 
+    // 6.4: Background run control (start/poll/stop for long-running ops from agents/MCP)
+    private Task<ExecutionCommandBase.ExecutionResult>? _backgroundRunTask;
+    private string? _backgroundRunDescription;
+    private CancellationTokenSource? _backgroundRunCts;
+
+    /// <inheritdoc/>
+    public bool IsRunActive => _backgroundRunTask != null && !_backgroundRunTask.IsCompleted;
+
+    /// <inheritdoc/>
+    public string? ActiveRunDescription => _backgroundRunDescription;
+
+    /// <inheritdoc/>
+    public ExecutionCommandBase.ExecutionResult? LastRunResult { get; private set; }
+
+    internal void SetLastRunResult(ExecutionCommandBase.ExecutionResult result) => LastRunResult = result;
+
+    /// <inheritdoc/>
+    public void RequestRunStop()
+    {
+        Cpu?.RequestStop();
+        _backgroundRunCts?.Cancel();
+    }
+
+    /// <summary>
+    /// Starts a background execution run (for 6.4 agent polling support).
+    /// The runner should perform the long-running work (e.g. ExecuteInstructionLoop wrapper).
+    /// </summary>
+    public void StartBackgroundRun(Func<CancellationToken, Task<ExecutionCommandBase.ExecutionResult>> runner, string description)
+    {
+        StopBackgroundRun();
+
+        _backgroundRunDescription = description;
+        _backgroundRunCts = new CancellationTokenSource();
+        var token = _backgroundRunCts.Token;
+
+        _backgroundRunTask = Task.Run(async () =>
+        {
+            try
+            {
+                var result = await runner(token).ConfigureAwait(false);
+                LastRunResult = result;
+                return result;
+            }
+            finally
+            {
+                _backgroundRunDescription = null;
+                // keep task ref briefly for status; cleared on next start or explicit
+            }
+        }, token);
+    }
+
+    /// <summary>
+    /// Stops any active background run and clears state.
+    /// </summary>
+    public void StopBackgroundRun()
+    {
+        RequestRunStop();
+        _backgroundRunTask = null;
+        _backgroundRunCts?.Dispose();
+        _backgroundRunCts = null;
+        _backgroundRunDescription = null;
+    }
+
     /// <summary>
     /// Creates a debug context using the standard console streams.
     /// </summary>

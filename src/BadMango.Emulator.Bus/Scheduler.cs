@@ -38,8 +38,9 @@ public sealed class Scheduler : IScheduler, ISchedulerObserver
 
     /// <summary>
     /// Priority queue of scheduled events, ordered by cycle, priority, then sequence.
+    /// Using value tuple key for reliable default ordering (avoids custom comparer heap issues).
     /// </summary>
-    private readonly PriorityQueue<ScheduledEvent, ScheduledEvent> eventQueue;
+    private readonly PriorityQueue<ScheduledEvent, (ulong Cycle, int Priority, long Sequence)> eventQueue;
 
     /// <summary>
     /// Set of cancelled event handles for efficient cancellation checking.
@@ -71,8 +72,8 @@ public sealed class Scheduler : IScheduler, ISchedulerObserver
     /// </summary>
     public Scheduler()
     {
-        eventQueue = new(
-            Comparer<ScheduledEvent>.Create(static (a, b) => a.CompareTo(b)));
+        // Default comparer for tuple (cycle, pri, seq) gives correct min-heap order (earliest first)
+        eventQueue = new();
         cancelledHandles = new();
     }
 
@@ -123,7 +124,7 @@ public sealed class Scheduler : IScheduler, ISchedulerObserver
 
         var handle = new EventHandle(nextHandleId++);
         var scheduledEvent = new ScheduledEvent(handle, due, priority, nextSequence++, kind, callback, tag);
-        eventQueue.Enqueue(scheduledEvent, scheduledEvent);
+        eventQueue.Enqueue(scheduledEvent, (due, priority, scheduledEvent.Sequence));
 
         EventScheduled?.Invoke(handle, due, kind, priority, tag);
 
@@ -188,7 +189,10 @@ public sealed class Scheduler : IScheduler, ISchedulerObserver
             }
 
             // Remove cancelled event
-            eventQueue.Dequeue();
+            if (!eventQueue.TryDequeue(out _, out _))
+            {
+                break; // safety
+            }
             cancelledHandles.Remove(nextEvent.Handle.Id);
         }
 
@@ -239,7 +243,10 @@ public sealed class Scheduler : IScheduler, ISchedulerObserver
     {
         while (eventQueue.TryPeek(out var nextEvent, out _) && nextEvent.Cycle <= targetCycle)
         {
-            eventQueue.Dequeue();
+            if (!eventQueue.TryDequeue(out _, out _))
+            {
+                break; // safety, should not happen after peek
+            }
 
             // Skip cancelled events
             if (cancelledHandles.Remove(nextEvent.Handle.Id))

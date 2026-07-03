@@ -83,7 +83,7 @@ public sealed class SwitchesCommand : CommandHandlerBase, ICommandHelp
             return CommandResult.Error("No bus attached. This command requires a bus-based system.");
         }
 
-        bool useJson = (context as DebugContext)?.JsonOutput == true ||
+        bool useJson = context.JsonOutput ||
                        args.Any(a => a.Equals("--json", StringComparison.OrdinalIgnoreCase) ||
                                      a.Equals("-j", StringComparison.OrdinalIgnoreCase));
 

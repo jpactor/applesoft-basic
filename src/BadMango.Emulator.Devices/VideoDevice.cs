@@ -590,6 +590,9 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
             return;
         }
 
+        // (cancels commented; rely on dispatch skip for old events to avoid hash/PQ issues during boot)
+        // if (vblankEventHandle.Id != 0) scheduler.Cancel(vblankEventHandle);
+
         // Schedule the start of VBlank
         vblankEventHandle = scheduler.ScheduleAfter(
             new Core.Cycle(CyclesPerFrame - VBlankDurationCycles),
@@ -612,8 +615,10 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
         VBlankOccurred?.Invoke();
 
         // Schedule the end of VBlank
+        // (cancels commented to avoid hashset issues in some timing; old events skipped by dispatch cancelled logic)
         if (scheduler != null)
         {
+            // if (vblankEndEventHandle.Id != 0) scheduler.Cancel(vblankEndEventHandle);
             vblankEndEventHandle = scheduler.ScheduleAfter(
                 new Core.Cycle(VBlankDurationCycles),
                 ScheduledEventKind.VideoBlank,

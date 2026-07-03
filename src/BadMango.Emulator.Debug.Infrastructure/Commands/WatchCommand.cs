@@ -227,7 +227,7 @@ public sealed class WatchCommand : CommandHandlerBase, ICommandHelp
 
     private static CommandResult List(IDebugContext context)
     {
-        bool useJson = (context as DebugContext)?.JsonOutput == true;
+        bool useJson = context.JsonOutput;
         var all = context.Watchpoints.GetAll();
         var lastHitAddr = context.Watchpoints.LastHitAddress;
         var lastAccess = context.Watchpoints.LastHitAccess;

@@ -48,7 +48,9 @@ public sealed class TraceCommand : CommandHandlerBase, ICommandHelp
         "  filter off            Remove the PC filter.\n" +
         "  dump [N]              Print or --json dump the last N buffered records (default 50).\n" +
         "  tail N                Alias for 'dump N'.\n" +
-        "  clear                 Reset the instruction count and buffer.";
+        "  clear                 Reset the instruction count and buffer.\n\n" +
+        "Apple II disk boot tip (for stage confirmation): filter $C600-$C6FF for the slot ROM boot loader, " +
+        "then watch for execution at $0801 (the C600 code loads the boot sector to $0800 and does JMP $0801).";
 
     /// <inheritdoc/>
     public IReadOnlyList<CommandOption> Options { get; } = [];
@@ -57,7 +59,8 @@ public sealed class TraceCommand : CommandHandlerBase, ICommandHelp
     public IReadOnlyList<string> Examples { get; } =
     [
         "trace on                       Start tracing",
-        "trace filter $3A00 $3D00       Only trace BOOT2 region",
+        "trace filter $C600 $C6FF       Apple II: trace slot 6 ROM boot loader",
+        "trace filter $0800 $0801       Apple II: after load, execution enters at $0801 (boot sector code)",
         "trace buffer on 50000          Buffer up to 50k records",
         "trace file boot.trace          Send trace to a file",
         "trace dump 100                 Show the last 100 records",
@@ -112,7 +115,7 @@ public sealed class TraceCommand : CommandHandlerBase, ICommandHelp
 
     private static CommandResult Status(IDebugContext context, TracingDebugListener tracer)
     {
-        bool useJson = (context as DebugContext)?.JsonOutput == true;
+        bool useJson = context.JsonOutput;
 
         if (useJson)
         {
@@ -124,6 +127,8 @@ public sealed class TraceCommand : CommandHandlerBase, ICommandHelp
                 buffered = tracer.GetBufferedRecords().Count,
                 instructionCount = tracer.InstructionCount,
                 hasAddressFilter = tracer.AddressFilter is not null,
+                // richer for agents (6.3)
+                recentSample = tracer.GetRecentRecords(3).Select(r => new { pc = $"${r.PC:X4}", instr = r.Instruction.ToString() }).ToList()
             };
             context.Output.WriteLine(System.Text.Json.JsonSerializer.Serialize(status, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
             return CommandResult.Ok();
@@ -256,7 +261,7 @@ public sealed class TraceCommand : CommandHandlerBase, ICommandHelp
             return CommandResult.Ok();
         }
 
-        bool useJson = (context as DebugContext)?.JsonOutput == true;
+        bool useJson = context.JsonOutput;
 
         if (useJson)
         {

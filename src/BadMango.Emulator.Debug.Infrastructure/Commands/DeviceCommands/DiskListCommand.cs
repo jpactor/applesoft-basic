@@ -90,7 +90,7 @@ public sealed class DiskListCommand : CommandHandlerBase, ICommandHelp
             return CommandResult.Error("disk-list takes no arguments.");
         }
 
-        bool useJson = (context as DebugContext)?.JsonOutput == true ||
+        bool useJson = context.JsonOutput ||
                        args.Any(a => a.Equals("--json", StringComparison.OrdinalIgnoreCase) ||
                                      a.Equals("-j", StringComparison.OrdinalIgnoreCase));
 

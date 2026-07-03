@@ -67,8 +67,8 @@ public sealed class CompositeIOTarget : CompositeTargetBase, IScheduledDevice, I
     private readonly ISlotManager slotManager;
 
     private IBusTarget? internalRom;
-    private bool intCxRomEnabled;
-    private bool intC3RomEnabled = true; // Defaults to ON
+    private bool intCxRomEnabled = false; // slot ROMs visible at power-on for card detection and disk boot
+    private bool intC3RomEnabled = false; // default off for compatibility with slot cards and boot
 
     /// <summary>
     /// Initializes a new instance of the <see cref="CompositeIOTarget"/> class.

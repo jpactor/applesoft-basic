@@ -168,6 +168,10 @@ public class DebugConsoleModule : Module
             .As<ICommandHandler>()
             .SingleInstance();
 
+        builder.RegisterType<PerfCommand>()
+            .As<ICommandHandler>()
+            .SingleInstance();
+
         builder.RegisterType<DeviceMapCommand>()
             .As<ICommandHandler>()
             .SingleInstance();

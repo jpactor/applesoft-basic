@@ -13,6 +13,7 @@ using BadMango.Emulator.Core.Signaling;
 using Core;
 using Core.Cpu;
 using Core.Debugger;
+using BadMango.Emulator.Core.Cpu; // for ProcessorStatusFlags in reset
 
 /// <summary>
 /// WDC 65C02 CPU emulator with cycle-accurate execution using bus-based memory access.
@@ -87,7 +88,20 @@ public sealed class Cpu65C02 : CpuBase
     {
         // Note: Scheduler reset is handled by Machine.Reset(), not the CPU.
         // The CPU only resets its own state (registers, halt reason, stop flag).
-        Registers = new(true, Read16(Cpu65C02Constants.ResetVector));
+        // Follow true hard reset sequence: explicitly read the reset vector from $FFFC (low) / $FFFD (high)
+        // so PC is set to the address from the vector at FFFC, then execution begins at that handler address.
+        // This ensures the ROM reset code (including HOME clear screen) runs for full loader fidelity.
+        byte lo = Read8(Cpu65C02Constants.ResetVector);
+        byte hi = Read8(Cpu65C02Constants.ResetVector + 1);
+        Word vector = (Word)((hi << 8) | lo);
+        Registers = new(true, vector);
+
+        // Standard 65C02 reset flags: I=1, D=0 (clear decimal). SP adjusted (no writes).
+        Registers.P |= ProcessorStatusFlags.I;
+        Registers.P &= ~ProcessorStatusFlags.D;
+        byte sp = Registers.SP.GetByte();
+        Registers.SP.SetByte((byte)((sp - 3) & 0xFF));
+
         HaltReason = HaltState.None;
         ClearStopRequest();
     }

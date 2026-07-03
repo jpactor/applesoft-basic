@@ -1,0 +1,245 @@
+Inserted 'C:\Users\joshp\.backpocket\disks\prodos203-master.dsk' into slot 6 drive 1.
+Booting immediately (no delay). Video window opened if configured.
+Running from PC=$FCAC...
+Boot error: Object reference not set to an instance of an object.
+{
+  "stopReason": "cycle limit reached",
+  "instructionCount": 15968,
+  "cycleCount": 50000,
+  "elapsedMs": 20,
+  "finalPc": "$FA56",
+  "normalCompletion": false,
+  "untilTarget": null,
+  "untilBp": false,
+  "untilWatch": false,
+  "untilHit": false,
+  "bpHit": false,
+  "watchHit": false,
+  "finalRegisters": {
+    "pc": 64086,
+    "sp": 197,
+    "a": 0,
+    "x": 193,
+    "y": 52,
+    "flags": {
+      "N": false,
+      "V": true,
+      "M": false,
+      "X": true,
+      "D": false,
+      "I": false,
+      "Z": true,
+      "C": false
+    },
+    "e": true,
+    "cp": true
+  },
+  "traceRecords": null
+}
+Machine paused at PC=$FA56. Use 'resume' to continue.
+{
+  "mode": "Compat: 65C02",
+  "pc": 64086,
+  "sp": 197,
+  "a": 0,
+  "x": 193,
+  "y": 52,
+  "flags": {
+    "N": false,
+    "V": true,
+    "M": false,
+    "X": true,
+    "D": false,
+    "I": false,
+    "Z": true,
+    "C": false,
+    "raw": 82
+  },
+  "e": true,
+  "cp": true,
+  "interruptsDisabled": false
+}
+[
+  {
+    "Address": 64086,
+    "Opcode": 108,
+    "Operands": {},
+    "OperandLength": 2,
+    "Instruction": 30,
+    "AddressingMode": 9,
+    "Metadata": {},
+    "TotalLength": 3
+  },
+  {
+    "Address": 64089,
+    "Opcode": 32,
+    "Operands": {},
+    "OperandLength": 2,
+    "Instruction": 31,
+    "AddressingMode": 6,
+    "Metadata": {},
+    "TotalLength": 3
+  },
+  {
+    "Address": 64092,
+    "Opcode": 32,
+    "Operands": {},
+    "OperandLength": 2,
+    "Instruction": 31,
+    "AddressingMode": 6,
+    "Metadata": {},
+    "TotalLength": 3
+  },
+  {
+    "Address": 64095,
+    "Opcode": 76,
+    "Operands": {},
+    "OperandLength": 2,
+    "Instruction": 30,
+    "AddressingMode": 6,
+    "Metadata": {},
+    "TotalLength": 3
+  },
+  {
+    "Address": 64098,
+    "Opcode": 216,
+    "Operands": {},
+    "OperandLength": 0,
+    "Instruction": 13,
+    "AddressingMode": 1,
+    "Metadata": {},
+    "TotalLength": 1
+  },
+  {
+    "Address": 64099,
+    "Opcode": 32,
+    "Operands": {},
+    "OperandLength": 2,
+    "Instruction": 31,
+    "AddressingMode": 6,
+    "Metadata": {},
+    "TotalLength": 3
+  },
+  {
+    "Address": 64102,
+    "Opcode": 32,
+    "Operands": {},
+    "OperandLength": 2,
+    "Instruction": 31,
+    "AddressingMode": 6,
+    "Metadata": {},
+    "TotalLength": 3
+  },
+  {
+    "Address": 64105,
+    "Opcode": 32,
+    "Operands": {},
+    "OperandLength": 2,
+    "Instruction": 31,
+    "AddressingMode": 6,
+    "Metadata": {},
+    "TotalLength": 3
+  },
+  {
+    "Address": 64108,
+    "Opcode": 32,
+    "Operands": {},
+    "OperandLength": 2,
+    "Instruction": 31,
+    "AddressingMode": 6,
+    "Metadata": {},
+    "TotalLength": 3
+  },
+  {
+    "Address": 64111,
+    "Opcode": 173,
+    "Operands": {},
+    "OperandLength": 2,
+    "Instruction": 1,
+    "AddressingMode": 6,
+    "Metadata": {},
+    "TotalLength": 3
+  },
+  {
+    "Address": 64114,
+    "Opcode": 173,
+    "Operands": {},
+    "OperandLength": 2,
+    "Instruction": 1,
+    "AddressingMode": 6,
+    "Metadata": {},
+    "TotalLength": 3
+  },
+  {
+    "Address": 64117,
+    "Opcode": 160,
+    "Operands": {},
+    "OperandLength": 1,
+    "Instruction": 3,
+    "AddressingMode": 2,
+    "Metadata": {},
+    "TotalLength": 2
+  },
+  {
+    "Address": 64119,
+    "Opcode": 32,
+    "Operands": {},
+    "OperandLength": 2,
+    "Instruction": 31,
+    "AddressingMode": 6,
+    "Metadata": {},
+    "TotalLength": 3
+  },
+  {
+    "Address": 64122,
+    "Opcode": 234,
+    "Operands": {},
+    "OperandLength": 0,
+    "Instruction": 7,
+    "AddressingMode": 1,
+    "Metadata": {},
+    "TotalLength": 1
+  },
+  {
+    "Address": 64123,
+    "Opcode": 173,
+    "Operands": {},
+    "OperandLength": 2,
+    "Instruction": 1,
+    "AddressingMode": 6,
+    "Metadata": {},
+    "TotalLength": 3
+  },
+  {
+    "Address": 64126,
+    "Opcode": 44,
+    "Operands": {},
+    "OperandLength": 2,
+    "Instruction": 54,
+    "AddressingMode": 6,
+    "Metadata": {},
+    "TotalLength": 3
+  }
+]
+{
+  "startAddress": "0xC6F0",
+  "length": 16,
+  "data": [
+    "0x3D",
+    "0xCD",
+    "0x00",
+    "0x08",
+    "0xA6",
+    "0x2B",
+    "0x90",
+    "0xDB",
+    "0x4C",
+    "0x01",
+    "0x08",
+    "0x00",
+    "0x00",
+    "0x00",
+    "0x00",
+    "0x00"
+  ]
+}

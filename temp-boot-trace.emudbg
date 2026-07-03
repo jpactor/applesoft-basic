@@ -1,0 +1,7 @@
+trace on
+boot --immediate
+run --until-cycles=5000 --trace-buffer
+pause
+trace dump --last=10
+regs
+exit

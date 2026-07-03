@@ -308,7 +308,7 @@ public sealed class VideoCommand : CommandHandlerBase, ICommandHelp
             return CommandResult.Error("No video device.");
         }
 
-        bool useJson = (context as DebugContext)?.JsonOutput == true;
+        bool useJson = context.JsonOutput;
 
         if (useJson)
         {
@@ -349,7 +349,7 @@ public sealed class VideoCommand : CommandHandlerBase, ICommandHelp
             return CommandResult.Error("No video device.");
         }
 
-        bool useJson = (context as DebugContext)?.JsonOutput == true;
+        bool useJson = context.JsonOutput;
         VideoMode mode = video.CurrentMode;
 
         // Get physical providers for correct main/aux (bypass banking for display view)
@@ -393,9 +393,18 @@ public sealed class VideoCommand : CommandHandlerBase, ICommandHelp
                         code = mainProv?.ReadMainRam(addr) ?? 0;
                     }
 
-                    // Simple decode to visible char (rough; full inverse/flash/mousetext in renderer)
-                    char ch = (char)((code & 0x7F) | 0x20); // map to printable-ish
-                    if (ch < 0x20 || ch > 0x7E)
+                    // Improved decode for agent validation (better preserves letters/numbers vs spaces; full inverse/flash in real renderer)
+                    byte c7 = (byte)(code & 0x7F);
+                    char ch;
+                    if (c7 >= 0x20 && c7 <= 0x7E)
+                    {
+                        ch = (char)c7;
+                    }
+                    else if (c7 < 0x20)
+                    {
+                        ch = (char)(c7 + 0x40); // map controls/inverse to visible
+                    }
+                    else
                     {
                         ch = '.';
                     }
@@ -533,7 +542,7 @@ public sealed class VideoCommand : CommandHandlerBase, ICommandHelp
                 colorMode: DisplayColorMode.Green,
                 readAuxMemory: readAux);
 
-            bool useJson = (context as DebugContext)?.JsonOutput == true;
+            bool useJson = context.JsonOutput;
 
             if (useJson)
             {
@@ -571,7 +580,7 @@ public sealed class VideoCommand : CommandHandlerBase, ICommandHelp
             return CommandResult.Error("No bus attached.");
         }
 
-        bool useJson = (context as DebugContext)?.JsonOutput == true;
+        bool useJson = context.JsonOutput;
 
         var pages = new[]
         {
@@ -598,15 +607,14 @@ public sealed class VideoCommand : CommandHandlerBase, ICommandHelp
 
     private CommandResult ShowAudioState(ICommandContext context)
     {
-        if (context is not IDebugContext dc || dc.Machine is null || dc.Bus is null)
+        if (context is not IDebugContext dc || dc.Machine is null)
         {
-            return CommandResult.Error("Machine + bus required.");
+            return CommandResult.Error("Machine required.");
         }
 
-        bool useJson = (context as DebugContext)?.JsonOutput == true;
+        bool useJson = context.JsonOutput;
 
-        // Speaker is typically toggled by read at $C030 (or via device); report accessibility for headless.
-        // Try a debug read (no side effect if possible).
+        var speaker = dc.Machine.GetComponent<ISpeakerDevice>();
         var access = new BusAccess(
             Address: 0xC030,
             Value: 0,
@@ -617,8 +625,12 @@ public sealed class VideoCommand : CommandHandlerBase, ICommandHelp
             SourceId: 0,
             Cycle: 0,
             Flags: AccessFlags.NoSideEffects);
-        var res = dc.Bus.TryRead8(access);
+        var res = dc.Bus?.TryRead8(access) ?? default;
         byte speakerPeek = res.Fault.IsFault ? (byte)0xFF : res.Value;
+
+        int toggleCount = speaker?.PendingToggles.Count ?? 0;
+        bool state = speaker?.State ?? false;
+        var lastToggle = toggleCount > 0 ? speaker!.PendingToggles[^1] : ((ulong)0, false);
 
         if (useJson)
         {
@@ -626,7 +638,11 @@ public sealed class VideoCommand : CommandHandlerBase, ICommandHelp
             {
                 speakerAddr = "$C030",
                 lastPeek = $"0x{speakerPeek:X2}",
-                note = "Speaker toggles on access to $C030. Use read/peek SPEAKER for interaction. Headless profiles may stub audio."
+                deviceState = state,
+                toggleCount,
+                lastToggleCycle = lastToggle.Item1,
+                lastToggleState = lastToggle.Item2,
+                note = "Speaker toggles on access to $C030. PendingToggles holds history for waveform synthesis. Headless profiles may stub audio output."
             };
             context.Output.WriteLine(System.Text.Json.JsonSerializer.Serialize(info, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
             return CommandResult.Ok();
@@ -635,7 +651,11 @@ public sealed class VideoCommand : CommandHandlerBase, ICommandHelp
         context.Output.WriteLine("Audio/Speaker State (headless):");
         context.Output.WriteLine("  Speaker toggle address: $C030");
         context.Output.WriteLine($"  Peek (debug, no click): 0x{speakerPeek:X2}");
-        context.Output.WriteLine("  Note: full waveform via host speaker device if present; use for click detection in agents.");
+        context.Output.WriteLine($"  Device state: {state}");
+        context.Output.WriteLine($"  Toggles recorded: {toggleCount}");
+        if (toggleCount > 0)
+            context.Output.WriteLine($"  Last toggle: cycle {lastToggle.Item1}, state {lastToggle.Item2}");
+        context.Output.WriteLine("  Note: use read/peek SPEAKER or the device for interaction; PendingToggles for synthesis.");
         return CommandResult.Ok();
     }
 }

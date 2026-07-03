@@ -491,7 +491,10 @@ public abstract class ExecutionCommandBase : CommandHandlerBase, ICommandHelp
     /// <param name="ElapsedMs">The elapsed wall-clock time in milliseconds.</param>
     /// <param name="StopReason">The reason execution stopped.</param>
     /// <param name="NormalCompletion">Whether execution completed normally.</param>
-    protected sealed record ExecutionResult(
+    /// <summary>
+    /// Result of instruction execution (public for run status / agent polling).
+    /// </summary>
+    public sealed record ExecutionResult(
         int InstructionCount,
         long CycleCount,
         long ElapsedMs,

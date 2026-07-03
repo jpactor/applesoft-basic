@@ -6,6 +6,10 @@ namespace BadMango.Emulator.Devices;
 
 using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
+using BadMango.Emulator.Core.Interfaces.Cpu; // ICpu for trap handler sig
+// Trap types (TrapHandler, TrapResult, TrapCategory, TrapReturnMethod) are in BadMango.Emulator.Bus
+
+
 using BadMango.Emulator.Core.Configuration;
 
 using Interfaces;
@@ -135,7 +139,23 @@ public sealed class PocketWatchCard : IClockDevice
     /// <inheritdoc />
     public void Initialize(IEventContext context)
     {
-        // PocketWatch doesn't need scheduler access
+        // PocketWatch doesn't need scheduler access for I/O, but register trapped execution
+        // for its ROM area so that when PC reaches trapped addresses in the slot ROM
+        // (e.g. during ProDOS/Thunderclock driver calls or reset scan), C# portal code
+        // executes to provide host clock. This makes "trapped execution" work for the device.
+
+        var trapRegistry = context.GetComponent<ITrapRegistry>();
+        if (trapRegistry != null && SlotNumber >= 1 && SlotNumber <= 7)
+        {
+            Addr baseAddr = (Addr)(0xC000 + (SlotNumber * 0x100));
+            trapRegistry.RegisterSlotDependent(baseAddr, SlotNumber, "PocketWatch ROM entry (trapped clock portal)", TrapCategory.SlotFirmware, (cpu, bus, evt) => { LatchTime(); return new TrapResult { Handled = true, ReturnMethod = TrapReturnMethod.Rts, CyclesConsumed = 6 }; }, "C# trapped execution for host system clock via PocketWatch/Thunderclock compatible ROM entry");
+            // Also trap the RTS points in the stub ROM for any JSRs there
+            for (int off = 0xFB; off <= 0xFF; off++)
+            {
+                Addr entry = baseAddr + (uint)off;
+                trapRegistry.RegisterSlotDependent(entry, SlotNumber, $"PocketWatch RTS entry ${entry:X4}", TrapCategory.SlotFirmware, (c, b, e) => new TrapResult { Handled = true, ReturnMethod = TrapReturnMethod.Rts, CyclesConsumed = 6 }, "Trapped RTS for stub ROM compatibility");
+            }
+        }
     }
 
     /// <inheritdoc />

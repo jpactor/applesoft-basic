@@ -97,7 +97,7 @@ public sealed class PeekCommand : CommandHandlerBase, ICommandHelp
         // Filter json for parsing
         var filteredArgs = args.Where(a => !a.Equals("--json", StringComparison.OrdinalIgnoreCase) && !a.Equals("-j", StringComparison.OrdinalIgnoreCase)).ToArray();
 
-        bool useJson = (context as DebugContext)?.JsonOutput == true || filteredArgs.Length < args.Length;
+        bool useJson = context.JsonOutput || filteredArgs.Length < args.Length;
 
         if (filteredArgs.Length == 0)
         {

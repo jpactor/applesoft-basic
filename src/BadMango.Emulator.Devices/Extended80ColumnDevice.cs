@@ -806,56 +806,73 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
     /// When a layer is deactivated, accesses fall through to the base memory mapping (main RAM/ROM).
     /// </para>
     /// </remarks>
+    private bool applyingState;
+
     private void ApplyState()
     {
-        // INTCXROM and SLOTC3ROM: Control internal ROM overlay via CompositeIOTarget
-        // These always work, even when layers aren't configured
-        if (internalRomHandler is not null)
+        if (applyingState)
         {
-            internalRomHandler.SetIntCxRom(intcxrom);
-            internalRomHandler.SetIntC3Rom(!slotc3rom); // INTC3ROM is inverted from SLOTC3ROM
-        }
-
-        // Update page 0 routing table for sub-page regions
-        // This is efficient - just updates a few array entries, no per-access checks
-        page0Target?.UpdateRouting(altzp, store80, page2, ramrd, ramwrt);
-
-        if (bus is null)
-        {
+            // Reentrant call (e.g. softswitch side-effect during layer recompute or another Apply).
+            // Outer Apply will see the latest flag values and finish the update.
             return;
         }
 
-        // If layers haven't been configured, skip layer-related operations
-        // This happens when the device is used without ConfigureMemory being called
-        if (!layersConfigured)
+        applyingState = true;
+        try
         {
-            return;
-        }
-
-        // RAMRD/RAMWRT: Auxiliary RAM ($1000-$BFFF)
-        // Note: This layer uses read/write permissions based on RAMRD and RAMWRT
-        bool auxRamActive = ramrd || ramwrt;
-        SetLayerActive(LayerNameAuxRam, auxRamActive);
-        if (auxRamActive)
-        {
-            PagePerms ramPerms = PagePerms.None;
-            if (ramrd)
+            // INTCXROM and SLOTC3ROM: Control internal ROM overlay via CompositeIOTarget
+            // These always work, even when layers aren't configured
+            if (internalRomHandler is not null)
             {
-                ramPerms |= PagePerms.ReadExecute;
+                internalRomHandler.SetIntCxRom(intcxrom);
+                internalRomHandler.SetIntC3Rom(!slotc3rom); // INTC3ROM is inverted from SLOTC3ROM
             }
 
-            if (ramwrt)
+            // Update page 0 routing table for sub-page regions
+            // This is efficient - just updates a few array entries, no per-access checks
+            page0Target?.UpdateRouting(altzp, store80, page2, ramrd, ramwrt);
+
+            if (bus is null)
             {
-                ramPerms |= PagePerms.Write;
+                return;
             }
 
-            SetLayerPermissions(LayerNameAuxRam, ramPerms);
-        }
+            // If layers haven't been configured, skip layer-related operations
+            // This happens when the device is used without ConfigureMemory being called
+            if (!layersConfigured)
+            {
+                return;
+            }
 
-        // 80STORE mode: Hi-res page 1 ($2000-$3FFF) controlled by PAGE2 + HIRES
-        // When 80STORE is on, PAGE2 is set, and HIRES is on, use auxiliary hi-res
-        bool auxHiResActive = store80 && page2 && hires;
-        SetLayerActive(LayerNameAuxHiRes1, auxHiResActive);
+            // RAMRD/RAMWRT: Auxiliary RAM ($1000-$BFFF)
+            // Note: This layer uses read/write permissions based on RAMRD and RAMWRT
+            bool auxRamActive = ramrd || ramwrt;
+            SetLayerActive(LayerNameAuxRam, auxRamActive);
+            if (auxRamActive)
+            {
+                PagePerms ramPerms = PagePerms.None;
+                if (ramrd)
+                {
+                    ramPerms |= PagePerms.ReadExecute;
+                }
+
+                if (ramwrt)
+                {
+                    ramPerms |= PagePerms.Write;
+                }
+
+                SetLayerPermissions(LayerNameAuxRam, ramPerms);
+            }
+
+            // 80STORE mode: Hi-res page 1 ($2000-$3FFF) controlled by PAGE2 + HIRES
+            // When 80STORE is on, PAGE2 is set, and HIRES is on, use auxiliary hi-res
+            bool auxHiResActive = store80 && page2 && hires;
+            SetLayerActive(LayerNameAuxHiRes1, auxHiResActive);
+        }
+        finally
+        {
+            applyingState = false;
+        }
     }
 
     /// <summary>

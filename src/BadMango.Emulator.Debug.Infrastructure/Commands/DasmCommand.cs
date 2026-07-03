@@ -91,7 +91,7 @@ public sealed class DasmCommand : CommandHandlerBase, ICommandHelp
 
         // Support per-command --json / -j or global from context
         var filteredArgs = args.Where(a => !a.Equals("--json", StringComparison.OrdinalIgnoreCase) && !a.Equals("-j", StringComparison.OrdinalIgnoreCase)).ToArray();
-        bool useJson = (context as DebugContext)?.JsonOutput == true || filteredArgs.Length < args.Length;
+        bool useJson = context.JsonOutput || filteredArgs.Length < args.Length;
 
         // Parse options
         var options = ParseOptions(debugContext, filteredArgs);
