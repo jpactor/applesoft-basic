@@ -157,6 +157,7 @@ public class EmudbgOptionsTests
     /// <summary>
     /// Verifies --json / -j sets the flag.
     /// </summary>
+    /// <param name="flag">Json output flag.</param>
     [Test]
     [TestCase("--json")]
     [TestCase("-j")]
@@ -181,6 +182,9 @@ public class EmudbgOptionsTests
         });
     }
 
+    /// <summary>
+    /// Tests that the <c>--headless</c> argument correctly sets the <see cref="EmudbgOptions.Headless"/> flag to <c>true</c>.
+    /// </summary>
     [Test]
     public void Parse_Headless_SetsFlag()
     {
@@ -188,6 +192,18 @@ public class EmudbgOptionsTests
         Assert.That(options.Headless, Is.True);
     }
 
+    /// <summary>
+    /// Tests the parsing of command-line arguments for the combination of
+    /// headless mode, JSON output, and no banner options.
+    /// </summary>
+    /// <remarks>
+    /// This test verifies that the <see cref="EmudbgOptions"/> instance is correctly
+    /// populated when the arguments <c>--headless</c>, <c>--json</c>, and <c>--no-banner</c>
+    /// are provided, along with a profile argument.
+    /// </remarks>
+    /// <example>
+    /// Example arguments: <c>--headless --json --no-banner --profile test</c>.
+    /// </example>
     [Test]
     public void Parse_HeadlessWithJsonAndNoBanner()
     {

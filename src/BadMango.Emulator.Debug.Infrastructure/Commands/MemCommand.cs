@@ -1,4 +1,4 @@
-// <copyright file="MemCommand.cs" company="Bad Mango Solutions">
+﻿// <copyright file="MemCommand.cs" company="Bad Mango Solutions">
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
@@ -143,11 +143,12 @@ public sealed class MemCommand : CommandHandlerBase, ICommandHelp
                 string val = res.Fault.IsFault ? "??" : $"0x{res.Value:X2}";
                 data.Add(val);
             }
+
             var jsonData = new
             {
                 startAddress = $"0x{startAddress:X4}",
                 length = byteCount,
-                data
+                data,
             };
             string json = System.Text.Json.JsonSerializer.Serialize(jsonData, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
             debugContext.Output.WriteLine(json);

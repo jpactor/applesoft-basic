@@ -1,4 +1,4 @@
-// <copyright file="RegionsCommand.cs" company="Bad Mango Solutions">
+﻿// <copyright file="RegionsCommand.cs" company="Bad Mango Solutions">
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
@@ -103,7 +103,7 @@ public sealed class RegionsCommand : CommandHandlerBase, ICommandHelp
                     address = $"${addr:X4}",
                     tag = entry.RegionTag.ToString(),
                     perms = entry.Perms.ToString(),
-                    deviceId = entry.DeviceId
+                    deviceId = entry.DeviceId,
                 });
             }
 

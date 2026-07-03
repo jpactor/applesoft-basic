@@ -1,12 +1,12 @@
-// <copyright file="PeekCommand.cs" company="Bad Mango Solutions">
+﻿// <copyright file="PeekCommand.cs" company="Bad Mango Solutions">
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
 namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 
-using BadMango.Emulator.Bus;
 using System.Linq;
 
+using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
 
 /// <summary>
@@ -156,7 +156,7 @@ public sealed class PeekCommand : CommandHandlerBase, ICommandHelp
                 address = $"${address:X4}",
                 count,
                 values = bytes,
-                faults = faults.Any() ? faults.Select(f => new { address = $"${f.Address:X4}", fault = f.Fault.ToString() }) : null
+                faults = faults.Any() ? faults.Select(f => new { address = $"${f.Address:X4}", fault = f.Fault.ToString() }) : null,
             };
             string json = System.Text.Json.JsonSerializer.Serialize(jsonData, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
             debugContext.Output.WriteLine(json);

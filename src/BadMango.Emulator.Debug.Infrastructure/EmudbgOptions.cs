@@ -1,4 +1,4 @@
-// <copyright file="EmudbgOptions.cs" company="Bad Mango Solutions">
+﻿// <copyright file="EmudbgOptions.cs" company="Bad Mango Solutions">
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
@@ -12,6 +12,9 @@ namespace BadMango.Emulator.Debug.Infrastructure;
 /// <param name="ScriptFile">Optional path to a file containing commands to execute (one per line).</param>
 /// <param name="NoBanner">When true, suppress the startup banner (useful for scripting/agents).</param>
 /// <param name="ShowHelp">When true, display usage information and exit.</param>
+/// <param name="JsonOutput">When true, enable structured JSON output where supported.</param>
+/// <param name="Headless">When true, initialize Avalonia in headless mode for diagnostics without a display.</param>
+/// <param name="AgentMode">When true, implies headless + json + non-interactive agent-friendly behavior.</param>
 public sealed record EmudbgOptions(
     string? Profile = null,
     string? ExecCommands = null,
@@ -164,6 +167,7 @@ public sealed record EmudbgOptions(
     /// Creates an appropriate <see cref="TextReader"/> based on the options
     /// (exec commands, script file, or default to console).
     /// </summary>
+    /// <returns>A reader for command input.</returns>
     public TextReader CreateInputReader()
     {
         if (!string.IsNullOrWhiteSpace(ExecCommands))

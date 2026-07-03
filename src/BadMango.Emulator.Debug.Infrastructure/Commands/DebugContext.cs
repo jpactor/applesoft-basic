@@ -1,4 +1,4 @@
-// <copyright file="DebugContext.cs" company="Bad Mango Solutions">
+﻿// <copyright file="DebugContext.cs" company="Bad Mango Solutions">
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
@@ -36,6 +36,7 @@ public sealed class DebugContext : IDebugContext, IDisposable
     /// <param name="output">The output writer.</param>
     /// <param name="error">The error writer.</param>
     /// <param name="input">The input reader for interactive commands.</param>
+    /// <param name="jsonOutput">Whether structured JSON output should be produced.</param>
     public DebugContext(ICommandDispatcher dispatcher, TextWriter output, TextWriter error, TextReader? input = null, bool jsonOutput = false)
     {
         ArgumentNullException.ThrowIfNull(dispatcher);
@@ -61,6 +62,7 @@ public sealed class DebugContext : IDebugContext, IDisposable
     /// <param name="machineInfo">The machine information.</param>
     /// <param name="tracingListener">The tracing debug listener.</param>
     /// <param name="input">The input reader for interactive commands.</param>
+    /// <param name="jsonOutput">Whether structured JSON output should be produced.</param>
     public DebugContext(
         ICommandDispatcher dispatcher,
         TextWriter output,
@@ -142,6 +144,7 @@ public sealed class DebugContext : IDebugContext, IDisposable
     /// Creates a debug context using the standard console streams.
     /// </summary>
     /// <param name="dispatcher">The command dispatcher.</param>
+    /// <param name="jsonOutput">Whether structured JSON output should be produced.</param>
     /// <returns>A new <see cref="DebugContext"/> using console streams.</returns>
     public static DebugContext CreateConsoleContext(ICommandDispatcher dispatcher, bool jsonOutput = false)
     {

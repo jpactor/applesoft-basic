@@ -1,4 +1,4 @@
-// <copyright file="PagesCommand.cs" company="Bad Mango Solutions">
+﻿// <copyright file="PagesCommand.cs" company="Bad Mango Solutions">
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
@@ -129,12 +129,13 @@ public sealed class PagesCommand : CommandHandlerBase, ICommandHelp
                 pageEntries.Add(new
                 {
                     page = pageIndex,
-                    address = $"${(pageIndex * pageSize):X4}",
+                    address = $"${pageIndex * pageSize:X4}",
                     tag = entry.RegionTag.ToString(),
                     perms = entry.Perms.ToString(),
-                    deviceId = entry.DeviceId
+                    deviceId = entry.DeviceId,
                 });
             }
+
             string json = System.Text.Json.JsonSerializer.Serialize(new { startPage, count, pageSize, pages = pageEntries }, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
             debugContext.Output.WriteLine(json);
             return CommandResult.Ok();

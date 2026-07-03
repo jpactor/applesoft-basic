@@ -134,19 +134,6 @@ public class DebugConsoleModuleTests
         Assert.That(handlers.Select(h => h.Name), Does.Contain("testcmd"));
     }
 
-    private sealed class TestCustomCommand : CommandHandlerBase
-    {
-        public TestCustomCommand()
-            : base("testcmd", "A test custom command")
-        {
-        }
-
-        public override CommandResult Execute(ICommandContext context, string[] args)
-        {
-            return CommandResult.Ok("Custom command executed");
-        }
-    }
-
     /// <summary>
     /// Verifies that EmudbgOptions can be registered and affects startup.
     /// </summary>
@@ -193,7 +180,16 @@ public class DebugConsoleModuleTests
         using var container = builder.Build();
 
         var profile = container.Resolve<MachineProfile>();
+
         // The loader will have loaded it (or default if file missing in test env); name should reflect requested
         Assert.That(profile.Name, Is.EqualTo("simple-65c02").IgnoreCase);
+    }
+
+    private sealed class TestCustomCommand() : CommandHandlerBase("testcmd", "A test custom command")
+    {
+        public override CommandResult Execute(ICommandContext context, string[] args)
+        {
+            return CommandResult.Ok("Custom command executed");
+        }
     }
 }

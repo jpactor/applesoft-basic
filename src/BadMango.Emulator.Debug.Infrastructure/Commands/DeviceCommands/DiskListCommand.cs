@@ -1,4 +1,4 @@
-// <copyright file="DiskListCommand.cs" company="Bad Mango Solutions">
+﻿// <copyright file="DiskListCommand.cs" company="Bad Mango Solutions">
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
@@ -105,6 +105,7 @@ public sealed class DiskListCommand : CommandHandlerBase, ICommandHelp
         {
             // Simple JSON for disk list (agents)
             var disks = new List<object>();
+
             // ... (minimal for now; in full would enumerate like text)
             output.WriteLine(System.Text.Json.JsonSerializer.Serialize(new { note = "disk list json (see full impl for details)", controllers = "enumerated via slot manager" }, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
             return CommandResult.Ok();

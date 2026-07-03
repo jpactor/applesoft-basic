@@ -1,4 +1,4 @@
-// <copyright file="RegsCommand.cs" company="Bad Mango Solutions">
+﻿// <copyright file="RegsCommand.cs" company="Bad Mango Solutions">
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
@@ -110,11 +110,11 @@ public sealed class RegsCommand : CommandHandlerBase, ICommandHelp
                     I = registers.P.HasFlag(ProcessorStatusFlags.I),
                     Z = registers.P.HasFlag(ProcessorStatusFlags.Z),
                     C = registers.P.HasFlag(ProcessorStatusFlags.C),
-                    raw = (byte)registers.P
+                    raw = (byte)registers.P,
                 },
                 e = registers.E,
                 cp = registers.CP,
-                interruptsDisabled = registers.P.HasFlag(ProcessorStatusFlags.I)
+                interruptsDisabled = registers.P.HasFlag(ProcessorStatusFlags.I),
             };
 
             string json = System.Text.Json.JsonSerializer.Serialize(jsonData, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });

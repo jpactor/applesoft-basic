@@ -1,4 +1,4 @@
-// <copyright file="VideoCommand.cs" company="Bad Mango Solutions">
+﻿// <copyright file="VideoCommand.cs" company="Bad Mango Solutions">
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
@@ -68,7 +68,8 @@ public sealed class VideoCommand : CommandHandlerBase, ICommandHelp
         "  state    - Show current video mode and flags (JSON friendly)\n" +
         "  screen   - Dump logical screen content (text grid or graphics data)\n" +
         "  capture  - Render current frame buffer (for AI diagnostics)\n" +
-        "  memory   - Show video memory pages in use";
+        "  memory   - Show video memory pages in use\n" +
+        "  audio    - Show basic audio/speaker state (headless friendly)";
 
     /// <inheritdoc/>
     public IReadOnlyList<CommandOption> Options { get; } =
@@ -83,6 +84,7 @@ public sealed class VideoCommand : CommandHandlerBase, ICommandHelp
         new("screen", null, "subcommand", "Dump decoded screen content for current mode", null),
         new("capture", null, "subcommand", "Capture current frame buffer (pixels for AI)", null),
         new("memory", null, "subcommand", "Show active video memory pages", null),
+        new("audio", null, "subcommand", "Report speaker/audio state for headless diagnostics", null),
     ];
 
     /// <inheritdoc/>
@@ -136,6 +138,7 @@ public sealed class VideoCommand : CommandHandlerBase, ICommandHelp
             "screen" => DumpScreen(context, subArgs),
             "capture" => CaptureFrame(context),
             "memory" => DumpVideoMemory(context, subArgs),
+            "audio" => ShowAudioState(context),
             _ => CommandResult.Error($"Unknown subcommand: {subcommand}. Use 'help video' for usage."),
         };
     }
@@ -295,11 +298,15 @@ public sealed class VideoCommand : CommandHandlerBase, ICommandHelp
     private CommandResult ShowVideoState(ICommandContext context)
     {
         if (context is not IDebugContext dc || dc.Machine is null)
+        {
             return CommandResult.Error("No machine attached.");
+        }
 
         var video = dc.Machine.GetComponent<IVideoDevice>();
         if (video == null)
+        {
             return CommandResult.Error("No video device.");
+        }
 
         bool useJson = (context as DebugContext)?.JsonOutput == true;
 
@@ -314,7 +321,7 @@ public sealed class VideoCommand : CommandHandlerBase, ICommandHelp
                 isHiRes = video.IsHiRes,
                 is80Col = video.Is80Column,
                 isDoubleHiRes = video.IsDoubleHiRes,
-                isVbl = video.IsVerticalBlanking
+                isVbl = video.IsVerticalBlanking,
             };
             string json = System.Text.Json.JsonSerializer.Serialize(state, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
             context.Output.WriteLine(json);
@@ -332,10 +339,15 @@ public sealed class VideoCommand : CommandHandlerBase, ICommandHelp
     private CommandResult DumpScreen(ICommandContext context, string[] args)
     {
         if (context is not IDebugContext dc || dc.Machine is null)
+        {
             return CommandResult.Error("No machine.");
+        }
 
         var video = dc.Machine.GetComponent<IVideoDevice>();
-        if (video == null) return CommandResult.Error("No video device.");
+        if (video == null)
+        {
+            return CommandResult.Error("No video device.");
+        }
 
         bool useJson = (context as DebugContext)?.JsonOutput == true;
         VideoMode mode = video.CurrentMode;
@@ -361,7 +373,10 @@ public sealed class VideoCommand : CommandHandlerBase, ICommandHelp
                 int group = row / 8;
                 int offset = row % 8;
                 ushort rowBase = (ushort)(0x0400 + (offset * 128) + (group * 40));
-                if (isPage2) rowBase += 0x0400; // page 2 for 40-col
+                if (isPage2)
+                {
+                    rowBase += 0x0400; // page 2 for 40-col
+                }
 
                 var rowChars = new char[cols];
                 for (int c = 0; c < cols; c++)
@@ -377,47 +392,87 @@ public sealed class VideoCommand : CommandHandlerBase, ICommandHelp
                     {
                         code = mainProv?.ReadMainRam(addr) ?? 0;
                     }
+
                     // Simple decode to visible char (rough; full inverse/flash/mousetext in renderer)
                     char ch = (char)((code & 0x7F) | 0x20); // map to printable-ish
-                    if (ch < 0x20 || ch > 0x7E) ch = '.';
+                    if (ch < 0x20 || ch > 0x7E)
+                    {
+                        ch = '.';
+                    }
+
                     rowChars[c] = ch;
                 }
+
                 grid.Add(new string(rowChars));
             }
 
             if (useJson)
             {
-                var data = new { mode = mode.ToString(), rows = grid.Count, cols, grid };
+                var data = new { mode = mode.ToString(), rows = grid.Count, cols, grid, };
                 context.Output.WriteLine(System.Text.Json.JsonSerializer.Serialize(data, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
                 return CommandResult.Ok();
             }
             else
             {
                 context.Output.WriteLine($"Screen ({mode}, {cols}x{rows}):");
-                foreach (var line in grid) context.Output.WriteLine("  " + line);
+                foreach (var line in grid)
+                {
+                    context.Output.WriteLine("  " + line);
+                }
+
                 return CommandResult.Ok();
             }
         }
 
-        // Graphics modes or fallback: report memory pages + suggest capture/renderer
+        // Graphics modes (LoRes/HiRes/Double variants handled above for lores; here for HiRes etc.)
+        // Provide structured info + memory page using physical providers where possible.
+        ushort pageBase = (mode == VideoMode.HiRes || mode == VideoMode.HiResMixed || mode == VideoMode.DoubleHiRes)
+            ? (ushort)(video.IsPage2 ? 0x4000 : 0x2000)
+            : (ushort)(video.IsPage2 ? 0x0800 : 0x0400);
+
+        // Sample a few bytes from the primary video page using physical read (bypass banking)
+        var sample = new List<string>();
+        for (int i = 0; i < 8; i++)
+        {
+            ushort a = (ushort)(pageBase + i);
+            byte b = mainProv?.ReadMainRam(a) ?? 0;
+            sample.Add($"0x{b:X2}");
+        }
+
         if (useJson)
         {
-            var info = new { mode = mode.ToString(), note = "Graphics mode - use 'video capture' for rendered frame buffer or 'video memory' + 'mem' for raw video RAM." };
+            var info = new
+            {
+                mode = mode.ToString(),
+                isMixed = video.IsMixedMode,
+                isPage2 = video.IsPage2,
+                isHiRes = video.IsHiRes,
+                isDoubleHiRes = video.IsDoubleHiRes,
+                primaryVideoPage = $"0x{pageBase:X4}",
+                sampleBytes = sample,
+                note = "Use 'video capture' for full rendered pixels (headless OK) or 'video memory'/'mem' for raw."
+            };
             context.Output.WriteLine(System.Text.Json.JsonSerializer.Serialize(info, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
             return CommandResult.Ok();
         }
 
-        context.Output.WriteLine($"Current video mode: {mode} (graphics - see capture/memory commands for data exposure)");
+        context.Output.WriteLine($"Current video mode: {mode} (graphics, page ~0x{pageBase:X4})");
+        context.Output.WriteLine("  Use 'video capture' for frame buffer or 'video memory' + mem for raw data.");
         return CommandResult.Ok();
     }
 
     private CommandResult CaptureFrame(ICommandContext context)
     {
         if (context is not IDebugContext dc || dc.Machine is null || dc.Bus is null)
+        {
             return CommandResult.Error("Machine + bus required for frame capture.");
+        }
 
         var video = dc.Machine.GetComponent<IVideoDevice>();
-        if (video == null) return CommandResult.Error("No video device.");
+        if (video == null)
+        {
+            return CommandResult.Error("No video device.");
+        }
 
         VideoMode mode = video.CurrentMode;
 
@@ -437,7 +492,10 @@ public sealed class VideoCommand : CommandHandlerBase, ICommandHelp
             Func<ushort, byte> readMain = addr =>
             {
                 if (mainProvider != null)
+                {
                     return mainProvider.ReadMainRam(addr);
+                }
+
                 // Fallback to bus (may be affected by current banking)
                 var access = new BusAccess(
                     Address: addr,
@@ -453,13 +511,13 @@ public sealed class VideoCommand : CommandHandlerBase, ICommandHelp
                 return res.Fault.IsFault ? (byte)0 : res.Value;
             };
 
-            Func<ushort, byte>? readAux = auxDevice != null 
+            Func<ushort, byte>? readAux = auxDevice != null
                 ? (Func<ushort, byte>)(addr => auxDevice.ReadAuxRam(addr))
                 : null;
 
             var charProvider = dc.Machine.GetComponent<ICharacterRomProvider>();
-            ReadOnlySpan<byte> charRom = charProvider?.IsCharacterRomLoaded == true 
-                ? charProvider.GetCharacterRomData().Span 
+            ReadOnlySpan<byte> charRom = charProvider?.IsCharacterRomLoaded == true
+                ? charProvider.GetCharacterRomData().Span
                 : default;
 
             renderer.RenderFrame(
@@ -479,15 +537,16 @@ public sealed class VideoCommand : CommandHandlerBase, ICommandHelp
 
             if (useJson)
             {
-                // Compact: dimensions + sample of pixels (BGRA uints)
-                var sample = pixels.Take(64).Select(p => $"0x{p:X8}").ToArray();
+                // Compact: dimensions + sample of pixels (BGRA uints). Full frame available via renderer in host.
+                var sample = pixels.Take(256).Select(p => $"0x{p:X8}").ToArray();
                 var cap = new
                 {
                     mode = mode.ToString(),
                     width = w,
                     height = h,
                     samplePixels = sample,
-                    note = "Full 560x384 BGRA frame rendered headlessly via renderer. Use for AI video analysis."
+                    sampleCount = sample.Length,
+                    note = "Full 560x384 BGRA frame rendered headlessly via renderer (use capture for AI video diagnostics).",
                 };
                 string json = System.Text.Json.JsonSerializer.Serialize(cap, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
                 context.Output.WriteLine(json);
@@ -508,7 +567,9 @@ public sealed class VideoCommand : CommandHandlerBase, ICommandHelp
     private CommandResult DumpVideoMemory(ICommandContext context, string[] args)
     {
         if (context is not IDebugContext dc || dc.Bus is null)
+        {
             return CommandResult.Error("No bus attached.");
+        }
 
         bool useJson = (context as DebugContext)?.JsonOutput == true;
 
@@ -517,7 +578,7 @@ public sealed class VideoCommand : CommandHandlerBase, ICommandHelp
             new { name = "Text/LoRes P1", start = "0x0400", end = "0x07FF", note = "40/80 col text or lores" },
             new { name = "Text/LoRes P2", start = "0x0800", end = "0x0BFF", note = "page 2" },
             new { name = "HiRes P1", start = "0x2000", end = "0x3FFF", note = "280x192 or double" },
-            new { name = "HiRes P2", start = "0x4000", end = "0x5FFF", note = "page 2" }
+            new { name = "HiRes P2", start = "0x4000", end = "0x5FFF", note = "page 2" },
         };
 
         if (useJson)
@@ -528,7 +589,53 @@ public sealed class VideoCommand : CommandHandlerBase, ICommandHelp
 
         context.Output.WriteLine("Video memory pages (use 'mem $addr $len' or 'read' on these for raw exposure):");
         foreach (var p in pages)
+        {
             context.Output.WriteLine($"  {p.name}: {p.start}-{p.end} ({p.note})");
+        }
+
+        return CommandResult.Ok();
+    }
+
+    private CommandResult ShowAudioState(ICommandContext context)
+    {
+        if (context is not IDebugContext dc || dc.Machine is null || dc.Bus is null)
+        {
+            return CommandResult.Error("Machine + bus required.");
+        }
+
+        bool useJson = (context as DebugContext)?.JsonOutput == true;
+
+        // Speaker is typically toggled by read at $C030 (or via device); report accessibility for headless.
+        // Try a debug read (no side effect if possible).
+        var access = new BusAccess(
+            Address: 0xC030,
+            Value: 0,
+            WidthBits: 8,
+            Mode: BusAccessMode.Decomposed,
+            EmulationFlag: true,
+            Intent: AccessIntent.DebugRead,
+            SourceId: 0,
+            Cycle: 0,
+            Flags: AccessFlags.NoSideEffects);
+        var res = dc.Bus.TryRead8(access);
+        byte speakerPeek = res.Fault.IsFault ? (byte)0xFF : res.Value;
+
+        if (useJson)
+        {
+            var info = new
+            {
+                speakerAddr = "$C030",
+                lastPeek = $"0x{speakerPeek:X2}",
+                note = "Speaker toggles on access to $C030. Use read/peek SPEAKER for interaction. Headless profiles may stub audio."
+            };
+            context.Output.WriteLine(System.Text.Json.JsonSerializer.Serialize(info, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+            return CommandResult.Ok();
+        }
+
+        context.Output.WriteLine("Audio/Speaker State (headless):");
+        context.Output.WriteLine("  Speaker toggle address: $C030");
+        context.Output.WriteLine($"  Peek (debug, no click): 0x{speakerPeek:X2}");
+        context.Output.WriteLine("  Note: full waveform via host speaker device if present; use for click detection in agents.");
         return CommandResult.Ok();
     }
 }

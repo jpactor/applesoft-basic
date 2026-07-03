@@ -1,4 +1,4 @@
-// <copyright file="Program.cs" company="Bad Mango Solutions">
+﻿// <copyright file="Program.cs" company="Bad Mango Solutions">
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
@@ -147,7 +147,7 @@ try
         }
         else
         {
-            commandLines = File.ReadAllLines(options.ScriptFile)
+            commandLines = File.ReadAllLines(options.ScriptFile!)
                 .Select(s => s.Trim())
                 .Where(s => !string.IsNullOrWhiteSpace(s) && !s.StartsWith("#"))
                 .ToList();

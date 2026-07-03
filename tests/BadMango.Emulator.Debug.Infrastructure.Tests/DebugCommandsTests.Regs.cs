@@ -90,6 +90,7 @@ public partial class DebugCommandsTests
 
         // Global via context
         var jsonContext = new DebugContext(dispatcher, outputWriter, errorWriter, cpu, bus, disassembler, null, null, null, true);
+
         // Attach needed? but for test use the one with cpu
         var result2 = command.Execute(jsonContext, []);
         Assert.That(outputWriter.ToString(), Does.Contain("\"mode\""));

@@ -1,4 +1,4 @@
-// <copyright file="CommandContext.cs" company="Bad Mango Solutions">
+﻿// <copyright file="CommandContext.cs" company="Bad Mango Solutions">
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
@@ -19,6 +19,7 @@ public sealed class CommandContext : ICommandContext
     /// <param name="output">The output writer.</param>
     /// <param name="error">The error writer.</param>
     /// <param name="input">The input reader for interactive commands.</param>
+    /// <param name="jsonOutput">Whether structured JSON output should be produced.</param>
     public CommandContext(ICommandDispatcher dispatcher, TextWriter output, TextWriter error, TextReader? input = null, bool jsonOutput = false)
     {
         ArgumentNullException.ThrowIfNull(dispatcher);
@@ -44,12 +45,16 @@ public sealed class CommandContext : ICommandContext
     /// <inheritdoc/>
     public TextReader? Input { get; }
 
+    /// <summary>
+    /// Gets a value indicating whether JSON output mode is enabled for this context.
+    /// </summary>
     public bool JsonOutput { get; }
 
     /// <summary>
     /// Creates a command context using the standard console streams.
     /// </summary>
     /// <param name="dispatcher">The command dispatcher.</param>
+    /// <param name="jsonOutput">Whether structured JSON output should be produced.</param>
     /// <returns>A new <see cref="CommandContext"/> using console streams.</returns>
     public static CommandContext CreateConsoleContext(ICommandDispatcher dispatcher, bool jsonOutput = false)
     {

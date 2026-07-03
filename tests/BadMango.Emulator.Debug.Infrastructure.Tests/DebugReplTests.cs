@@ -228,13 +228,6 @@ public class DebugReplTests
         Assert.That(outputWriter.ToString(), Does.Contain("Machine:"));
     }
 
-    private static DebugContext CreateTestDebugContext(ICommandDispatcher dispatcher, out StringWriter outputWriter, out StringWriter errorWriter)
-    {
-        outputWriter = new();
-        errorWriter = new();
-        return new(dispatcher, outputWriter, errorWriter);
-    }
-
     /// <summary>
     /// Verifies that non-interactive input (StringReader) auto-suppresses banner and prompt.
     /// </summary>
@@ -244,6 +237,7 @@ public class DebugReplTests
         var dispatcher = new CommandDispatcher();
         var input = new StringReader("exit\n");
         var context = CreateTestDebugContext(dispatcher, out var outputWriter, out _);
+
         // Do not set Show* explicitly; rely on auto-detect
         var repl = new DebugRepl(dispatcher, context, input);
         dispatcher.Register(new ExitCommand());
@@ -333,6 +327,13 @@ public class DebugReplTests
         repl.ExecuteBatch(commands);
 
         Assert.That(handler.ExecuteCount, Is.EqualTo(2));
+    }
+
+    private static DebugContext CreateTestDebugContext(ICommandDispatcher dispatcher, out StringWriter outputWriter, out StringWriter errorWriter)
+    {
+        outputWriter = new();
+        errorWriter = new();
+        return new(dispatcher, outputWriter, errorWriter);
     }
 
     private sealed class TestCommand : CommandHandlerBase

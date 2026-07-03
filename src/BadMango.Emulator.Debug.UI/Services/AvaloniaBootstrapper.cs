@@ -1,4 +1,4 @@
-// <copyright file="AvaloniaBootstrapper.cs" company="Bad Mango Solutions">
+﻿// <copyright file="AvaloniaBootstrapper.cs" company="Bad Mango Solutions">
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
@@ -44,12 +44,6 @@ public sealed class AvaloniaBootstrapper : IDisposable
     private static AvaloniaBootstrapper? instance;
     private static bool isInitialized;
 
-    /// <summary>
-    /// Gets or sets whether to use Avalonia's headless platform (for no-display / AI video diagnostics).
-    /// Must be set before first EnsureInitialized() call.
-    /// </summary>
-    public static bool UseHeadless { get; set; } = false;
-
     private readonly Thread avaloniaThread;
     private readonly ManualResetEventSlim startedEvent = new(false);
     private readonly CancellationTokenSource cancellationTokenSource = new();
@@ -63,6 +57,12 @@ public sealed class AvaloniaBootstrapper : IDisposable
             IsBackground = true,
         };
     }
+
+    /// <summary>
+    /// Gets or sets whether to use Avalonia's headless platform (for no-display / AI video diagnostics).
+    /// Must be set before first EnsureInitialized() call.
+    /// </summary>
+    public static bool UseHeadless { get; set; } = false;
 
     /// <summary>
     /// Gets a value indicating whether Avalonia has been initialized and is running.

@@ -1,4 +1,4 @@
-// <copyright file="SwitchesCommand.cs" company="Bad Mango Solutions">
+﻿// <copyright file="SwitchesCommand.cs" company="Bad Mango Solutions">
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
@@ -100,8 +100,8 @@ public sealed class SwitchesCommand : CommandHandlerBase, ICommandHelp
                     name = s.Name,
                     address = $"${s.Address:X4}",
                     value = s.Value,
-                    description = s.Description
-                }).ToList()
+                    description = s.Description,
+                }).ToList(),
             }).ToList();
 
             string json = System.Text.Json.JsonSerializer.Serialize(jsonData, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
