@@ -164,6 +164,31 @@ public sealed class DebugRepl
         return result;
     }
 
+    /// <summary>
+    /// Lightweight execution path for running a sequence of commands and exiting.
+    /// Bypasses the interactive REPL loop (prompts, banner handling in Run, etc.).
+    /// Ideal for --exec, --file, scripting, and AI agent use. Command outputs
+    /// are written to the context's Output/Error as usual. Stops on first
+    /// command that signals exit.
+    /// </summary>
+    /// <param name="commands">The command lines to execute in order.</param>
+    public void ExecuteBatch(IEnumerable<string> commands)
+    {
+        foreach (var raw in commands)
+        {
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                continue;
+            }
+
+            var result = ProcessLine(raw);
+            if (result.ShouldExit)
+            {
+                break;
+            }
+        }
+    }
+
     private void DisplayBanner()
     {
         var machineDescription = this.debugContext.MachineInfo?.Summary ?? "No machine attached";

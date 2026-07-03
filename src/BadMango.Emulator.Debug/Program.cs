@@ -2,7 +2,9 @@
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 using Autofac;
 using Autofac.Extensions.DependencyInjection;
@@ -109,7 +111,35 @@ try
     }
 
     logger.Information("Debug console initialized");
-    repl.Run();
+
+    if (isScriptMode)
+    {
+        // Lightweight "run commands and exit" path - bypasses the full interactive REPL loop
+        // (no prompt reads, direct dispatch via ProcessLine in batch).
+        // This is lower overhead and cleaner for scripting/AI agents.
+        List<string> commandLines;
+        if (!string.IsNullOrEmpty(options.ExecCommands))
+        {
+            commandLines = options.ExecCommands
+                .Split(new[] { '\n', ';', '\r' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(s => s.Trim())
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .ToList();
+        }
+        else
+        {
+            commandLines = File.ReadAllLines(options.ScriptFile)
+                .Select(s => s.Trim())
+                .Where(s => !string.IsNullOrWhiteSpace(s) && !s.StartsWith("#"))
+                .ToList();
+        }
+
+        repl.ExecuteBatch(commandLines);
+    }
+    else
+    {
+        repl.Run();
+    }
 
     logger.Information("Debug console exited normally");
     return 0;

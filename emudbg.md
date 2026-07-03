@@ -62,7 +62,9 @@ emudbg --json --exec "regs;exit" --no-banner
 emudbg --file debug-sequence.emudbg --no-banner
 ```
 
-When using `--exec` or `--file`, `emudbg` will process the supplied commands using the normal command infrastructure and then exit.
+When using `--exec` or `--file`, `emudbg` uses a **lightweight "run commands and exit" path** (via `ExecuteBatch` / direct `ProcessLine` dispatch on the `CommandDispatcher` and `ICommandContext`). This bypasses the full interactive REPL loop entirely (no prompt handling, no read loop, no banner logic in Run).
+
+This is lower-overhead and ideal for agents/scripts. Command outputs (text or JSON) go to stdout as usual.
 
 The REPL automatically detects non-interactive usage (e.g. when input is redirected, a StringReader is used for --exec/--file, or piped stdin) and suppresses the banner, input prompts ("> "), and exit message ("Goodbye!") for clean output capture. This makes captured stdout from scripts/agents free of REPL noise.
 
