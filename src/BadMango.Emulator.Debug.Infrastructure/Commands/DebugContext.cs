@@ -87,13 +87,13 @@ public sealed class DebugContext : IDebugContext, IDisposable
     public ICommandDispatcher Dispatcher { get; }
 
     /// <inheritdoc/>
-    public TextWriter Output { get; }
+    public TextWriter Output { get; set; }
 
     /// <inheritdoc/>
-    public TextWriter Error { get; }
+    public TextWriter Error { get; set; }
 
     /// <inheritdoc/>
-    public TextReader? Input { get; }
+    public TextReader? Input { get; set; }
 
     /// <inheritdoc/>
     public bool JsonOutput { get; }

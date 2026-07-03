@@ -112,7 +112,8 @@ Press Ctrl+C or type `exit` (or `quit`) to leave.
 See `help` inside the console for the full live list. Highlights:
 
 - `regs`, `pc`, `mem <addr> [len]`, `dasm [addr] [count]`
-- `step [n]`, `run`, `halt`, `pause`, `resume`, `reset`, `boot`
+- `step [n]`, `run` / `run-until <cond>`, `halt`, `pause`, `resume`, `reset`, `boot`
+  (`run-until` is dedicated shorthand: `run-until $c000`, `run-until bp`, `run-until watch`, `run-until mem $c030 01`; JSON output has rich stop info + registers + trace records)
 - `bp ...` / `watch ...` (breakpoints and watchpoints)
 - `trace ...` (instruction tracing)
 - `profile list|load <name>`

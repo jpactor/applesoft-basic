@@ -89,7 +89,7 @@ Use `help` and `help <command>` liberally inside sequences — they are self-doc
 - `boot` (or alias `startup`) — Reset and start the machine (background execution begins). Supports holding modifier keys briefly.
 - `reset`, `pause`, `resume`, `halt`, `stop`
 - `step [count]` (alias `s`) — Single-step or step N instructions. Preferred for controlled progress.
-- `run [limit]` / `run until $addr|bp|watch|mem $a $v` / `--until-cycles=N` — Advanced run-until with structured JSON result (untilHit, bpHit, finalRegisters snapshot, traceRecords if active). Prefer for agents over manual step loops.
+- `run [limit]` or `run-until <cond>` (dedicated: `run-until $addr`, `run-until bp`, `run-until watch`, `run-until mem $addr $val`, `run-until --until-cycles=N`) — Advanced execution with structured JSON: stopReason, counts, until*/hit flags, finalRegisters snapshot, traceRecords (when buffered). Use limits for safety in agents. Much more efficient than repeated step + check.
 - `regs` (aliases: `r`, `registers`) — Full CPU register dump (PC, SP, A/X/Y, flags, E/M/X, etc.).
 - `pc [value]` — Get or set program counter.
 - `mem <addr> [length]` — Classic hex dump.
@@ -156,7 +156,7 @@ See the agent planning documents for the intended future direction (structured t
 - ~~Support a non-interactive / batch mode that doesn't require the full REPL loop.~~ (Lightweight ExecuteBatch / direct dispatch path for --exec/--file; auto-suppression of prompts/banner/"Goodbye!" for clean capture)
 - ~~Optional structured output (JSON) for key commands (`regs --json`, `dasm --json`).~~ (Now available for switches, regions, pages, mem/read/peek/write/poke, disk*, devicemap, trace, profile, fault, etc. Use --json or per-command.)
 - Better output capture abstraction (currently uses `ICommandContext.Output`).
-- Separate lightweight agent host project (as planned in `emudbg-agent-plan.md`).
+- Separate lightweight agent host project (MCP stdio) — implementation started in BadMango.Emulator.Debug.Agent (stdio JSON-RPC server with generic `emudbg_exec` and structured examples; reuses dispatcher/context; settable writers for output capture).
 - ~~Headless-friendly defaults and fake audio/video providers.~~ (Added `--headless` flag that skips DebugUiModule / Avalonia entirely; auto non-int detection already helps)
 - Full structured JSON for trace / bp / watch (6.1 done — `trace status/dump`, `bp list`, `watch list` now produce clean objects/arrays).
 - `run until $addr` (and `--until=$addr`) with structured result including `untilTarget` + `untilHit` (6.2 started, huge efficiency win for agents).

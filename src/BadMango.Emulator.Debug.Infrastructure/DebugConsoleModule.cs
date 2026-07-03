@@ -66,6 +66,10 @@ public class DebugConsoleModule : Module
             .As<ICommandHandler>()
             .SingleInstance();
 
+        builder.RegisterType<RunUntilCommand>()
+            .As<ICommandHandler>()
+            .SingleInstance();
+
         builder.RegisterType<StopCommand>()
             .As<ICommandHandler>()
             .SingleInstance();

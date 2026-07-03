@@ -25,13 +25,23 @@ using Core.Cpu;
 /// Optional logging can trace execution for debugging purposes.
 /// </para>
 /// </remarks>
-public sealed class RunCommand : ExecutionCommandBase
+public class RunCommand : ExecutionCommandBase
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="RunCommand"/> class.
     /// </summary>
     public RunCommand()
-        : base("run", "Run CPU until halt or limit reached")
+        : this("run", "Run CPU until halt or limit reached")
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="RunCommand"/> class with custom name and description.
+    /// </summary>
+    /// <param name="name">The primary command name (e.g. "run" or "run-until").</param>
+    /// <param name="description">Brief description of the command.</param>
+    protected RunCommand(string name, string description)
+        : base(name, description)
     {
     }
 
@@ -117,6 +127,19 @@ public sealed class RunCommand : ExecutionCommandBase
             return CommandResult.Error("CPU is halted. Use 'reset' to restart.");
         }
 
+        // Support dedicated "run-until" command as shorthand for "run until ..."
+        // e.g. "run-until $c000" or "run-until bp" or "run-until mem $c030 01"
+        if (this.Name.Equals("run-until", StringComparison.OrdinalIgnoreCase)
+            && args.Length > 0
+            && !args[0].Equals("until", StringComparison.OrdinalIgnoreCase)
+            && !args[0].StartsWith("--until", StringComparison.OrdinalIgnoreCase))
+        {
+            var newArgs = new string[args.Length + 1];
+            newArgs[0] = "until";
+            Array.Copy(args, 0, newArgs, 1, args.Length);
+            args = newArgs;
+        }
+
         // Parse options
         var options = ParseRunOptions(args);
 
@@ -152,10 +175,10 @@ public sealed class RunCommand : ExecutionCommandBase
                 else if (next == "mem" && i + 3 < args.Length)
                 {
                     if (TryParseAddress(args[i + 2], debugContext.Machine, out uint addr) &&
-                        byte.TryParse(args[i + 3].TrimStart('$', '0', 'x'), System.Globalization.NumberStyles.HexNumber, null, out byte val))
+                        TryParseNumber(args[i + 3], out long v) && v >= 0 && v <= 255)
                     {
                         untilMemAddr = addr;
-                        untilMemVal = val;
+                        untilMemVal = (byte)v;
                     }
                 }
                 else if (TryParseAddress(args[i + 1], debugContext.Machine, out uint addr))
@@ -202,10 +225,10 @@ public sealed class RunCommand : ExecutionCommandBase
                 var parts = val.Split('=', ':');
                 if (parts.Length == 2 &&
                     TryParseAddress(parts[0], debugContext.Machine, out uint addr) &&
-                    byte.TryParse(parts[1].TrimStart('$', '0', 'x'), System.Globalization.NumberStyles.HexNumber, null, out byte v))
+                    TryParseNumber(parts[1], out long v) && v >= 0 && v <= 255)
                 {
                     untilMemAddr = addr;
-                    untilMemVal = v;
+                    untilMemVal = (byte)v;
                 }
             }
 
@@ -378,7 +401,7 @@ public sealed class RunCommand : ExecutionCommandBase
             debugContext.Output.WriteLine($"Stopped: {result.StopReason}");
             debugContext.Output.WriteLine($"  Instructions executed: {result.InstructionCount:N0}");
             debugContext.Output.WriteLine($"  Cycles consumed: {result.CycleCount:N0}");
-            debugContext.Output.WriteLine($"  Final PC = ${debugContext.Cpu.GetPC():X4}");
+            debugContext.Output.WriteLine($"  Final PC = ${debugContext.Cpu!.GetPC():X4}");
 
             if (untilTarget.HasValue)
             {
@@ -392,9 +415,25 @@ public sealed class RunCommand : ExecutionCommandBase
                     ? "  Until breakpoint: hit."
                     : "  Until breakpoint: no breakpoint hit (stopped for other reason).");
             }
+            else if (untilWatch)
+            {
+                debugContext.Output.WriteLine(watchHit
+                    ? "  Until watchpoint: hit."
+                    : "  Until watchpoint: no watchpoint hit (stopped for other reason).");
+            }
+            else if (untilMemAddr.HasValue && untilMemVal.HasValue)
+            {
+                debugContext.Output.WriteLine(untilHit
+                    ? $"  Until mem[${untilMemAddr.Value:X4}]==${untilMemVal.Value:X2}: matched."
+                    : $"  Until mem[${untilMemAddr.Value:X4}]==${untilMemVal.Value:X2}: not matched.");
+            }
             if (bpHit && !untilBp)
             {
                 debugContext.Output.WriteLine($"  Breakpoint hit at ${debugContext.Breakpoints!.LastHitAddress:X4}");
+            }
+            if (watchHit && !untilWatch)
+            {
+                debugContext.Output.WriteLine($"  Watchpoint hit at ${debugContext.Watchpoints!.LastHitAddress:X4}");
             }
         }
 
@@ -421,12 +460,25 @@ public sealed class RunCommand : ExecutionCommandBase
         ApplyCommonOptions(args, options);
 
         // Parse positional argument as instruction limit
+        // Avoid treating until-targets (keywords or addrs starting with $ / 0x) as limits
         for (int i = 0; i < args.Length; i++)
         {
             var arg = args[i];
+            if (arg.Equals("until", StringComparison.OrdinalIgnoreCase) ||
+                arg.Equals("bp", StringComparison.OrdinalIgnoreCase) ||
+                arg.Equals("watch", StringComparison.OrdinalIgnoreCase) ||
+                arg.Equals("mem", StringComparison.OrdinalIgnoreCase))
+            {
+                // skip the keyword and its following value(s) if present
+                if (arg.Equals("mem", StringComparison.OrdinalIgnoreCase) && i + 2 < args.Length) i += 2;
+                else if (i + 1 < args.Length) i++;
+                continue;
+            }
             if (!arg.StartsWith("-", StringComparison.Ordinal) &&
+                !arg.StartsWith("$", StringComparison.Ordinal) &&
+                !arg.StartsWith("0x", StringComparison.OrdinalIgnoreCase) &&
                 TryParseNumber(arg, out long limit) &&
-                limit <= int.MaxValue)
+                limit <= int.MaxValue && limit > 0)
             {
                 options.InstructionLimit = (int)limit;
                 break;
