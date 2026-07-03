@@ -84,7 +84,7 @@ Supported diagnostic, memory, and device commands now produce agent-friendly str
 - Memory: mem, read, peek, write, poke, load, save
 - Disk: disk list, disk info, disk-read-sector, etc.
 - Video (headless friendly, 80-col/DHGR aware): state, screen, capture, memory (uses physical main/aux RAM via IMainMemoryProvider/IExtended80ColumnDevice to match real Apple IIe hardware interleaving and bypass 80STORE/PAGE2/RAMRD for display view)
-- Others: trace, bp, watch, dasm, regs
+- Others: trace (status/dump), bp (list), watch (list), dasm, regs (and many more)
 
 This enables low-noise use from agents (e.g. `mem --json $C000 16`, `switches --json`).
 

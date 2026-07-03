@@ -6,6 +6,8 @@ namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 
 using System.Globalization;
 
+using BadMango.Emulator.Debug.Infrastructure;
+
 /// <summary>
 /// Controls the CPU instruction tracing listener.
 /// </summary>
@@ -39,12 +41,12 @@ public sealed class TraceCommand : CommandHandlerBase, ICommandHelp
     public string DetailedDescription =>
         "Controls the CPU instruction trace listener. Subcommands:\n" +
         "  on / off              Enable or disable tracing.\n" +
-        "  status                Show tracing configuration and counters.\n" +
+        "  status                Show tracing configuration and counters (JSON friendly).\n" +
         "  buffer on|off [N]     Buffer records in memory (optional max count).\n" +
         "  file <path> | off     Write trace lines to a file.\n" +
         "  filter <start> <end>  Trace only when start <= PC <= end (hex or decimal).\n" +
         "  filter off            Remove the PC filter.\n" +
-        "  dump [N]              Print the last N buffered records (default 50).\n" +
+        "  dump [N]              Print or --json dump the last N buffered records (default 50).\n" +
         "  tail N                Alias for 'dump N'.\n" +
         "  clear                 Reset the instruction count and buffer.";
 
@@ -110,6 +112,23 @@ public sealed class TraceCommand : CommandHandlerBase, ICommandHelp
 
     private static CommandResult Status(IDebugContext context, TracingDebugListener tracer)
     {
+        bool useJson = (context as DebugContext)?.JsonOutput == true;
+
+        if (useJson)
+        {
+            var status = new
+            {
+                enabled = tracer.IsEnabled,
+                bufferOutput = tracer.BufferOutput,
+                maxBufferedRecords = tracer.MaxBufferedRecords,
+                buffered = tracer.GetBufferedRecords().Count,
+                instructionCount = tracer.InstructionCount,
+                hasAddressFilter = tracer.AddressFilter is not null,
+            };
+            context.Output.WriteLine(System.Text.Json.JsonSerializer.Serialize(status, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+            return CommandResult.Ok();
+        }
+
         context.Output.WriteLine($"Enabled        : {tracer.IsEnabled}");
         context.Output.WriteLine($"Buffer output  : {tracer.BufferOutput} (max {tracer.MaxBufferedRecords})");
         context.Output.WriteLine($"Buffered       : {tracer.GetBufferedRecords().Count}");
@@ -237,6 +256,38 @@ public sealed class TraceCommand : CommandHandlerBase, ICommandHelp
             return CommandResult.Ok();
         }
 
+        bool useJson = (context as DebugContext)?.JsonOutput == true;
+
+        if (useJson)
+        {
+            var projected = records.Select(r => new
+            {
+                pc = $"${r.PC:X4}",
+                opcode = $"${r.Opcode:X2}",
+                instruction = r.Instruction.ToString(),
+                operands = GetOperandBytes(r),
+                effectiveAddress = r.EffectiveAddress != 0 ? $"${r.EffectiveAddress:X4}" : null,
+                a = $"${r.A:X2}",
+                x = $"${r.X:X2}",
+                y = $"${r.Y:X2}",
+                sp = $"${r.SP:X2}",
+                p = r.P.ToString(),
+                cycles = r.Cycles,
+                instructionCycles = r.InstructionCycles,
+                halted = r.Halted,
+                haltReason = r.Halted ? r.HaltReason.ToString() : null,
+            }).ToList();
+
+            var dump = new
+            {
+                count = projected.Count,
+                totalInstructions = tracer.InstructionCount,
+                records = projected,
+            };
+            context.Output.WriteLine(System.Text.Json.JsonSerializer.Serialize(dump, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+            return CommandResult.Ok();
+        }
+
         foreach (var rec in records)
         {
             context.Output.WriteLine(TracingDebugListener.FormatTraceRecord(rec));
@@ -245,6 +296,16 @@ public sealed class TraceCommand : CommandHandlerBase, ICommandHelp
         context.Output.WriteLine();
         context.Output.WriteLine($"{records.Count} record(s) shown (total instructions: {tracer.InstructionCount}).");
         return CommandResult.Ok();
+    }
+
+    private static byte[] GetOperandBytes(TraceRecord r)
+    {
+        var bytes = new byte[r.OperandSize];
+        for (int i = 0; i < r.OperandSize; i++)
+        {
+            bytes[i] = r.Operands[i];
+        }
+        return bytes;
     }
 
     private static CommandResult Clear(IDebugContext context, TracingDebugListener tracer)

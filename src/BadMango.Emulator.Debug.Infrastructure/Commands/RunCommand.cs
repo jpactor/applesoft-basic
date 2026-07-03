@@ -4,6 +4,11 @@
 
 namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 
+using BadMango.Emulator.Bus;
+using BadMango.Emulator.Debug.Infrastructure;
+
+using Core.Cpu;
+
 /// <summary>
 /// Runs the CPU until it halts or reaches a limit.
 /// </summary>
@@ -58,6 +63,11 @@ public sealed class RunCommand : ExecutionCommandBase
         new("--cycles", null, "int", "Maximum cycles to execute", "unlimited"),
         new("--instructions", null, "int", "Maximum instructions to execute", "unlimited"),
         new("--timeout", null, "int", "Maximum wall-clock milliseconds to execute", "unlimited"),
+        new("--until", null, "addr", "Run until this PC address is reached (or 'bp'/'watch'/'mem $addr $val')", null),
+        new("--until-bp", null, "flag", "Run until a breakpoint is hit", "off"),
+        new("--until-watch", null, "flag", "Run until a watchpoint is hit", "off"),
+        new("--until-cycles", null, "int", "Run with this cycle limit", "unlimited"),
+        new("--until-mem", null, "addr=val", "Run until memory[addr] == val", null),
     ];
 
     /// <inheritdoc/>
@@ -66,6 +76,15 @@ public sealed class RunCommand : ExecutionCommandBase
         "run                          Execute until halt, breakpoint, or stop",
         "run 1000                     Execute up to 1000 instructions",
         "run --cycles=50000           Execute up to 50,000 cycles",
+        "run until $c000              Run until PC == $c000",
+        "run --until=$c000            Same using flag",
+        "run until bp                 Run until next breakpoint hit",
+        "run --until-bp               Same",
+        "run until watch              Run until next watchpoint hit",
+        "run --until-watch            Same",
+        "run until mem $c030 01       Run until memory at $c030 equals 0x01",
+        "run --until-mem=$c030:01     Same",
+        "run --until-cycles=100000    Run with explicit cycle limit",
         "run --trace                  Execute with instruction tracing",
         "run --trace-buffer --trace-last=50   Buffer and show last 50 instructions",
     ];
@@ -101,19 +120,283 @@ public sealed class RunCommand : ExecutionCommandBase
         // Parse options
         var options = ParseRunOptions(args);
 
+        // Resolve any until target now that we have the machine.
+        // Supports:
+        //   run until $addr
+        //   run --until=$addr
+        //   run --until-pc=0xaddr
+        //   run until bp
+        //   run --until-bp
+        //   run --until-cycles=10000   (or --cycles=...)
+        bool untilBp = false;
+        bool untilWatch = false;
+        long? untilCycles = null;
+        uint? untilMemAddr = null;
+        byte? untilMemVal = null;
+
+        for (int i = 0; i < args.Length; i++)
+        {
+            string a = args[i];
+
+            if (a.Equals("until", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
+            {
+                string next = args[i + 1].ToLowerInvariant();
+                if (next == "bp" || next == "breakpoint")
+                {
+                    untilBp = true;
+                }
+                else if (next == "watch" || next == "watchpoint")
+                {
+                    untilWatch = true;
+                }
+                else if (next == "mem" && i + 3 < args.Length)
+                {
+                    if (TryParseAddress(args[i + 2], debugContext.Machine, out uint addr) &&
+                        byte.TryParse(args[i + 3].TrimStart('$', '0', 'x'), System.Globalization.NumberStyles.HexNumber, null, out byte val))
+                    {
+                        untilMemAddr = addr;
+                        untilMemVal = val;
+                    }
+                }
+                else if (TryParseAddress(args[i + 1], debugContext.Machine, out uint addr))
+                {
+                    options.UntilPc = addr;
+                }
+
+                break;
+            }
+
+            if (a.StartsWith("--until=", StringComparison.OrdinalIgnoreCase) ||
+                a.StartsWith("--until-pc=", StringComparison.OrdinalIgnoreCase))
+            {
+                int eq = a.IndexOf('=');
+                if (eq > 0)
+                {
+                    string val = a[(eq + 1)..];
+                    if (val.Equals("bp", StringComparison.OrdinalIgnoreCase) || val.Equals("breakpoint", StringComparison.OrdinalIgnoreCase))
+                    {
+                        untilBp = true;
+                    }
+                    else if (TryParseAddress(val, debugContext.Machine, out uint addr))
+                    {
+                        options.UntilPc = addr;
+                    }
+                }
+            }
+
+            if (a.Equals("--until-bp", StringComparison.OrdinalIgnoreCase) ||
+                a.Equals("--until-breakpoint", StringComparison.OrdinalIgnoreCase))
+            {
+                untilBp = true;
+            }
+
+            if (a.Equals("--until-watch", StringComparison.OrdinalIgnoreCase) ||
+                a.Equals("--until-watchpoint", StringComparison.OrdinalIgnoreCase))
+            {
+                untilWatch = true;
+            }
+
+            if (a.StartsWith("--until-mem=", StringComparison.OrdinalIgnoreCase))
+            {
+                string val = a["--until-mem=".Length..];
+                var parts = val.Split('=', ':');
+                if (parts.Length == 2 &&
+                    TryParseAddress(parts[0], debugContext.Machine, out uint addr) &&
+                    byte.TryParse(parts[1].TrimStart('$', '0', 'x'), System.Globalization.NumberStyles.HexNumber, null, out byte v))
+                {
+                    untilMemAddr = addr;
+                    untilMemVal = v;
+                }
+            }
+
+            if (a.StartsWith("--until-cycles=", StringComparison.OrdinalIgnoreCase))
+            {
+                string val = a["--until-cycles=".Length..];
+                if (TryParseNumber(val, out long c))
+                {
+                    untilCycles = c;
+                }
+            }
+        }
+
+        if (untilBp && debugContext.Breakpoints != null)
+        {
+            debugContext.Breakpoints.ResetLastHit();
+
+            // Run already stops on bp by default, we just mark the intent for reporting.
+        }
+
+        if (untilWatch && debugContext.Watchpoints != null)
+        {
+            debugContext.Watchpoints.ResetLastHit();
+
+            // Similar for watchpoints that have stopOnHit.
+        }
+
+        if (untilCycles.HasValue)
+        {
+            options.CycleLimit = untilCycles.Value;
+        }
+
         debugContext.Output.WriteLine($"Running from PC=${debugContext.Cpu.GetPC():X4}...");
 
-        // Execute the instruction loop - RunCommand terminates only on halt/limits
+        uint? untilTarget = options.UntilPc;
+
+        // Execute the instruction loop
         var result = ExecuteInstructionLoop(
             debugContext,
             options,
-            (_, _) => false); // Never terminate early - rely on halt detection
+            (dc, _) =>
+            {
+                if (untilTarget.HasValue && dc.Cpu is not null)
+                {
+                    return dc.Cpu.GetPC() == untilTarget.Value;
+                }
 
-        debugContext.Output.WriteLine();
-        debugContext.Output.WriteLine($"Stopped: {result.StopReason}");
-        debugContext.Output.WriteLine($"  Instructions executed: {result.InstructionCount:N0}");
-        debugContext.Output.WriteLine($"  Cycles consumed: {result.CycleCount:N0}");
-        debugContext.Output.WriteLine($"  Final PC = ${debugContext.Cpu.GetPC():X4}");
+                if (untilMemAddr.HasValue && untilMemVal.HasValue && dc.Bus is not null)
+                {
+                    var access = new BusAccess(
+                        Address: untilMemAddr.Value,
+                        Value: 0,
+                        WidthBits: 8,
+                        Mode: BusAccessMode.Decomposed,
+                        EmulationFlag: true,
+                        Intent: AccessIntent.DebugRead,
+                        SourceId: 0,
+                        Cycle: 0,
+                        Flags: AccessFlags.NoSideEffects);
+                    var res = dc.Bus.TryRead8(access);
+                    if (!res.Fault.IsFault && res.Value == untilMemVal.Value)
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            });
+
+        bool bpHit = debugContext.Breakpoints?.LastHitAddress != null;
+        bool watchHit = debugContext.Watchpoints?.LastHitAddress != null;
+        bool untilHit = false;
+
+        if (untilTarget.HasValue && debugContext.Cpu is not null)
+        {
+            untilHit = debugContext.Cpu.GetPC() == untilTarget.Value;
+        }
+        else if (untilBp && bpHit)
+        {
+            untilHit = true;
+        }
+        else if (untilWatch && watchHit)
+        {
+            untilHit = true;
+        }
+        else if (untilMemAddr.HasValue && untilMemVal.HasValue)
+        {
+            // For mem, we check after if it matched in the terminate func
+            // For simplicity, re-check here for reporting
+            if (debugContext.Bus is not null)
+            {
+                var access = new BusAccess(
+                    Address: untilMemAddr.Value,
+                    Value: 0,
+                    WidthBits: 8,
+                    Mode: BusAccessMode.Decomposed,
+                    EmulationFlag: true,
+                    Intent: AccessIntent.DebugRead,
+                    SourceId: 0,
+                    Cycle: 0,
+                    Flags: AccessFlags.NoSideEffects);
+                var res = debugContext.Bus.TryRead8(access);
+                if (!res.Fault.IsFault && res.Value == untilMemVal.Value)
+                {
+                    untilHit = true;
+                }
+            }
+        }
+
+        bool useJson = (context as DebugContext)?.JsonOutput == true;
+
+        if (useJson)
+        {
+            object? finalRegs = null;
+            if (debugContext.Cpu is not null)
+            {
+                var registers = debugContext.Cpu.GetRegisters();
+                finalRegs = new
+                {
+                    pc = registers.PC.GetWord(),
+                    sp = registers.SP.GetWord(),
+                    a = registers.A.GetWord(),
+                    x = registers.X.GetWord(),
+                    y = registers.Y.GetWord(),
+                    flags = new
+                    {
+                        N = registers.P.HasFlag(ProcessorStatusFlags.N),
+                        V = registers.P.HasFlag(ProcessorStatusFlags.V),
+                        M = registers.P.HasFlag(ProcessorStatusFlags.M),
+                        X = registers.P.HasFlag(ProcessorStatusFlags.X),
+                        D = registers.P.HasFlag(ProcessorStatusFlags.D),
+                        I = registers.P.HasFlag(ProcessorStatusFlags.I),
+                        Z = registers.P.HasFlag(ProcessorStatusFlags.Z),
+                        C = registers.P.HasFlag(ProcessorStatusFlags.C),
+                    },
+                    e = registers.E,
+                    cp = registers.CP,
+                };
+            }
+
+            object? traceRecs = null;
+            if (options.EnableTrace && options.BufferTrace && debugContext.TracingListener is not null)
+            {
+                var recs = debugContext.TracingListener.GetRecentRecords(Math.Min(20, options.TraceLastN));
+                traceRecs = recs.Select(r => new { pc = $"${r.PC:X4}", instruction = r.Instruction.ToString() }).ToList();
+            }
+
+            var runResult = new
+            {
+                stopReason = result.StopReason,
+                instructionCount = result.InstructionCount,
+                cycleCount = result.CycleCount,
+                elapsedMs = result.ElapsedMs,
+                finalPc = $"${debugContext.Cpu!.GetPC():X4}",
+                normalCompletion = result.NormalCompletion,
+                untilTarget = untilTarget.HasValue ? $"${untilTarget.Value:X4}" : (untilBp ? "bp" : (untilWatch ? "watch" : (untilMemAddr.HasValue ? $"mem ${untilMemAddr.Value:X4}=${untilMemVal:X2}" : null))),
+                untilBp,
+                untilWatch,
+                untilHit,
+                bpHit,
+                watchHit,
+                finalRegisters = finalRegs,
+                traceRecords = traceRecs,
+            };
+            debugContext.Output.WriteLine(System.Text.Json.JsonSerializer.Serialize(runResult, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+        }
+        else
+        {
+            debugContext.Output.WriteLine();
+            debugContext.Output.WriteLine($"Stopped: {result.StopReason}");
+            debugContext.Output.WriteLine($"  Instructions executed: {result.InstructionCount:N0}");
+            debugContext.Output.WriteLine($"  Cycles consumed: {result.CycleCount:N0}");
+            debugContext.Output.WriteLine($"  Final PC = ${debugContext.Cpu.GetPC():X4}");
+
+            if (untilTarget.HasValue)
+            {
+                debugContext.Output.WriteLine(untilHit
+                    ? $"  Until target ${untilTarget.Value:X4} reached."
+                    : $"  Until target ${untilTarget.Value:X4} not reached.");
+            }
+            else if (untilBp)
+            {
+                debugContext.Output.WriteLine(bpHit
+                    ? "  Until breakpoint: hit."
+                    : "  Until breakpoint: no breakpoint hit (stopped for other reason).");
+            }
+            if (bpHit && !untilBp)
+            {
+                debugContext.Output.WriteLine($"  Breakpoint hit at ${debugContext.Breakpoints!.LastHitAddress:X4}");
+            }
+        }
 
         // Output buffered trace if requested
         if (options.EnableTrace && options.BufferTrace && debugContext.TracingListener is not null)
@@ -138,8 +421,9 @@ public sealed class RunCommand : ExecutionCommandBase
         ApplyCommonOptions(args, options);
 
         // Parse positional argument as instruction limit
-        foreach (var arg in args)
+        for (int i = 0; i < args.Length; i++)
         {
+            var arg = args[i];
             if (!arg.StartsWith("-", StringComparison.Ordinal) &&
                 TryParseNumber(arg, out long limit) &&
                 limit <= int.MaxValue)

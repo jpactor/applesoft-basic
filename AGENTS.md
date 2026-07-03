@@ -89,7 +89,7 @@ Use `help` and `help <command>` liberally inside sequences — they are self-doc
 - `boot` (or alias `startup`) — Reset and start the machine (background execution begins). Supports holding modifier keys briefly.
 - `reset`, `pause`, `resume`, `halt`, `stop`
 - `step [count]` (alias `s`) — Single-step or step N instructions. Preferred for controlled progress.
-- `run [limit]` — Run until halt or limit. Use cautiously with agents (consider bounded `step` instead for now).
+- `run [limit]` / `run until $addr|bp|watch|mem $a $v` / `--until-cycles=N` — Advanced run-until with structured JSON result (untilHit, bpHit, finalRegisters snapshot, traceRecords if active). Prefer for agents over manual step loops.
 - `regs` (aliases: `r`, `registers`) — Full CPU register dump (PC, SP, A/X/Y, flags, E/M/X, etc.).
 - `pc [value]` — Get or set program counter.
 - `mem <addr> [length]` — Classic hex dump.
@@ -158,7 +158,8 @@ See the agent planning documents for the intended future direction (structured t
 - Better output capture abstraction (currently uses `ICommandContext.Output`).
 - Separate lightweight agent host project (as planned in `emudbg-agent-plan.md`).
 - ~~Headless-friendly defaults and fake audio/video providers.~~ (Added `--headless` flag that skips DebugUiModule / Avalonia entirely; auto non-int detection already helps)
-- Scriptable "run until condition" helpers that are safe for agents.
+- Full structured JSON for trace / bp / watch (6.1 done — `trace status/dump`, `bp list`, `watch list` now produce clean objects/arrays).
+- `run until $addr` (and `--until=$addr`) with structured result including `untilTarget` + `untilHit` (6.2 started, huge efficiency win for agents).
 
 When you change commands, **always verify** by running representative piped sequences (boot + inspect + step + trace + exit) and confirm no regressions in output.
 
