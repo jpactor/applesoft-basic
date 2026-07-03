@@ -124,9 +124,3 @@ public sealed record EmudbgOptions(
         return new EmudbgOptions(profile, exec, file, noBanner, showHelp);
     }
 }
-
-
-
-
-
-
