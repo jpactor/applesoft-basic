@@ -105,6 +105,7 @@ try
     {
         repl.ShowBanner = false;
         repl.ShowPrompt = false;
+        repl.PrintExitMessage = false;
     }
 
     logger.Information("Debug console initialized");

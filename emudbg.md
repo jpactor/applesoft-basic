@@ -64,7 +64,20 @@ emudbg --file debug-sequence.emudbg --no-banner
 
 When using `--exec` or `--file`, `emudbg` will process the supplied commands using the normal command infrastructure and then exit.
 
-Supported commands (regs, dasm, etc.) accept `--json` / `-j` to emit machine-readable output instead of formatted text. Global `--json` enables it for the session.
+The REPL automatically detects non-interactive usage (e.g. when input is redirected, a StringReader is used for --exec/--file, or piped stdin) and suppresses the banner, input prompts ("> "), and exit message ("Goodbye!") for clean output capture. This makes captured stdout from scripts/agents free of REPL noise.
+
+Explicit `--no-banner` can be used even in interactive sessions. Advanced control via the IsInteractive property is available in code.
+
+Supported diagnostic, memory, and device commands now produce agent-friendly structured JSON when `--json` / `-j` is used (globally or per-command), or when the session was started with `--json`:
+
+- Diagnostic: switches, regions, pages, devicemap, fault, buslog, profile
+- Memory: mem, read, peek, write, poke, load, save
+- Disk: disk list, disk info, disk-read-sector, etc.
+- Others: trace, bp, watch, dasm, regs
+
+This enables low-noise use from agents (e.g. `mem --json $C000 16`, `switches --json`).
+
+Global `--json` enables it for the session. The REPL auto-suppresses all UI noise (banners, prompts, "Goodbye!") in non-interactive mode for clean capture.
 
 ## Interactive Usage
 
@@ -108,7 +121,7 @@ Use `--profile` on the command line or the `profile load` command at runtime.
 
 See `AGENTS.md` for recommended patterns when driving `emudbg` from AI tools:
 
-- Prefer `--exec`, `--file`, and `--no-banner` for non-interactive runs.
+- Prefer `--exec`, `--file`, `--no-banner`, and `--json` for non-interactive runs. The REPL auto-suppresses banners/prompts/"Goodbye!" for clean captured output when using redirected input.
 - Combine with piping to stdin when needed.
 - Always end sequences with `exit` (or let input EOF terminate).
 

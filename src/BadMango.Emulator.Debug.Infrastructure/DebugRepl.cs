@@ -55,6 +55,20 @@ public sealed class DebugRepl
     public bool ShowPrompt { get; set; } = true;
 
     /// <summary>
+    /// Gets or sets a value indicating whether to print the exit message (e.g. "Goodbye!")
+    /// when the REPL exits. Defaults to true; automatically set to false for non-interactive
+    /// input to keep captured output clean.
+    /// </summary>
+    public bool PrintExitMessage { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets whether this REPL is interactive. If null (default), auto-detected
+    /// based on whether the input reader is the real console input and not redirected.
+    /// Used to control banner/prompt/exit message for non-interactive friendliness.
+    /// </summary>
+    public bool? IsInteractive { get; set; }
+
+    /// <summary>
     /// Creates a REPL with standard console I/O and default built-in commands.
     /// </summary>
     /// <param name="windowManager">
@@ -83,14 +97,19 @@ public sealed class DebugRepl
     /// </summary>
     public void Run()
     {
-        if (this.ShowBanner)
+        bool isInteractiveInput = this.IsInteractive ?? (this.input == Console.In && !Console.IsInputRedirected);
+        bool effectiveShowBanner = this.ShowBanner && isInteractiveInput;
+        bool effectiveShowPrompt = this.ShowPrompt && isInteractiveInput;
+        bool effectivePrintExit = this.PrintExitMessage && isInteractiveInput;
+
+        if (effectiveShowBanner)
         {
             this.DisplayBanner();
         }
 
         while (true)
         {
-            if (this.ShowPrompt)
+            if (effectiveShowPrompt)
             {
                 this.context.Output.Write(this.prompt);
             }
@@ -105,7 +124,7 @@ public sealed class DebugRepl
             var result = this.ProcessLine(line);
             if (result.ShouldExit)
             {
-                if (!string.IsNullOrEmpty(result.Message))
+                if (!string.IsNullOrEmpty(result.Message) && effectivePrintExit)
                 {
                     this.context.Output.WriteLine(result.Message);
                 }
