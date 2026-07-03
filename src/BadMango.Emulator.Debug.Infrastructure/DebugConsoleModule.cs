@@ -278,6 +278,15 @@ public class DebugConsoleModule : Module
         .As<ICommandContext>()
         .SingleInstance();
 
+        // Register TextReader driven by EmudbgOptions (supports --exec / --file for non-interactive use)
+        builder.Register(ctx =>
+        {
+            var opts = ctx.ResolveOptional<EmudbgOptions>();
+            return opts?.CreateInputReader() ?? Console.In;
+        })
+        .As<TextReader>()
+        .SingleInstance();
+
         // Register the REPL
         builder.Register(ctx =>
         {

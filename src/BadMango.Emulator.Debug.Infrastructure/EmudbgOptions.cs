@@ -123,4 +123,36 @@ public sealed record EmudbgOptions(
 
         return new EmudbgOptions(profile, exec, file, noBanner, showHelp);
     }
+
+    /// <summary>
+    /// Creates an appropriate <see cref="TextReader"/> based on the options
+    /// (exec commands, script file, or default to console).
+    /// </summary>
+    public TextReader CreateInputReader()
+    {
+        if (!string.IsNullOrWhiteSpace(ExecCommands))
+        {
+            string commands = ExecCommands
+                .Replace("\\n", "\n", StringComparison.Ordinal)
+                .Replace(';', '\n');
+
+            if (!commands.Contains("exit", StringComparison.OrdinalIgnoreCase))
+            {
+                commands += "\nexit";
+            }
+
+            return new StringReader(commands);
+        }
+
+        if (!string.IsNullOrWhiteSpace(ScriptFile))
+        {
+            // In production the caller ensures the file exists; return reader for valid cases.
+            if (File.Exists(ScriptFile))
+            {
+                return new StreamReader(ScriptFile);
+            }
+        }
+
+        return Console.In;
+    }
 }

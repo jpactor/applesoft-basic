@@ -103,6 +103,20 @@ Or after building:
 ./src/BadMango.Basic.Console/bin/Debug/net10.0/bpbasic samples/demo.bas
 ```
 
+## Debugging the Emulator
+
+The `emudbg` tool is the main console for inspecting and controlling a live emulator instance.
+
+```bash
+dotnet run --project src/BadMango.Emulator.Debug
+```
+
+See [emudbg.md](emudbg.md) for full documentation, including:
+
+- Command-line options (`--profile`, `--exec`, `--file`, `--no-banner`, `--help`)
+- Interactive commands
+- Using with scripts and agents
+
 ## Sample Programs
 
 Several sample programs are included in the `samples/` directory:
@@ -184,7 +198,7 @@ back-pocket-basic/
 │   ├── BadMango.Emulator.Bus/         # System bus and memory management
 │   ├── BadMango.Emulator.Devices/     # Peripheral device implementations
 │   ├── BadMango.Emulator.Systems/     # Complete system configurations
-│   ├── BadMango.Emulator.Debug/       # Debugging infrastructure
+│   ├── BadMango.Emulator.Debug/       # emudbg debug console + infrastructure (see emudbg.md)
 │   ├── BadMango.Emulator.Infrastructure/ # Event and registration utilities
 │   ├── BadMango.Emulator.Interop/     # Interoperability layer
 │   ├── BadMango.Emulator.Configuration/ # Configuration management

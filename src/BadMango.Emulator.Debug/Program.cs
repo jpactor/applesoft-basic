@@ -32,38 +32,6 @@ Log.Logger = new LoggerConfiguration()
         outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
     .CreateLogger();
 
-static TextReader DetermineInputReader(EmudbgOptions options)
-{
-    if (!string.IsNullOrWhiteSpace(options.ExecCommands))
-    {
-        string commands = options.ExecCommands
-            .Replace("\\n", "\n", StringComparison.Ordinal)
-            .Replace(';', '\n');
-
-        // For convenience in --exec mode, ensure we exit at the end if the user didn't specify it
-        if (!commands.Contains("exit", StringComparison.OrdinalIgnoreCase))
-        {
-            commands += "\nexit";
-        }
-
-        return new StringReader(commands);
-    }
-
-    if (!string.IsNullOrWhiteSpace(options.ScriptFile))
-    {
-        if (!File.Exists(options.ScriptFile))
-        {
-            Console.WriteLine($"Error: Script file not found: {options.ScriptFile}");
-            Environment.Exit(1);
-        }
-
-        // The caller (REPL) will dispose? We use a simple reader; process lifetime is short.
-        return new StreamReader(options.ScriptFile);
-    }
-
-    return Console.In;
-}
-
 static void PrintUsage()
 {
     Console.WriteLine("""
@@ -102,6 +70,13 @@ try
         return 0;
     }
 
+    // Validate script file early (before container) so we can exit with message
+    if (!string.IsNullOrWhiteSpace(options.ScriptFile) && !File.Exists(options.ScriptFile))
+    {
+        Console.WriteLine($"Error: Script file not found: {options.ScriptFile}");
+        return 1;
+    }
+
     Log.Information("Starting Emulator Debug Console");
 
     // Build the host
@@ -111,10 +86,6 @@ try
         {
             // Register startup options so modules and components can read CLI overrides (profile, etc.)
             builder.RegisterInstance(options).AsSelf().SingleInstance();
-
-            // Provide a TextReader so the REPL can be driven from --exec or --file (non-interactive)
-            TextReader inputReader = DetermineInputReader(options);
-            builder.RegisterInstance(inputReader).As<TextReader>().SingleInstance();
 
             builder.RegisterModule<DebugConsoleModule>();
             builder.RegisterModule<DebugUiModule>();
