@@ -31,6 +31,7 @@ This repository contains code to emulate an Applesoft BASIC interpreter, enhanci
 - It will include debugging tools such as register/memory inspection, breakpoints, watchpoints, tracing, and disk state management.
 - The ultimate goal is to reuse this infrastructure for a user-friendly application that can host multiple instances of an emulator.
 - We will use this debug console as we move towards the 65816 emulator and, eventually, our speculative 32-bit "65832" processor, so it must be designed with future extensibility in mind.
+- **For AI agents and tools**: See `AGENTS.md` (root) for the exact recommended patterns to launch and drive the REPL (batching via stdin piping, core commands, limitations, and examples). Always test changes with realistic command sequences.
 
 ### Emulator Host Agent (emudbg-agent)
 
@@ -38,6 +39,7 @@ This repository contains code to emulate an Applesoft BASIC interpreter, enhanci
 - It will reuse the existing debug infrastructure and command surface while exposing a machine-friendly transport suitable for local tooling integrations such as MCP clients.
 - Use headless Avalonia for video output when implementing the emudbg agent host.
 - Use a fake speaker controller for audio in the emudbg agent host on Linux/Ubuntu diagnostic hosts where Windows-only implementations are unavailable.
+- Practical interaction guidance for the current REPL (while the dedicated agent host is being built) lives in `AGENTS.md`.
 
 ## Development Guidelines
 
