@@ -220,13 +220,24 @@ public class DebugConsoleModule : Module
             .AsSelf()
             .SingleInstance();
 
-        // Register the default machine profile, respecting user's choice from .default-profile
+        // Register the default machine profile, respecting CLI override or .default-profile
         builder.Register(ctx =>
         {
             var loader = ctx.Resolve<IMachineProfileLoader>();
-            string profileName = GetUserDefaultProfileName();
 
-            // Try to load the user's chosen default profile
+            // CLI --profile takes precedence
+            string? profileName = null;
+            var options = ctx.ResolveOptional<EmudbgOptions>();
+            if (options?.Profile is { Length: > 0 })
+            {
+                profileName = options.Profile;
+            }
+            else
+            {
+                profileName = GetUserDefaultProfileName();
+            }
+
+            // Try to load the requested profile
             var profile = loader.LoadProfile(profileName);
             if (profile is not null)
             {
@@ -280,7 +291,9 @@ public class DebugConsoleModule : Module
                 dispatcher.Register(handler);
             }
 
-            return new DebugRepl(dispatcher, context, Console.In);
+            // Use the injected TextReader (may be Console.In, StringReader for --exec, or file reader)
+            var input = ctx.Resolve<TextReader>();
+            return new DebugRepl(dispatcher, context, input);
         })
         .AsSelf()
         .SingleInstance();

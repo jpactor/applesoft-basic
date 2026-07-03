@@ -49,6 +49,12 @@ public sealed class DebugRepl
     public bool ShowBanner { get; set; } = true;
 
     /// <summary>
+    /// Gets or sets a value indicating whether the REPL should display the input prompt
+    /// before reading each command. Set to false for non-interactive / scripted usage.
+    /// </summary>
+    public bool ShowPrompt { get; set; } = true;
+
+    /// <summary>
     /// Creates a REPL with standard console I/O and default built-in commands.
     /// </summary>
     /// <param name="windowManager">
@@ -84,7 +90,10 @@ public sealed class DebugRepl
 
         while (true)
         {
-            this.context.Output.Write(this.prompt);
+            if (this.ShowPrompt)
+            {
+                this.context.Output.Write(this.prompt);
+            }
 
             var line = this.input.ReadLine();
             if (line is null)

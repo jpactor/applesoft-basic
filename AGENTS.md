@@ -25,7 +25,23 @@ The output executable name is `emudbg`:
 - Direct: `src\BadMango.Emulator.Debug\bin\Debug\net10.0\emudbg.exe`
 - Dev-friendly: `dotnet run --project src/BadMango.Emulator.Debug`
 
-On launch, `emudbg` immediately creates a machine using the default profile (currently `pocket2e-a2-enh` — an Apple IIe Enhanced configuration) and enters the REPL.
+**New CLI options (added for humans + agents):**
+
+```
+emudbg --help
+emudbg -p pocket2e-lite
+emudbg --profile simple-65c02 --exec "regs;step 5;regs;exit" --no-banner
+emudbg -e "boot\nregs\ndasm" --no-banner
+emudbg --file my-commands.emudbg
+```
+
+- `-p, --profile <name>` — override the machine profile at startup.
+- `-e, --exec <cmds>` — run semicolon- or newline-separated commands then exit (non-interactive).
+- `-f, --file <path>` — execute commands from a text file.
+- `--no-banner` — suppress banner and prompts (ideal for agents/scripts).
+- `-h, --help` — usage.
+
+On launch (when no CLI commands are given), `emudbg` creates a machine using the default (or --profile) profile and enters the REPL.
 
 ## Interacting with the emudbg REPL (Critical for Agents)
 
@@ -33,7 +49,9 @@ On launch, `emudbg` immediately creates a machine using the default profile (cur
 
 The REPL is line-oriented: it prints a banner + prompt, reads lines from stdin, dispatches via `CommandDispatcher`, and writes results to `Output` / `Error`.
 
-**True live interactive REPL is difficult for agents.** The proven, reliable pattern is to send a batch of commands via stdin and capture everything:
+**Preferred for agents:** Use the new CLI flags (`--profile`, `--exec`, `--file`, `--no-banner`).
+
+**Fallback (still works):** send a batch of commands via stdin and capture everything:
 
 **PowerShell (this environment):**
 ```powershell
