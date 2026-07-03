@@ -17,7 +17,8 @@ public sealed record EmudbgOptions(
     string? ExecCommands = null,
     string? ScriptFile = null,
     bool NoBanner = false,
-    bool ShowHelp = false)
+    bool ShowHelp = false,
+    bool JsonOutput = false)
 {
     /// <summary>
     /// Parses command-line arguments into <see cref="EmudbgOptions"/>.
@@ -33,6 +34,7 @@ public sealed record EmudbgOptions(
         string? file = null;
         bool noBanner = false;
         bool showHelp = false;
+        bool jsonOutput = false;
 
         for (int i = 0; i < args.Length; i++)
         {
@@ -108,6 +110,11 @@ public sealed record EmudbgOptions(
                     noBanner = true;
                     break;
 
+                case "--json":
+                case "-j":
+                    jsonOutput = true;
+                    break;
+
                 case "--help":
                 case "-h":
                 case "/?":
@@ -121,7 +128,7 @@ public sealed record EmudbgOptions(
             }
         }
 
-        return new EmudbgOptions(profile, exec, file, noBanner, showHelp);
+        return new EmudbgOptions(profile, exec, file, noBanner, showHelp, jsonOutput);
     }
 
     /// <summary>

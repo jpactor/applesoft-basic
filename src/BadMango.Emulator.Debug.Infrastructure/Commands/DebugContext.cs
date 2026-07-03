@@ -36,7 +36,7 @@ public sealed class DebugContext : IDebugContext, IDisposable
     /// <param name="output">The output writer.</param>
     /// <param name="error">The error writer.</param>
     /// <param name="input">The input reader for interactive commands.</param>
-    public DebugContext(ICommandDispatcher dispatcher, TextWriter output, TextWriter error, TextReader? input = null)
+    public DebugContext(ICommandDispatcher dispatcher, TextWriter output, TextWriter error, TextReader? input = null, bool jsonOutput = false)
     {
         ArgumentNullException.ThrowIfNull(dispatcher);
         ArgumentNullException.ThrowIfNull(output);
@@ -46,6 +46,7 @@ public sealed class DebugContext : IDebugContext, IDisposable
         this.Output = output;
         this.Error = error;
         this.Input = input;
+        this.JsonOutput = jsonOutput;
     }
 
     /// <summary>
@@ -69,8 +70,9 @@ public sealed class DebugContext : IDebugContext, IDisposable
         IDisassembler? disassembler,
         MachineInfo? machineInfo = null,
         TracingDebugListener? tracingListener = null,
-        TextReader? input = null)
-        : this(dispatcher, output, error, input)
+        TextReader? input = null,
+        bool jsonOutput = false)
+        : this(dispatcher, output, error, input, jsonOutput)
     {
         this.Cpu = cpu;
         this.Bus = bus;
@@ -90,6 +92,9 @@ public sealed class DebugContext : IDebugContext, IDisposable
 
     /// <inheritdoc/>
     public TextReader? Input { get; }
+
+    /// <inheritdoc/>
+    public bool JsonOutput { get; }
 
     /// <inheritdoc/>
     public ICpu? Cpu { get; private set; }
@@ -138,9 +143,9 @@ public sealed class DebugContext : IDebugContext, IDisposable
     /// </summary>
     /// <param name="dispatcher">The command dispatcher.</param>
     /// <returns>A new <see cref="DebugContext"/> using console streams.</returns>
-    public static DebugContext CreateConsoleContext(ICommandDispatcher dispatcher)
+    public static DebugContext CreateConsoleContext(ICommandDispatcher dispatcher, bool jsonOutput = false)
     {
-        var context = new DebugContext(dispatcher, Console.Out, Console.Error, Console.In);
+        var context = new DebugContext(dispatcher, Console.Out, Console.Error, Console.In, jsonOutput);
         context.AttachPathResolver(new DebugPathResolver());
         context.AttachDiskImageFactory(new DiskImageFactory());
         return context;

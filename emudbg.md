@@ -39,6 +39,7 @@ emudbg [options]
 | `-p, --profile <name>` | Load the named machine profile at startup (e.g. `pocket2e-lite`, `simple-65c02`) |
 | `-e, --exec <commands>` | Execute semicolon- or newline-separated commands then exit (non-interactive) |
 | `-f, --file <path>` | Read and run commands from a text file (one per line) |
+| `--json`, `-j`      | Enable structured JSON output for supported commands (e.g. `regs`, `dasm`) |
 | `--no-banner`       | Suppress the startup banner and input prompts |
 | `-h, --help`        | Show usage and exit |
 
@@ -54,11 +55,16 @@ emudbg -p simple-65c02
 # Run a short non-interactive session
 emudbg --exec "boot;regs;step 20;regs;exit" --no-banner
 
+# Get structured JSON output (for agents/tools)
+emudbg --json --exec "regs;exit" --no-banner
+
 # Use a script file
 emudbg --file debug-sequence.emudbg --no-banner
 ```
 
 When using `--exec` or `--file`, `emudbg` will process the supplied commands using the normal command infrastructure and then exit.
+
+Supported commands (regs, dasm, etc.) accept `--json` / `-j` to emit machine-readable output instead of formatted text. Global `--json` enables it for the session.
 
 ## Interactive Usage
 

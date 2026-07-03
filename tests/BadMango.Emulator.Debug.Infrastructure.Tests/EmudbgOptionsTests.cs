@@ -153,4 +153,31 @@ public class EmudbgOptionsTests
 
         Assert.That(options.Profile, Is.EqualTo("second"));
     }
+
+    /// <summary>
+    /// Verifies --json / -j sets the flag.
+    /// </summary>
+    [Test]
+    [TestCase("--json")]
+    [TestCase("-j")]
+    public void Parse_JsonOutput_SetsFlag(string flag)
+    {
+        var options = EmudbgOptions.Parse([flag]);
+        Assert.That(options.JsonOutput, Is.True);
+    }
+
+    /// <summary>
+    /// Verifies --json combines with other options.
+    /// </summary>
+    [Test]
+    public void Parse_JsonWithOtherOptions()
+    {
+        var options = EmudbgOptions.Parse(["--profile", "test", "--json", "--no-banner"]);
+        Assert.Multiple(() =>
+        {
+            Assert.That(options.Profile, Is.EqualTo("test"));
+            Assert.That(options.JsonOutput, Is.True);
+            Assert.That(options.NoBanner, Is.True);
+        });
+    }
 }

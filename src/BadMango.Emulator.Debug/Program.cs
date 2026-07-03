@@ -101,7 +101,7 @@ try
 
     // Configure non-interactive / scripting behavior
     bool isScriptMode = !string.IsNullOrEmpty(options.ExecCommands) || !string.IsNullOrEmpty(options.ScriptFile);
-    if (options.NoBanner || isScriptMode)
+    if (options.NoBanner || isScriptMode || options.JsonOutput)
     {
         repl.ShowBanner = false;
         repl.ShowPrompt = false;

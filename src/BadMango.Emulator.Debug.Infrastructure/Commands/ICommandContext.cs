@@ -37,4 +37,10 @@ public interface ICommandContext
     /// Commands should check for null before attempting to read input.
     /// </remarks>
     TextReader? Input { get; }
+
+    /// <summary>
+    /// Gets a value indicating whether output should be in JSON format (structured)
+    /// rather than human-readable text.
+    /// </summary>
+    bool JsonOutput { get; }
 }

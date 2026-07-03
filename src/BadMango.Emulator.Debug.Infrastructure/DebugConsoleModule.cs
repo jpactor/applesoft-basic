@@ -256,7 +256,8 @@ public class DebugConsoleModule : Module
             var dispatcher = ctx.Resolve<ICommandDispatcher>();
             var profile = ctx.Resolve<MachineProfile>();
             var tracingListener = ctx.Resolve<TracingDebugListener>();
-            var context = DebugContext.CreateConsoleContext(dispatcher);
+            var opts = ctx.ResolveOptional<EmudbgOptions>();
+            var context = DebugContext.CreateConsoleContext(dispatcher, opts?.JsonOutput ?? false);
 
             // Create a path resolver with the library root for resolving library:// paths
             string libraryRoot = GetLibraryRoot();

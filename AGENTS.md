@@ -151,7 +151,7 @@ See the agent planning documents for the intended future direction (structured t
 - UI windows and monitors live under `BadMango.Emulator.Debug.UI`.
 
 ### Improvement Ideas (Prioritize Making It Agent-Friendly)
-- Add CLI arguments (e.g. `--profile`, `--exec "cmd1;cmd2"`, `--script file.emudbg`, `--json`).
+- ~~Add CLI arguments (e.g. `--profile`, `--exec "cmd1;cmd2"`, `--script file.emudbg`, `--json`).~~ (CLI + --json completed)
 - Support a non-interactive / batch mode that doesn't require the full REPL loop.
 - Optional structured output (JSON) for key commands (`regs --json`, `dasm --json`).
 - Better output capture abstraction (currently uses `ICommandContext.Output`).
