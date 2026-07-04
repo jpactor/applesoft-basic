@@ -290,6 +290,7 @@ public abstract class CpuBase : ICpu
             if (result.Fault.Kind == FaultKind.Unmapped)
             {
                 haltReason = HaltState.Stp;
+                System.Console.Error.WriteLine($"[UNMAPPED] addr=${address:X4} size=8/16/32");
             }
 
             return 0xFF;
@@ -356,6 +357,7 @@ public abstract class CpuBase : ICpu
             if (result.Fault.Kind == FaultKind.Unmapped)
             {
                 haltReason = HaltState.Stp;
+                System.Console.Error.WriteLine($"[UNMAPPED] addr=${address:X4} size=8/16/32");
             }
 
             return 0xFFFF;
@@ -409,18 +411,20 @@ public abstract class CpuBase : ICpu
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public virtual Addr PushByte(Addr stackBase = 0)
     {
-        var old = registers.SP.stack;
-        registers.SP.stack--;
-        return stackBase + old;
+        // Compat (65C02/6502 E=1): SP is strictly 8-bit; mask to avoid high bits/underflow producing bogus addrs like FFFFFFF4 leading to unmapped Stp.
+        byte sp = registers.SP.GetByte();
+        Addr addr = stackBase + sp;
+        registers.SP.SetByte((byte)((sp - 1) & 0xFF));
+        return addr;
     }
 
     /// <inheritdoc/>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public virtual Addr PopByte(Addr stackBase = 0)
     {
-        var old = registers.SP.stack + 1;
-        registers.SP.stack++;
-        return stackBase + old;
+        byte sp = (byte)((registers.SP.GetByte() + 1) & 0xFF);
+        registers.SP.SetByte(sp);
+        return stackBase + sp;
     }
 
     // ─── Protected Helper Methods ───────────────────────────────────────
@@ -441,6 +445,7 @@ public abstract class CpuBase : ICpu
             if (result.Fault.Kind == FaultKind.Unmapped)
             {
                 haltReason = HaltState.Stp;
+                System.Console.Error.WriteLine($"[UNMAPPED] addr=${address:X4} size=8/16/32");
             }
 
             return 0xFFFFFFFF;

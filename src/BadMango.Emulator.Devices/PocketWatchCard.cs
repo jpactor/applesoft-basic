@@ -148,12 +148,19 @@ public sealed class PocketWatchCard : IClockDevice
         if (trapRegistry != null && SlotNumber >= 1 && SlotNumber <= 7)
         {
             Addr baseAddr = (Addr)(0xC000 + (SlotNumber * 0x100));
-            trapRegistry.RegisterSlotDependent(baseAddr, SlotNumber, "PocketWatch ROM entry (trapped clock portal)", TrapCategory.SlotFirmware, (cpu, bus, evt) => { LatchTime(); return new TrapResult { Handled = true, ReturnMethod = TrapReturnMethod.Rts, CyclesConsumed = 6 }; }, "C# trapped execution for host system clock via PocketWatch/Thunderclock compatible ROM entry");
-            // Also trap the RTS points in the stub ROM for any JSRs there
-            for (int off = 0xFB; off <= 0xFF; off++)
+            // Register traps only at key locations (entry + former RTS offsets) in the clock ROM area.
+            // This prevents executing RTS bytes (which on JMP-to-entry would corrupt stack leading to PC landing on data $DB).
+            // Non-trapped locations execute their EA NOPs normally. ID/sig bytes are read as data (LDA not fetch opcode).
+            // Clock functionality is I/O driven (handlers latch time); trapped execution is safety net.
+            int[] trapOffsets = { 0x00, 0xFB, 0xFC, 0xFD, 0xFE, 0xFF };
+            foreach (int i in trapOffsets)
             {
-                Addr entry = baseAddr + (uint)off;
-                trapRegistry.RegisterSlotDependent(entry, SlotNumber, $"PocketWatch RTS entry ${entry:X4}", TrapCategory.SlotFirmware, (c, b, e) => new TrapResult { Handled = true, ReturnMethod = TrapReturnMethod.Rts, CyclesConsumed = 6 }, "Trapped RTS for stub ROM compatibility");
+                Addr addr = baseAddr + (uint)i;
+                trapRegistry.RegisterSlotDependent(addr, SlotNumber, $"PocketWatch ROM ${addr:X4} (trapped)", TrapCategory.SlotFirmware, (cpu, bus, evt) => {
+                    LatchTime();
+                    cpu.Registers.PC.Advance(1);
+                    return new TrapResult { Handled = true, ReturnMethod = TrapReturnMethod.None, CyclesConsumed = 2 };
+                }, "Trapped execution for host clock portal at key points - prevents bad RTS after JMP to stub");
             }
         }
     }

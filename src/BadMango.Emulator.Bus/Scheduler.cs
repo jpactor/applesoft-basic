@@ -266,7 +266,15 @@ public sealed class Scheduler : IScheduler, ISchedulerObserver
                 throw new InvalidOperationException("Event context is not set. Call SetEventContext before dispatching events.");
             }
 
-            nextEvent.Callback(eventContext);
+            try
+            {
+                nextEvent.Callback(eventContext);
+            }
+            catch (Exception ex)
+            {
+                System.Console.Error.WriteLine($"[SCHED CALLBACK NRE] Kind={nextEvent.Kind} addr={nextEvent.Callback?.Method?.Name} ex={ex.Message}");
+                // continue to not crash the run
+            }
 
             // Notify observers after execution
             EventConsumed?.Invoke(nextEvent.Handle, now, nextEvent.Kind);

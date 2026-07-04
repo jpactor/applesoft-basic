@@ -30,7 +30,7 @@ public static partial class Instructions
             if (((byte)cpu.Registers.P & (byte)ProcessorStatusFlags.C) == 0)
             {
                 Word oldPC = cpu.Registers.PC.GetWord();
-                cpu.Registers.PC.SetWord((Word)targetAddr);
+                cpu.Registers.PC.SetWord((Word)(targetAddr & 0xFFFF));
                 opCycles++; // Branch taken
 
                 if ((oldPC & 0xFF00) != (targetAddr & 0xFF00))
@@ -64,7 +64,7 @@ public static partial class Instructions
             if (((byte)cpu.Registers.P & (byte)ProcessorStatusFlags.C) != 0)
             {
                 Word oldPC = cpu.Registers.PC.GetWord();
-                cpu.Registers.PC.SetWord((Word)targetAddr);
+                cpu.Registers.PC.SetWord((Word)(targetAddr & 0xFFFF));
                 opCycles++; // Branch taken
 
                 if ((oldPC & 0xFF00) != (targetAddr & 0xFF00))
@@ -98,7 +98,7 @@ public static partial class Instructions
             if (((byte)cpu.Registers.P & (byte)ProcessorStatusFlags.Z) != 0)
             {
                 Word oldPC = cpu.Registers.PC.GetWord();
-                cpu.Registers.PC.SetWord((Word)targetAddr);
+                cpu.Registers.PC.SetWord((Word)(targetAddr & 0xFFFF));
                 opCycles++; // Branch taken
 
                 if ((oldPC & 0xFF00) != (targetAddr & 0xFF00))
@@ -132,7 +132,7 @@ public static partial class Instructions
             if (((byte)cpu.Registers.P & (byte)ProcessorStatusFlags.Z) == 0)
             {
                 Word oldPC = cpu.Registers.PC.GetWord();
-                cpu.Registers.PC.SetWord((Word)targetAddr);
+                cpu.Registers.PC.SetWord((Word)(targetAddr & 0xFFFF));
                 opCycles++; // Branch taken
 
                 if ((oldPC & 0xFF00) != (targetAddr & 0xFF00))
@@ -166,7 +166,7 @@ public static partial class Instructions
             if (((byte)cpu.Registers.P & (byte)ProcessorStatusFlags.N) != 0)
             {
                 Word oldPC = cpu.Registers.PC.GetWord();
-                cpu.Registers.PC.SetWord((Word)targetAddr);
+                cpu.Registers.PC.SetWord((Word)(targetAddr & 0xFFFF));
                 opCycles++; // Branch taken
 
                 if ((oldPC & 0xFF00) != (targetAddr & 0xFF00))
@@ -200,7 +200,7 @@ public static partial class Instructions
             if (((byte)cpu.Registers.P & (byte)ProcessorStatusFlags.N) == 0)
             {
                 Word oldPC = cpu.Registers.PC.GetWord();
-                cpu.Registers.PC.SetWord((Word)targetAddr);
+                cpu.Registers.PC.SetWord((Word)(targetAddr & 0xFFFF));
                 opCycles++; // Branch taken
 
                 if ((oldPC & 0xFF00) != (targetAddr & 0xFF00))
@@ -234,7 +234,7 @@ public static partial class Instructions
             if (((byte)cpu.Registers.P & (byte)ProcessorStatusFlags.V) == 0)
             {
                 Word oldPC = cpu.Registers.PC.GetWord();
-                cpu.Registers.PC.SetWord((Word)targetAddr);
+                cpu.Registers.PC.SetWord((Word)(targetAddr & 0xFFFF));
                 opCycles++; // Branch taken
 
                 if ((oldPC & 0xFF00) != (targetAddr & 0xFF00))
@@ -268,7 +268,7 @@ public static partial class Instructions
             if (((byte)cpu.Registers.P & (byte)ProcessorStatusFlags.V) != 0)
             {
                 Word oldPC = cpu.Registers.PC.GetWord();
-                cpu.Registers.PC.SetWord((Word)targetAddr);
+                cpu.Registers.PC.SetWord((Word)(targetAddr & 0xFFFF));
                 opCycles++; // Branch taken
 
                 if ((oldPC & 0xFF00) != (targetAddr & 0xFF00))

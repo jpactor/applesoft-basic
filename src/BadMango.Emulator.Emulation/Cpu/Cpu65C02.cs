@@ -165,7 +165,7 @@ public sealed class Cpu65C02 : CpuBase
                         Addr rtsHighAddr = PopByte(Cpu65C02Constants.StackBase);
                         byte rtsHighByte = Read8(rtsHighAddr);
                         ushort rtsReturnAddress = (ushort)((rtsHighByte << 8) | rtsLowByte);
-                        Registers.PC.SetAddr((uint)(rtsReturnAddress + 1));
+                        Registers.PC.SetAddr((uint)((rtsReturnAddress + 1) & 0xFFFF));
 
                         // Add RTS cycles (6 cycles for RTS)
                         Registers.TCU += 6;
@@ -183,7 +183,7 @@ public sealed class Cpu65C02 : CpuBase
                         Addr rtiHighAddr = PopByte(Cpu65C02Constants.StackBase);
                         byte rtiHighByte = Read8(rtiHighAddr);
                         ushort rtiReturnAddress = (ushort)((rtiHighByte << 8) | rtiLowByte);
-                        Registers.PC.SetAddr(rtiReturnAddress);
+                        Registers.PC.SetAddr((uint)(rtiReturnAddress & 0xFFFF));
 
                         // Add RTI cycles (6 cycles for RTI)
                         Registers.TCU += 6;
@@ -333,6 +333,13 @@ public sealed class Cpu65C02 : CpuBase
             }
 
             return 0xFF;
+        }
+
+        if (result.Value == 0xDB)
+        {
+            // Diagnostic: log when $DB (STP data byte) is fetched as opcode during boot investigation.
+            // This should not happen in correct execution; indicates PC landed on data in ROM.
+            System.Console.Error.WriteLine($"[DB FETCH] addr=${address:X4} value=DB (likely data byte fetched as opcode)");
         }
 
         return result.Value;

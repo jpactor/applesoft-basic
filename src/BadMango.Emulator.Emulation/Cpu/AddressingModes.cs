@@ -220,7 +220,8 @@ public static class AddressingModes
 
         cpu.Registers.TCU += addrCycles;
 
-        Addr effectiveAddr = ((Addr)cpu.Registers.DBR << 16) | address;
+        // For 65C02 (and E=1 emulation), force 16-bit address; DBR is for 65816 banks and must not leak high bits into PC/addr on IIe.
+        Addr effectiveAddr = address & 0xFFFF;
 
         if (cpu.IsDebuggerAttached)
         {
@@ -572,7 +573,7 @@ public static class AddressingModes
         sbyte offset = (sbyte)cpu.Read8(pc);
         addrCycles++; // 1 cycle to fetch the offset
 
-        Addr targetAddr = (Addr)(cpu.Registers.PC.GetAddr() + offset);
+        Addr targetAddr = (Addr)((cpu.Registers.PC.GetAddr() + offset) & 0xFFFF);
 
         cpu.Registers.TCU += addrCycles;
 
